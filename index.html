@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Robot URDF Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workbench — robot picker strip, then spec sheet beside a live 3D bay, then launch + package export */
+:root {
+  --bg: #ECEFEA;
+  --panel: #F8F9F6;
+  --ink: #172022;
+  --muted: #5B6866;
+  --line: #D2D8D1;
+  --accent: #C9480B;
+  --accent-soft: #F6E1D5;
+  --on-accent: #FFFFFF;
+  --view: #DFE4DD;
+  --grid1: #9AA59F;
+  --grid2: #C4CCC5;
+  --code: #F1F3EE;
+  --ok: #2E7A4C;
+  --warn: #A86A12;
+  --tag: #1F5FA8;
+  --attr: #7A4BB0;
+  --str: #2E7A4C;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111716; --panel: #182020; --ink: #E3EAE6; --muted: #91A09B; --line: #2B3634;
+    --accent: #FF7C3F; --accent-soft: #3A2419; --on-accent: #1A0D06; --view: #0D1312;
+    --grid1: #3E4B48; --grid2: #232D2B; --code: #141B1A; --ok: #6BCB8E; --warn: #E5A84A;
+    --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111716; --panel: #182020; --ink: #E3EAE6; --muted: #91A09B; --line: #2B3634;
+  --accent: #FF7C3F; --accent-soft: #3A2419; --on-accent: #1A0D06; --view: #0D1312;
+  --grid1: #3E4B48; --grid2: #232D2B; --code: #141B1A; --ok: #6BCB8E; --warn: #E5A84A;
+  --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 30px; font-weight: 700; line-height: 1.1; }
+h2 { font-size: 19px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; }
+h2 .step { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 500; letter-spacing: 0.08em; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 24px; }
+header.top p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+section { display: flex; flex-direction: column; gap: 14px; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Robot picker */
+.types { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.type {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 12px 14px 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; transition: border-color .15s, background .15s;
+}
+.type:hover { border-color: var(--muted); }
+.type[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.type svg { width: 64px; height: 40px; color: var(--ink); }
+.type[aria-pressed="true"] svg .hl { stroke: var(--accent); }
+.type b { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+.type span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+
+/* Workbench */
+.bench { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.spec {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  max-height: 720px; overflow-y: auto; min-width: 0;
+}
+fieldset { border: 0; border-bottom: 1px solid var(--line); margin: 0; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+fieldset:last-child { border-bottom: 0; }
+legend { float: left; width: 100%; padding: 0 0 4px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 34px; align-items: center; gap: 8px; }
+.row label { font-size: 13px; }
+.row .unit { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.row input[type="number"], .text input, select {
+  width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
+  font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.row input[aria-invalid="true"] { border-color: var(--warn); }
+.text { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: center; }
+.text label { font-size: 13px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.check.disabled { color: var(--muted); }
+.check small { color: var(--muted); }
+.colors { display: flex; gap: 16px; flex-wrap: wrap; }
+.colors label { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+input[type="color"] { width: 36px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+
+.bay { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.viewport { position: relative; height: 560px; border-radius: 6px; overflow: hidden; background: var(--view); border: 1px solid var(--line); }
+.viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; left: 12px; top: 12px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; max-width: calc(100% - 24px); }
+.chip {
+  background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 8px; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.chip i { font-style: normal; color: var(--muted); margin-right: 4px; }
+.viewtools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.legendkey { position: absolute; left: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); pointer-events: none; }
+.legendkey b { font-weight: 500; }
+.legendkey .x { color: #D23B3B; } .legendkey .y { color: #2E9A4A; } .legendkey .z { color: #2F6BD8; }
+
+.under { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.box h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.joints { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 16px; max-height: 236px; overflow-y: auto; }
+.joint { display: grid; grid-template-columns: minmax(0, 1fr) 62px; gap: 0 8px; align-items: center; }
+.joint label { font-family: var(--font-mono); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.joint output { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.joint input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0 0 4px; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.checks li { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pill { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; text-align: center; }
+.pill.ok { color: var(--ok); border: 1px solid var(--ok); }
+.pill.warn { color: var(--warn); border: 1px solid var(--warn); }
+.pill.info { color: var(--muted); border: 1px solid var(--line); }
+.muted { color: var(--muted); }
+
+/* Launch */
+.launch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.target { position: relative; }
+.target input { position: absolute; opacity: 0; pointer-events: none; }
+.target label {
+  display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 14px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.target label b { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+.target label span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.target input:checked + label { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.target input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.distro { display: flex; flex-direction: column; gap: 10px; }
+.distro .text { grid-template-columns: 120px minmax(0, 1fr); }
+pre.cmd {
+  margin: 0; padding: 12px 14px; background: var(--code); border: 1px solid var(--line); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre;
+}
+pre.cmd .c { color: var(--muted); }
+
+/* Package */
+.pkg { display: grid; grid-template-columns: 250px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); min-height: 460px; }
+.tree { border-right: 1px solid var(--line); padding: 10px 0; display: flex; flex-direction: column; min-width: 0; }
+.tree .root { padding: 2px 14px 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.tree button {
+  text-align: left; background: none; border: 0; padding: 4px 14px 4px 26px; font-family: var(--font-mono); font-size: 12px;
+  color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tree button span { color: var(--muted); }
+.tree button:hover { background: var(--bg); }
+.tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.viewer { display: flex; flex-direction: column; min-width: 0; }
+.viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.viewer .bar code { font-family: var(--font-mono); font-size: 12px; }
+.code { flex: 1; margin: 0; padding: 10px 0; background: var(--code); overflow: auto; max-height: 560px; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
+.code .ln { display: block; padding: 0 14px 0 0; white-space: pre; }
+.code .ln::before { content: attr(data-n); display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--muted); opacity: .6; user-select: none; }
+.t { color: var(--tag); } .a { color: var(--attr); } .s { color: var(--str); } .cm { color: var(--muted); font-style: italic; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toast { font-size: 13px; color: var(--muted); min-height: 1.5em; }
+.toast.err { color: var(--warn); }
+
+@media (max-width: 1080px) {
+  .types { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .spec { max-height: none; }
+  .launch { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .types { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .viewport { height: 380px; }
+  .under { grid-template-columns: minmax(0, 1fr); }
+  .targets { grid-template-columns: minmax(0, 1fr); }
+  .pkg { grid-template-columns: minmax(0, 1fr); }
+  .tree { border-right: 0; border-bottom: 1px solid var(--line); max-height: 220px; overflow-y: auto; }
+  h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">ROS 2 · URDF · RViz · Gazebo</div>
+      <h1>Robot URDF Studio</h1>
+      <p>Pick a robot, enter its real dimensions and masses, and check it in the 3D preview. Then choose RViz or Gazebo and download a ROS 2 package you can build with colcon.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="importBtn" type="button">Import spec…</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button class="btn" id="exportSpecBtn" type="button">Save spec (.json)</button>
+    </div>
+  </header>
+
+  <section aria-labelledby="h-type">
+    <h2 id="h-type"><span class="step">STEP 1</span>Choose the robot</h2>
+    <div class="types" id="types"></div>
+  </section>
+
+  <section aria-labelledby="h-dim">
+    <h2 id="h-dim"><span class="step">STEP 2</span>Describe its dimensions</h2>
+    <div class="bench">
+      <form class="spec" id="spec" autocomplete="off"></form>
+      <div class="bay">
+        <div class="viewport" id="viewport">
+          <div class="hud" id="hud"></div>
+          <div class="viewtools">
+            <button class="btn" type="button" id="fitBtn">Fit view</button>
+          </div>
+          <div class="legendkey">Grid 0.1 m · axes <b class="x">x</b> <b class="y">y</b> <b class="z">z</b> (ROS REP-103)</div>
+        </div>
+        <div class="under">
+          <div class="box">
+            <h3><span>Move joints</span><button class="btn" type="button" id="zeroBtn">Zero all</button></h3>
+            <div class="joints" id="joints"></div>
+          </div>
+          <div class="box">
+            <h3><span>Checks</span></h3>
+            <ul class="checks" id="checks"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-launch">
+    <h2 id="h-launch"><span class="step">STEP 3</span>Choose where to launch it</h2>
+    <div class="launch">
+      <div class="targets" role="radiogroup" aria-label="Launch target">
+        <div class="target"><input type="radio" name="target" id="t_rviz" value="rviz"><label for="t_rviz"><b>RViz</b><span>Visualize the model and drag joints with sliders. No physics.</span></label></div>
+        <div class="target"><input type="radio" name="target" id="t_gazebo" value="gazebo"><label for="t_gazebo"><b>Gazebo</b><span>Physics simulation with drive, joint and sensor plugins.</span></label></div>
+        <div class="target"><input type="radio" name="target" id="t_both" value="both"><label for="t_both"><b>Gazebo + RViz</b><span>Simulate in Gazebo and watch TF, scans and camera in RViz.</span></label></div>
+      </div>
+      <div class="distro">
+        <div class="text"><label for="distro">ROS 2 distro</label>
+          <select id="distro">
+            <option value="jazzy">Jazzy Jalisco · Gazebo Harmonic</option>
+            <option value="humble">Humble Hawksbill · Gazebo Fortress</option>
+          </select>
+        </div>
+        <pre class="cmd" id="runCmd"></pre>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-pkg">
+    <h2 id="h-pkg"><span class="step">STEP 4</span>Download the package</h2>
+    <div class="actions">
+      <button class="btn primary" type="button" id="zipBtn">Download package (.zip)</button>
+      <span class="toast" id="toast" role="status"></span>
+    </div>
+    <div class="pkg">
+      <nav class="tree" id="tree" aria-label="Package files"></nav>
+      <div class="viewer">
+        <div class="bar"><code id="curPath"></code><button class="btn" type="button" id="copyBtn">Copy file</button></div>
+        <pre class="code" id="code" tabindex="0"></pre>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(() => {
+'use strict';
+const PI = Math.PI, H = PI / 2;
+
+/* ---------- Robot definitions ---------- */
+const F = (k, label, unit, def, min = 0.001, max = 10, step = 0.005) => ({ k, label, unit, def, min, max, step });
+const B = (k, label, def) => ({ k, label, bool: true, def });
+
+const TYPES = {
+  diff2: {
+    label: '2-Wheel Drive', sub: 'Differential drive with a front caster', name: 'rover_2wd',
+    sensors: { lidar: true, camera: true, imu: true },
+    groups: [
+      ['Chassis', [F('L', 'Length', 'm', 0.40), F('W', 'Width', 'm', 0.30), F('H', 'Height', 'm', 0.12), F('clear', 'Ground clearance', 'm', 0.04, 0, 2), F('mass', 'Mass', 'kg', 4, 0.05, 1000, 0.1)]],
+      ['Drive wheels', [F('wheelR', 'Radius', 'm', 0.065), F('wheelW', 'Width', 'm', 0.035), F('gap', 'Gap to chassis', 'm', 0.01, 0, 1), F('wheelX', 'Axle offset (+ forward)', 'm', -0.06, -5, 5), F('wheelM', 'Mass each', 'kg', 0.4, 0.01, 200, 0.05)]],
+      ['Caster', [F('casterR', 'Ball radius', 'm', 0.02), F('casterX', 'Offset (+ forward)', 'm', 0.14, -5, 5), F('casterM', 'Mass', 'kg', 0.1, 0.01, 50, 0.01)]],
+    ],
+  },
+  diff4: {
+    label: '4-Wheel Drive', sub: 'Skid-steer rover, all four wheels driven', name: 'rover_4wd',
+    sensors: { lidar: true, camera: true, imu: true },
+    groups: [
+      ['Chassis', [F('L', 'Length', 'm', 0.50), F('W', 'Width', 'm', 0.34), F('H', 'Height', 'm', 0.14), F('clear', 'Ground clearance', 'm', 0.05, 0, 2), F('mass', 'Mass', 'kg', 8, 0.05, 2000, 0.1)]],
+      ['Wheels', [F('wheelR', 'Radius', 'm', 0.08), F('wheelW', 'Width', 'm', 0.05), F('gap', 'Gap to chassis', 'm', 0.01, 0, 1), F('wheelbase', 'Wheelbase (front–rear axle)', 'm', 0.32), F('wheelM', 'Mass each', 'kg', 0.6, 0.01, 200, 0.05)]],
+    ],
+  },
+  arm6: {
+    label: '6-DOF Arm', sub: 'Serial manipulator with optional gripper', name: 'arm_6dof',
+    sensors: { lidar: false, camera: true, imu: false },
+    groups: [
+      ['Base', [F('baseR', 'Base radius', 'm', 0.08), F('baseH', 'Base height', 'm', 0.06), F('baseM', 'Base mass', 'kg', 2.5, 0.05, 500, 0.1)]],
+      ['Link lengths', [F('shoulderH', 'Shoulder height', 'm', 0.12), F('upperL', 'Upper arm', 'm', 0.30), F('foreL', 'Forearm', 'm', 0.26), F('wristL', 'Wrist segment', 'm', 0.08), F('linkR', 'Link radius', 'm', 0.035)]],
+      ['Link masses', [F('shoulderM', 'Shoulder', 'kg', 1.4, 0.01, 200, 0.05), F('upperM', 'Upper arm', 'kg', 1.8, 0.01, 200, 0.05), F('foreM', 'Forearm', 'kg', 1.1, 0.01, 200, 0.05), F('wristM', 'Each wrist segment', 'kg', 0.45, 0.01, 100, 0.05)]],
+      ['Joint limits', [F('lim1', 'J1 base yaw', '±°', 180, 1, 360, 1), F('lim2', 'J2 shoulder', '±°', 120, 1, 360, 1), F('lim3', 'J3 elbow', '±°', 150, 1, 360, 1), F('lim4', 'J4 wrist roll', '±°', 180, 1, 360, 1), F('lim5', 'J5 wrist pitch', '±°', 120, 1, 360, 1), F('lim6', 'J6 flange roll', '±°', 180, 1, 360, 1), F('effort', 'Max torque', 'N·m', 60, 0.1, 5000, 1), F('vel', 'Max speed', 'rad/s', 2.0, 0.05, 50, 0.1)]],
+      ['End effector', [B('gripper', 'Parallel-jaw gripper', true), F('stroke', 'Max opening', 'm', 0.06), F('fingerL', 'Finger length', 'm', 0.05)]],
+    ],
+  },
+  humanoid: {
+    label: 'Humanoid', sub: 'Biped with 2 legs, 2 arms, head · 23 DOF', name: 'humanoid',
+    sensors: { lidar: false, camera: true, imu: true },
+    groups: [
+      ['Torso & pelvis', [F('torsoW', 'Torso width', 'm', 0.32), F('torsoD', 'Torso depth', 'm', 0.18), F('torsoH', 'Torso height', 'm', 0.38), F('torsoM', 'Torso mass', 'kg', 10, 0.05, 500, 0.1), F('pelvisW', 'Pelvis width', 'm', 0.26), F('pelvisD', 'Pelvis depth', 'm', 0.16), F('pelvisH', 'Pelvis height', 'm', 0.12), F('pelvisM', 'Pelvis mass', 'kg', 5, 0.05, 500, 0.1)]],
+      ['Head', [F('headR', 'Head radius', 'm', 0.10), F('neckL', 'Neck length', 'm', 0.06), F('headM', 'Head mass', 'kg', 2.5, 0.05, 100, 0.1)]],
+      ['Arms', [F('upperArmL', 'Upper arm length', 'm', 0.26), F('foreArmL', 'Forearm length', 'm', 0.24), F('armR', 'Arm radius', 'm', 0.035), F('handL', 'Hand length', 'm', 0.09), F('upperArmM', 'Upper arm mass', 'kg', 1.6, 0.01, 100, 0.05), F('foreArmM', 'Forearm mass', 'kg', 1.2, 0.01, 100, 0.05), F('handM', 'Hand mass', 'kg', 0.4, 0.01, 50, 0.05)]],
+      ['Legs', [F('thighL', 'Thigh length', 'm', 0.40), F('shinL', 'Shin length', 'm', 0.38), F('legR', 'Leg radius', 'm', 0.05), F('hipW', 'Hip spacing', 'm', 0.18), F('footL', 'Foot length', 'm', 0.22), F('footW', 'Foot width', 'm', 0.10), F('footH', 'Foot height', 'm', 0.05), F('thighM', 'Thigh mass', 'kg', 4, 0.01, 200, 0.1), F('shinM', 'Shin mass', 'kg', 3, 0.01, 200, 0.1), F('footM', 'Foot mass', 'kg', 1, 0.01, 100, 0.05)]],
+      ['Mounting', [B('fixBase', 'Pin pelvis to the world (no balance controller needed)', true)]],
+    ],
+  },
+  semi: {
+    label: 'Semi-Humanoid', sub: 'Humanoid upper body on a wheeled base', name: 'semi_humanoid',
+    sensors: { lidar: true, camera: true, imu: true },
+    groups: [
+      ['Mobile base', [F('L', 'Length', 'm', 0.55), F('W', 'Width', 'm', 0.45), F('H', 'Height', 'm', 0.20), F('clear', 'Ground clearance', 'm', 0.05, 0, 2), F('mass', 'Mass', 'kg', 18, 0.05, 2000, 0.1)]],
+      ['Wheels & casters', [F('wheelR', 'Wheel radius', 'm', 0.09), F('wheelW', 'Wheel width', 'm', 0.05), F('gap', 'Gap to base', 'm', 0.01, 0, 1), F('wheelM', 'Wheel mass each', 'kg', 1.2, 0.01, 200, 0.05), F('casterR', 'Caster radius', 'm', 0.035), F('casterM', 'Caster mass', 'kg', 0.2, 0.01, 50, 0.05)]],
+      ['Torso', [F('colH', 'Column height', 'm', 0.45), F('colR', 'Column radius', 'm', 0.06), F('colM', 'Column mass', 'kg', 3, 0.01, 500, 0.1), F('lift', 'Lift travel (0 = fixed)', 'm', 0.25, 0, 3), F('torsoW', 'Torso width', 'm', 0.34), F('torsoD', 'Torso depth', 'm', 0.20), F('torsoH', 'Torso height', 'm', 0.32), F('torsoM', 'Torso mass', 'kg', 6, 0.05, 500, 0.1)]],
+      ['Head', [F('headR', 'Head radius', 'm', 0.09), F('neckL', 'Neck length', 'm', 0.05), F('headM', 'Head mass', 'kg', 1.5, 0.05, 100, 0.1)]],
+      ['Arms', [F('upperArmL', 'Upper arm length', 'm', 0.26), F('foreArmL', 'Forearm length', 'm', 0.24), F('armR', 'Arm radius', 'm', 0.035), F('handL', 'Hand length', 'm', 0.08), F('upperArmM', 'Upper arm mass', 'kg', 1.4, 0.01, 100, 0.05), F('foreArmM', 'Forearm mass', 'kg', 1.0, 0.01, 100, 0.05), F('handM', 'Hand mass', 'kg', 0.3, 0.01, 50, 0.05)]],
+    ],
+  },
+};
+
+const GLYPHS = {
+  diff2: '<svg viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="10" y="12" width="40" height="14" rx="2"/><circle class="hl" cx="22" cy="28" r="8"/><circle cx="46" cy="33" r="3"/><line x1="4" y1="37" x2="60" y2="37" stroke-width="1"/></svg>',
+  diff4: '<svg viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="10" width="52" height="16" rx="2"/><circle class="hl" cx="16" cy="28" r="8"/><circle class="hl" cx="48" cy="28" r="8"/><line x1="2" y1="37" x2="62" y2="37" stroke-width="1"/></svg>',
+  arm6: '<svg viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="10" y="32" width="16" height="5"/><path d="M18 32 V24 L30 8 L48 14 L54 22"/><circle class="hl" cx="18" cy="24" r="2.5"/><circle class="hl" cx="30" cy="8" r="2.5"/><circle class="hl" cx="48" cy="14" r="2.5"/><path d="M52 25 l4 4 M56 21 l4 4"/></svg>',
+  humanoid: '<svg viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><circle cx="32" cy="5" r="3.5"/><rect x="26" y="10" width="12" height="13" rx="1"/><path class="hl" d="M26 12 L21 22 M38 12 L43 22 M29 23 L28 38 M35 23 L36 38"/></svg>',
+  semi: '<svg viewBox="0 0 64 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><circle cx="32" cy="4" r="3"/><rect x="27" y="8" width="10" height="10" rx="1"/><path class="hl" d="M27 10 L22 18 M37 10 L42 18"/><line x1="32" y1="18" x2="32" y2="26"/><rect x="18" y="26" width="28" height="7" rx="1"/><circle cx="32" cy="35" r="3.5"/></svg>',
+};
+
+/* ---------- State ---------- */
+const state = {
+  type: 'diff2',
+  params: {}, sensors: {}, names: {},
+  pkgAuto: {}, pkg: {},
+  colors: { body: '#C8CEC9', accent: '#E0601A' },
+  distro: 'jazzy', target: 'both',
+  q: {},
+};
+for (const [t, d] of Object.entries(TYPES)) {
+  state.params[t] = {};
+  d.groups.forEach(([, fs]) => fs.forEach(f => state.params[t][f.k] = f.def));
+  state.sensors[t] = { ...d.sensors };
+  state.names[t] = d.name; state.pkg[t] = d.name + '_description'; state.pkgAuto[t] = true;
+}
+
+/* ---------- Geometry helpers ---------- */
+function inertia(g, m) {
+  if (g[0] === 'box') { const [, x, y, z] = g; return [m / 12 * (y * y + z * z), m / 12 * (x * x + z * z), m / 12 * (x * x + y * y)]; }
+  if (g[0] === 'cyl') { const [, r, l] = g; const a = m / 12 * (3 * r * r + l * l); return [a, a, m * r * r / 2]; }
+  const r = g[1], a = 0.4 * m * r * r; return [a, a, a];
+}
+const DUMMY = { g: ['sph', 0.02], xyz: [0, 0, 0], rpy: [0, 0, 0] };
+const lim = (lo, hi, effort = 40, vel = 3) => ({ lo, hi, effort, vel });
+
+class Model {
+  constructor(name, type) {
+    Object.assign(this, { name, type, links: [], joints: [], sensors: {}, wheels: null, ctrl: [], previewZ: 0, spawnZ: 0.02, fixedFrame: 'base_link', gzFixedFrame: 'base_link', mounts: {} });
+  }
+  link(name, parts = [], mass = 0, ip) {
+    parts = parts.map(p => ({ xyz: [0, 0, 0], rpy: [0, 0, 0], col: true, vis: true, mat: 'body', ...p }));
+    let inertial = null;
+    if (mass > 0) {
+      const src = ip || parts.find(p => p.col) || DUMMY;
+      inertial = { mass, xyz: src.xyz, rpy: src.rpy, I: inertia(src.g, mass) };
+    }
+    this.links.push({ name, parts, mass, inertial, friction: null });
+  }
+  joint(name, type, parent, child, xyz = [0, 0, 0], rpy = [0, 0, 0], axis = [0, 0, 1], l = null) {
+    this.joints.push({ name, type, parent, child, xyz, rpy, axis, lim: l });
+  }
+  linkByName(n) { return this.links.find(l => l.name === n); }
+}
+
+/* ---------- Builders ---------- */
+function wheeledBase(M, p, opt) {
+  const R = p.wheelR;
+  const cz = p.clear - R + p.H / 2;          // chassis center, relative to axle (base_link)
+  const top = p.clear - R + p.H;
+  M.link('base_footprint');
+  M.link('base_link', [
+    { g: ['box', p.L, p.W, p.H], xyz: [0, 0, cz] },
+    { g: ['box', 0.012, p.W * 0.7, p.H * 0.18], xyz: [p.L / 2 + 0.003, 0, cz + p.H * 0.18], mat: 'accent', col: false },
+  ], p.mass);
+  M.joint('base_joint', 'fixed', 'base_footprint', 'base_link', [0, 0, R]);
+  const ySep = p.W / 2 + p.gap + p.wheelW / 2;
+  const xs = opt.axles;
+  const left = [], right = [];
+  xs.forEach(([x, prefix]) => {
+    [['left', 1], ['right', -1]].forEach(([side, s]) => {
+      const n = `${prefix}${side}_wheel`;
+      M.link(`${n}_link`, [
+        { g: ['cyl', R, p.wheelW], rpy: [H, 0, 0], mat: 'dark' },
+        { g: ['cyl', R * 0.45, p.wheelW * 1.04], rpy: [H, 0, 0], mat: 'accent', col: false },
+      ], p.wheelM);
+      M.linkByName(`${n}_link`).friction = 'wheel';
+      M.joint(`${n}_joint`, 'continuous', 'base_link', `${n}_link`, [x, s * ySep, 0], [0, 0, 0], [0, 1, 0], { effort: 20, vel: 20 });
+      (s > 0 ? left : right).push(`${n}_joint`);
+    });
+  });
+  (opt.casters || []).forEach(([cx, name]) => {
+    const rc = p.casterR, stem = p.clear - 2 * rc;
+    const parts = [{ g: ['sph', rc], mat: 'dark' }];
+    if (stem > 0.002) parts.push({ g: ['cyl', rc * 0.55, stem], xyz: [0, 0, rc + stem / 2], mat: 'joint', col: false });
+    M.link(`${name}_link`, parts, p.casterM, { g: ['sph', rc], xyz: [0, 0, 0], rpy: [0, 0, 0] });
+    M.linkByName(`${name}_link`).friction = 'caster';
+    M.joint(`${name}_joint`, 'fixed', 'base_link', `${name}_link`, [cx, 0, -(R - rc)]);
+  });
+  M.wheels = { left, right, sep: 2 * ySep, R };
+  M.fixedFrame = 'base_footprint'; M.gzFixedFrame = 'odom';
+  return { cz, top, ySep };
+}
+
+function addHead(M, parent, z, p) {
+  const nr = p.headR * 0.35;
+  M.link('neck_link', [{ g: ['cyl', nr, p.neckL], xyz: [0, 0, p.neckL / 2], mat: 'dark' }], Math.max(0.1, p.headM * 0.1));
+  M.joint('neck_yaw_joint', 'revolute', parent, 'neck_link', [0, 0, z], [0, 0, 0], [0, 0, 1], lim(-1.2, 1.2, 10, 2));
+  M.link('head_link', [
+    { g: ['sph', p.headR], xyz: [0, 0, p.headR * 0.9] },
+    { g: ['box', p.headR * 0.4, p.headR * 1.2, p.headR * 0.35], xyz: [p.headR * 0.8, 0, p.headR], mat: 'accent', col: false },
+  ], p.headM);
+  M.joint('neck_pitch_joint', 'revolute', 'neck_link', 'head_link', [0, 0, p.neckL], [0, 0, 0], [0, 1, 0], lim(-0.6, 0.6, 10, 2));
+  M.mounts.camera = { parent: 'head_link', xyz: [p.headR + 0.0125, 0, p.headR], rpy: [0, 0, 0] };
+  M.mounts.lidar = { parent: 'head_link', xyz: [0, 0, p.headR * 1.9 + 0.02] };
+}
+
+function addArms(M, parent, torsoW, torsoH, p) {
+  const r = p.armR, hr = r * 1.4, z = torsoH - hr * 1.2;
+  [['left', 1], ['right', -1]].forEach(([s, sy]) => {
+    M.link(`${s}_shoulder_link`, [{ g: ['sph', hr], mat: 'accent' }], 0.3);
+    M.joint(`${s}_shoulder_pitch_joint`, 'revolute', parent, `${s}_shoulder_link`, [0, sy * (torsoW / 2 + hr), z], [0, 0, 0], [0, 1, 0], lim(-3.0, 1.0, 30, 3));
+    M.link(`${s}_upper_arm_link`, [{ g: ['cyl', r, p.upperArmL], xyz: [0, 0, -p.upperArmL / 2] }], p.upperArmM);
+    M.joint(`${s}_shoulder_roll_joint`, 'revolute', `${s}_shoulder_link`, `${s}_upper_arm_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], sy > 0 ? lim(-0.3, 2.8, 30, 3) : lim(-2.8, 0.3, 30, 3));
+    M.link(`${s}_forearm_link`, [{ g: ['cyl', r * 0.9, p.foreArmL], xyz: [0, 0, -p.foreArmL / 2] }, { g: ['sph', r * 1.15], mat: 'accent', col: false }], p.foreArmM);
+    M.joint(`${s}_elbow_joint`, 'revolute', `${s}_upper_arm_link`, `${s}_forearm_link`, [0, 0, -p.upperArmL], [0, 0, 0], [0, 1, 0], lim(-2.5, 0, 20, 3));
+    M.link(`${s}_hand_link`, [{ g: ['box', p.handL * 0.7, p.handL * 0.3, p.handL], xyz: [0, 0, -p.handL / 2 - r * 0.3], mat: 'dark' }], p.handM);
+    M.joint(`${s}_wrist_yaw_joint`, 'revolute', `${s}_forearm_link`, `${s}_hand_link`, [0, 0, -p.foreArmL], [0, 0, 0], [0, 0, 1], lim(-1.57, 1.57, 10, 3));
+  });
+}
+
+const BUILD = {
+  diff2(M, p) {
+    const b = wheeledBase(M, p, { axles: [[p.wheelX, '']], casters: [[p.casterX, 'caster']] });
+    M.mounts.lidar = { parent: 'base_link', xyz: [p.L * 0.15, 0, b.top + 0.02] };
+    M.mounts.camera = { parent: 'base_link', xyz: [p.L / 2 + 0.0125, 0, b.cz + p.H * 0.3 > b.top - 0.015 ? b.top - 0.015 : b.cz + p.H * 0.3], rpy: [0, 0, 0] };
+    M.mounts.imu = { parent: 'base_link', xyz: [0, 0, b.cz] };
+  },
+  diff4(M, p) {
+    const b = wheeledBase(M, p, { axles: [[p.wheelbase / 2, 'front_'], [-p.wheelbase / 2, 'rear_']] });
+    M.mounts.lidar = { parent: 'base_link', xyz: [p.L * 0.15, 0, b.top + 0.02] };
+    M.mounts.camera = { parent: 'base_link', xyz: [p.L / 2 + 0.0125, 0, Math.min(b.cz + p.H * 0.3, b.top - 0.015)], rpy: [0, 0, 0] };
+    M.mounts.imu = { parent: 'base_link', xyz: [0, 0, b.cz] };
+  },
+  arm6(M, p) {
+    const r = p.linkR, w = p.wristL, d = x => x * PI / 180, E = p.effort, V = p.vel;
+    const L = (n) => lim(-d(p['lim' + n]), d(p['lim' + n]), n > 3 ? E * 0.4 : E, V);
+    M.link('world');
+    M.link('base_link', [{ g: ['cyl', p.baseR, p.baseH], xyz: [0, 0, p.baseH / 2], mat: 'dark' }], p.baseM);
+    M.joint('world_joint', 'fixed', 'world', 'base_link');
+    M.link('shoulder_link', [{ g: ['cyl', r * 1.25, p.shoulderH], xyz: [0, 0, p.shoulderH / 2] }, { g: ['sph', r * 1.4], xyz: [0, 0, p.shoulderH], mat: 'accent', col: false }], p.shoulderM);
+    M.joint('joint1', 'revolute', 'base_link', 'shoulder_link', [0, 0, p.baseH], [0, 0, 0], [0, 0, 1], L(1));
+    M.link('upper_arm_link', [{ g: ['cyl', r, p.upperL], xyz: [0, 0, p.upperL / 2] }, { g: ['sph', r * 1.25], xyz: [0, 0, p.upperL], mat: 'accent', col: false }], p.upperM);
+    M.joint('joint2', 'revolute', 'shoulder_link', 'upper_arm_link', [0, 0, p.shoulderH], [0, 0, 0], [0, 1, 0], L(2));
+    M.link('forearm_link', [{ g: ['cyl', r * 0.85, p.foreL], xyz: [0, 0, p.foreL / 2] }], p.foreM);
+    M.joint('joint3', 'revolute', 'upper_arm_link', 'forearm_link', [0, 0, p.upperL], [0, 0, 0], [0, 1, 0], L(3));
+    M.link('wrist_1_link', [{ g: ['cyl', r * 0.75, w], xyz: [0, 0, w / 2] }, { g: ['sph', r * 0.95], xyz: [0, 0, w], mat: 'accent', col: false }], p.wristM);
+    M.joint('joint4', 'revolute', 'forearm_link', 'wrist_1_link', [0, 0, p.foreL], [0, 0, 0], [0, 0, 1], L(4));
+    M.link('wrist_2_link', [{ g: ['cyl', r * 0.7, w], xyz: [0, 0, w / 2] }], p.wristM);
+    M.joint('joint5', 'revolute', 'wrist_1_link', 'wrist_2_link', [0, 0, w], [0, 0, 0], [0, 1, 0], L(5));
+    const fl = w * 0.4;
+    M.link('wrist_3_link', [{ g: ['cyl', r * 0.8, fl], xyz: [0, 0, fl / 2], mat: 'dark' }], Math.max(0.05, p.wristM * 0.4));
+    M.joint('joint6', 'revolute', 'wrist_2_link', 'wrist_3_link', [0, 0, w], [0, 0, 0], [0, 0, 1], L(6));
+    M.link('tool0');
+    M.joint('tool0_joint', 'fixed', 'wrist_3_link', 'tool0', [0, 0, fl]);
+    if (p.gripper) {
+      const pw = p.stroke + 0.04, ph = 0.03, ft = 0.014;
+      M.link('gripper_base_link', [{ g: ['box', Math.max(r * 1.6, 0.03), pw, ph], xyz: [0, 0, ph / 2], mat: 'dark' }], 0.25);
+      M.joint('gripper_mount_joint', 'fixed', 'tool0', 'gripper_base_link');
+      [['left', 1], ['right', -1]].forEach(([s, sy]) => {
+        M.link(`${s}_finger_link`, [{ g: ['box', 0.02, ft, p.fingerL], xyz: [0, sy * ft / 2, p.fingerL / 2], mat: 'accent' }], 0.05);
+        M.joint(`${s}_finger_joint`, 'prismatic', 'gripper_base_link', `${s}_finger_link`, [0, sy * 0.002, ph], [0, 0, 0], [0, sy, 0], lim(0, p.stroke / 2, 20, 0.1));
+      });
+    }
+    M.mounts.camera = { parent: 'wrist_3_link', xyz: [r * 0.8 + 0.02, 0, fl / 2], rpy: [0, -H, 0] };
+    M.fixedFrame = M.gzFixedFrame = 'world';
+    M.spawnZ = 0;
+  },
+  humanoid(M, p) {
+    const legTop = p.thighL + p.shinL + p.footH;
+    const pelvisZ = legTop + p.legR * 1.2 + p.pelvisH / 2;
+    if (p.fixBase) {
+      M.link('world');
+      M.joint('world_joint', 'fixed', 'world', 'base_link', [0, 0, pelvisZ + 0.01]);
+      M.fixedFrame = M.gzFixedFrame = 'world'; M.spawnZ = 0;
+    } else {
+      M.previewZ = pelvisZ; M.spawnZ = pelvisZ + 0.02;
+    }
+    M.link('base_link');
+    M.link('pelvis_link', [{ g: ['box', p.pelvisD, p.pelvisW, p.pelvisH], mat: 'dark' }], p.pelvisM);
+    M.joint('pelvis_joint', 'fixed', 'base_link', 'pelvis_link');
+    M.link('torso_link', [
+      { g: ['box', p.torsoD, p.torsoW, p.torsoH], xyz: [0, 0, p.torsoH / 2] },
+      { g: ['box', 0.01, p.torsoW * 0.55, p.torsoH * 0.35], xyz: [p.torsoD / 2 + 0.005, 0, p.torsoH * 0.62], mat: 'accent', col: false },
+    ], p.torsoM);
+    M.joint('torso_yaw_joint', 'revolute', 'pelvis_link', 'torso_link', [0, 0, p.pelvisH / 2], [0, 0, 0], [0, 0, 1], lim(-0.8, 0.8, 60, 2));
+    addArms(M, 'torso_link', p.torsoW, p.torsoH, p);
+    addHead(M, 'torso_link', p.torsoH, p);
+    [['left', 1], ['right', -1]].forEach(([s, sy]) => {
+      M.link(`${s}_hip_yaw_link`, [], 0.1, DUMMY);
+      M.joint(`${s}_hip_yaw_joint`, 'revolute', 'pelvis_link', `${s}_hip_yaw_link`, [0, sy * p.hipW / 2, -p.pelvisH / 2 - p.legR * 1.2], [0, 0, 0], [0, 0, 1], lim(-0.6, 0.6, 60, 3));
+      M.link(`${s}_hip_roll_link`, [{ g: ['sph', p.legR * 1.2], mat: 'accent', col: false }], 0.2, DUMMY);
+      M.joint(`${s}_hip_roll_joint`, 'revolute', `${s}_hip_yaw_link`, `${s}_hip_roll_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], sy > 0 ? lim(-0.4, 0.8, 80, 3) : lim(-0.8, 0.4, 80, 3));
+      M.link(`${s}_thigh_link`, [{ g: ['cyl', p.legR, p.thighL], xyz: [0, 0, -p.thighL / 2] }], p.thighM);
+      M.joint(`${s}_hip_pitch_joint`, 'revolute', `${s}_hip_roll_link`, `${s}_thigh_link`, [0, 0, 0], [0, 0, 0], [0, 1, 0], lim(-1.8, 0.6, 100, 3));
+      M.link(`${s}_shin_link`, [{ g: ['cyl', p.legR * 0.9, p.shinL], xyz: [0, 0, -p.shinL / 2] }, { g: ['sph', p.legR * 1.05], mat: 'accent', col: false }], p.shinM);
+      M.joint(`${s}_knee_joint`, 'revolute', `${s}_thigh_link`, `${s}_shin_link`, [0, 0, -p.thighL], [0, 0, 0], [0, 1, 0], lim(0, 2.4, 100, 3));
+      M.link(`${s}_ankle_link`, [{ g: ['sph', p.legR * 0.8], mat: 'accent', col: false }], 0.1, DUMMY);
+      M.joint(`${s}_ankle_pitch_joint`, 'revolute', `${s}_shin_link`, `${s}_ankle_link`, [0, 0, -p.shinL], [0, 0, 0], [0, 1, 0], lim(-0.8, 0.8, 60, 3));
+      M.link(`${s}_foot_link`, [{ g: ['box', p.footL, p.footW, p.footH], xyz: [p.footL * 0.2, 0, -p.footH / 2], mat: 'dark' }], p.footM);
+      M.joint(`${s}_ankle_roll_joint`, 'revolute', `${s}_ankle_link`, `${s}_foot_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], lim(-0.4, 0.4, 40, 3));
+    });
+    M.mounts.imu = { parent: 'pelvis_link', xyz: [0, 0, 0] };
+  },
+  semi(M, p) {
+    const cOff = p.L / 2 - p.casterR - 0.03;
+    const b = wheeledBase(M, p, { axles: [[0, '']], casters: [[cOff, 'front_caster'], [-cOff, 'rear_caster']] });
+    M.link('torso_lift_link', [{ g: ['cyl', p.colR, p.colH], xyz: [0, 0, p.colH / 2], mat: 'joint' }], p.colM);
+    if (p.lift > 0) M.joint('torso_lift_joint', 'prismatic', 'base_link', 'torso_lift_link', [0, 0, b.top], [0, 0, 0], [0, 0, 1], lim(0, p.lift, 500, 0.1));
+    else M.joint('torso_lift_joint', 'fixed', 'base_link', 'torso_lift_link', [0, 0, b.top]);
+    M.link('torso_link', [
+      { g: ['box', p.torsoD, p.torsoW, p.torsoH], xyz: [0, 0, p.torsoH / 2] },
+      { g: ['box', 0.01, p.torsoW * 0.55, p.torsoH * 0.35], xyz: [p.torsoD / 2 + 0.005, 0, p.torsoH * 0.62], mat: 'accent', col: false },
+    ], p.torsoM);
+    M.joint('torso_joint', 'fixed', 'torso_lift_link', 'torso_link', [0, 0, p.colH]);
+    addArms(M, 'torso_link', p.torsoW, p.torsoH, p);
+    addHead(M, 'torso_link', p.torsoH, p);
+    M.mounts.lidar = { parent: 'base_link', xyz: [p.L / 2 - 0.06, 0, b.top + 0.02] };
+    M.mounts.imu = { parent: 'base_link', xyz: [0, 0, b.cz] };
+  },
+};
+
+function addSensors(M, S) {
+  const m = M.mounts;
+  if (S.lidar && m.lidar) {
+    M.link('lidar_link', [{ g: ['cyl', 0.035, 0.04], mat: 'sensor' }, { g: ['cyl', 0.028, 0.012], xyz: [0, 0, 0.026], mat: 'accent', col: false }], 0.15);
+    M.joint('lidar_joint', 'fixed', m.lidar.parent, 'lidar_link', m.lidar.xyz);
+    M.sensors.lidar = 'lidar_link';
+  }
+  if (S.camera && m.camera) {
+    M.link('camera_link', [{ g: ['box', 0.025, 0.08, 0.025], mat: 'sensor' }, { g: ['cyl', 0.01, 0.008], xyz: [0.0165, 0, 0], rpy: [0, H, 0], mat: 'accent', col: false }], 0.05);
+    M.joint('camera_joint', 'fixed', m.camera.parent, 'camera_link', m.camera.xyz, m.camera.rpy);
+    M.link('camera_optical_link');
+    M.joint('camera_optical_joint', 'fixed', 'camera_link', 'camera_optical_link', [0, 0, 0], [-H, 0, -H]);
+    M.sensors.camera = 'camera_link';
+  }
+  if (S.imu && m.imu) {
+    M.link('imu_link', [{ g: ['box', 0.02, 0.02, 0.008], mat: 'sensor', col: false }], 0.01, { g: ['box', 0.02, 0.02, 0.008], xyz: [0, 0, 0], rpy: [0, 0, 0] });
+    M.joint('imu_joint', 'fixed', m.imu.parent, 'imu_link', m.imu.xyz);
+    M.sensors.imu = 'imu_link';
+  }
+}
+
+function cleanParams() {
+  const t = state.type, out = {};
+  TYPES[t].groups.forEach(([, fs]) => fs.forEach(f => {
+    let v = state.params[t][f.k];
+    if (f.bool) { out[f.k] = !!v; return; }
+    if (typeof v !== 'number' || !isFinite(v)) v = f.def;
+    out[f.k] = Math.min(f.max, Math.max(f.min, v));
+  }));
+  return out;
+}
+
+function buildModel() {
+  const p = cleanParams();
+  const M = new Model(state.names[state.type], state.type);
+  BUILD[state.type](M, p);
+  addSensors(M, state.sensors[state.type]);
+  M.ctrl = M.joints.filter(j => j.type === 'revolute' || j.type === 'prismatic').map(j => j.name);
+  M.p = p;
+  return M;
+}
+
+/* ---------- URDF + package generation ---------- */
+const n = x => { const s = (+x.toFixed(6)).toString(); return s === '-0' ? '0' : s; };
+const v3 = a => a.map(n).join(' ');
+const hexRgba = h => { const c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255].map(x => n(x / 255)).join(' ') + ' 1'; };
+
+function geomXml(g) {
+  if (g[0] === 'box') return `<box size="${v3(g.slice(1))}"/>`;
+  if (g[0] === 'cyl') return `<cylinder radius="${n(g[1])}" length="${n(g[2])}"/>`;
+  return `<sphere radius="${n(g[1])}"/>`;
+}
+
+function gzNames() {
+  const h = state.distro === 'humble';
+  return {
+    lib: s => h ? `ignition-gazebo-${s}-system` : `gz-sim-${s}-system`,
+    cls: s => h ? `ignition::gazebo::systems::${s}` : `gz::sim::systems::${s}`,
+    msg: s => (h ? 'ignition.msgs.' : 'gz.msgs.') + s,
+    frameTag: h ? 'ignition_frame_id' : 'gz_frame_id',
+    sim: h ? 'Gazebo Fortress' : 'Gazebo Harmonic',
+  };
+}
+
+function toURDF(M, withGazebo) {
+  const c = state.colors;
+  const mats = { body: c.body, accent: c.accent, dark: '#2B3033', joint: '#8A9490', sensor: '#1E2326' };
+  const o = [];
+  o.push('<?xml version="1.0"?>');
+  o.push(`<!-- ${TYPES[M.type].label}: ${M.name}`);
+  o.push(`     Generated by Robot URDF Studio. Units: meters, kilograms, radians. -->`);
+  o.push(`<robot name="${M.name}">`, '');
+  for (const [k, v] of Object.entries(mats)) o.push(`  <material name="${k}"><color rgba="${hexRgba(v)}"/></material>`);
+  o.push('');
+  for (const l of M.links) {
+    if (!l.parts.length && !l.inertial) { o.push(`  <link name="${l.name}"/>`, ''); continue; }
+    o.push(`  <link name="${l.name}">`);
+    for (const p of l.parts.filter(p => p.vis)) {
+      o.push('    <visual>', `      <origin xyz="${v3(p.xyz)}" rpy="${v3(p.rpy)}"/>`, `      <geometry>${geomXml(p.g)}</geometry>`, `      <material name="${p.mat}"/>`, '    </visual>');
+    }
+    for (const p of l.parts.filter(p => p.col)) {
+      o.push('    <collision>', `      <origin xyz="${v3(p.xyz)}" rpy="${v3(p.rpy)}"/>`, `      <geometry>${geomXml(p.g)}</geometry>`, '    </collision>');
+    }
+    if (l.inertial) {
+      const I = l.inertial.I;
+      o.push('    <inertial>', `      <origin xyz="${v3(l.inertial.xyz)}" rpy="${v3(l.inertial.rpy)}"/>`, `      <mass value="${n(l.inertial.mass)}"/>`,
+        `      <inertia ixx="${n(I[0])}" ixy="0" ixz="0" iyy="${n(I[1])}" iyz="0" izz="${n(I[2])}"/>`, '    </inertial>');
+    }
+    o.push('  </link>', '');
+  }
+  for (const j of M.joints) {
+    o.push(`  <joint name="${j.name}" type="${j.type}">`, `    <parent link="${j.parent}"/>`, `    <child link="${j.child}"/>`, `    <origin xyz="${v3(j.xyz)}" rpy="${v3(j.rpy)}"/>`);
+    if (j.type !== 'fixed') {
+      o.push(`    <axis xyz="${v3(j.axis)}"/>`);
+      if (j.type === 'continuous') o.push(`    <limit effort="${n(j.lim.effort)}" velocity="${n(j.lim.vel)}"/>`);
+      else o.push(`    <limit lower="${n(j.lim.lo)}" upper="${n(j.lim.hi)}" effort="${n(j.lim.effort)}" velocity="${n(j.lim.vel)}"/>`);
+      o.push(`    <dynamics damping="${j.type === 'continuous' ? '0.05' : '0.5'}" friction="0.0"/>`);
+    }
+    o.push('  </joint>', '');
+  }
+  if (withGazebo) o.push(...gazeboXml(M));
+  o.push('</robot>', '');
+  return o.join('\n');
+}
+
+function gazeboXml(M) {
+  const g = gzNames(), o = ['  <!-- ===== Gazebo (' + g.sim + ') ===== -->'];
+  for (const l of M.links) {
+    if (l.friction === 'wheel') o.push(`  <gazebo reference="${l.name}"><mu1>1.0</mu1><mu2>1.0</mu2><kp>1e6</kp><kd>100</kd></gazebo>`);
+    if (l.friction === 'caster') o.push(`  <gazebo reference="${l.name}"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>`);
+  }
+  o.push('', '  <gazebo>', `    <plugin filename="${g.lib('joint-state-publisher')}" name="${g.cls('JointStatePublisher')}"/>`, '  </gazebo>');
+  if (M.wheels) {
+    const w = M.wheels;
+    o.push('', '  <gazebo>', `    <plugin filename="${g.lib('diff-drive')}" name="${g.cls('DiffDrive')}">`);
+    w.left.forEach(j => o.push(`      <left_joint>${j}</left_joint>`));
+    w.right.forEach(j => o.push(`      <right_joint>${j}</right_joint>`));
+    o.push(`      <wheel_separation>${n(w.sep)}</wheel_separation>`, `      <wheel_radius>${n(w.R)}</wheel_radius>`,
+      '      <odom_publish_frequency>30</odom_publish_frequency>', '      <topic>/cmd_vel</topic>', '      <odom_topic>/odom</odom_topic>',
+      '      <tf_topic>/tf</tf_topic>', '      <frame_id>odom</frame_id>', '      <child_frame_id>base_footprint</child_frame_id>',
+      '    </plugin>', '  </gazebo>');
+  }
+  if (M.ctrl.length) {
+    o.push('', '  <!-- Position control: publish std_msgs/Float64 to /' + M.name + '/<joint>/cmd_pos -->', '  <gazebo>');
+    M.ctrl.forEach(j => {
+      const pr = M.joints.find(x => x.name === j).type === 'prismatic';
+      o.push(`    <plugin filename="${g.lib('joint-position-controller')}" name="${g.cls('JointPositionController')}">`,
+        `      <joint_name>${j}</joint_name>`, `      <topic>/${M.name}/${j}/cmd_pos</topic>`,
+        `      <p_gain>${pr ? 2000 : 120}</p_gain>`, `      <i_gain>${pr ? 50 : 0.5}</i_gain>`, `      <d_gain>${pr ? 200 : 8}</d_gain>`, '    </plugin>');
+    });
+    o.push('  </gazebo>');
+  }
+  const S = M.sensors, isH = state.distro === 'humble';
+  if (S.lidar) {
+    const tag = isH ? 'ray' : 'lidar';
+    o.push('', `  <gazebo reference="${S.lidar}">`, '    <sensor name="lidar" type="gpu_lidar">', `      <${g.frameTag}>${S.lidar}</${g.frameTag}>`,
+      '      <topic>scan</topic>', '      <update_rate>10</update_rate>', '      <always_on>true</always_on>', '      <visualize>true</visualize>',
+      `      <${tag}>`, '        <scan><horizontal><samples>360</samples><resolution>1</resolution><min_angle>-3.14159</min_angle><max_angle>3.14159</max_angle></horizontal></scan>',
+      '        <range><min>0.12</min><max>12.0</max><resolution>0.01</resolution></range>', `      </${tag}>`, '    </sensor>', '  </gazebo>');
+  }
+  if (S.camera) {
+    o.push('', `  <gazebo reference="${S.camera}">`, '    <sensor name="camera" type="camera">', `      <${g.frameTag}>camera_optical_link</${g.frameTag}>`,
+      '      <topic>camera/image_raw</topic>', '      <update_rate>15</update_rate>', '      <always_on>true</always_on>',
+      '      <camera>', '        <horizontal_fov>1.047</horizontal_fov>', '        <image><width>640</width><height>480</height><format>R8G8B8</format></image>',
+      '        <clip><near>0.05</near><far>50</far></clip>', '      </camera>', '    </sensor>', '  </gazebo>');
+  }
+  if (S.imu) {
+    o.push('', `  <gazebo reference="${S.imu}">`, '    <sensor name="imu" type="imu">', `      <${g.frameTag}>${S.imu}</${g.frameTag}>`,
+      '      <topic>imu</topic>', '      <update_rate>100</update_rate>', '      <always_on>true</always_on>', '    </sensor>', '  </gazebo>');
+  }
+  o.push('');
+  return o;
+}
+
+function worldSdf(M) {
+  const g = gzNames(), S = M.sensors;
+  const sys = [['physics', 'Physics'], ['user-commands', 'UserCommands'], ['scene-broadcaster', 'SceneBroadcaster']];
+  const L = ['<?xml version="1.0"?>', '<sdf version="1.8">', '  <world name="empty">',
+    '    <physics name="1ms" type="ignored">', '      <max_step_size>0.001</max_step_size>', '      <real_time_factor>1.0</real_time_factor>', '    </physics>'];
+  sys.forEach(([a, b]) => L.push(`    <plugin filename="${g.lib(a)}" name="${g.cls(b)}"/>`));
+  if (S.lidar || S.camera) L.push(`    <plugin filename="${g.lib('sensors')}" name="${g.cls('Sensors')}">`, '      <render_engine>ogre2</render_engine>', '    </plugin>');
+  if (S.imu) L.push(`    <plugin filename="${g.lib('imu')}" name="${g.cls('Imu')}"/>`);
+  L.push('', '    <light type="directional" name="sun">', '      <cast_shadows>true</cast_shadows>', '      <pose>0 0 10 0 0 0</pose>',
+    '      <diffuse>0.8 0.8 0.8 1</diffuse>', '      <specular>0.2 0.2 0.2 1</specular>', '      <direction>-0.5 0.1 -0.9</direction>', '    </light>', '',
+    '    <model name="ground_plane">', '      <static>true</static>', '      <link name="link">',
+    '        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>',
+    '        <visual name="visual">', '          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>',
+    '          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>', '        </visual>',
+    '      </link>', '    </model>', '  </world>', '</sdf>', '');
+  return L.join('\n');
+}
+
+function bridgeArgs(M) {
+  const g = gzNames(), a = [];
+  a.push(`/clock@rosgraph_msgs/msg/Clock[${g.msg('Clock')}`);
+  a.push(`/world/empty/model/${M.name}/joint_state@sensor_msgs/msg/JointState[${g.msg('Model')}`);
+  if (M.wheels) a.push(`/cmd_vel@geometry_msgs/msg/Twist]${g.msg('Twist')}`, `/odom@nav_msgs/msg/Odometry[${g.msg('Odometry')}`, `/tf@tf2_msgs/msg/TFMessage[${g.msg('Pose_V')}`);
+  if (M.sensors.lidar) a.push(`/scan@sensor_msgs/msg/LaserScan[${g.msg('LaserScan')}`);
+  if (M.sensors.camera) a.push(`/camera/image_raw@sensor_msgs/msg/Image[${g.msg('Image')}`, `/camera/camera_info@sensor_msgs/msg/CameraInfo[${g.msg('CameraInfo')}`);
+  if (M.sensors.imu) a.push(`/imu@sensor_msgs/msg/Imu[${g.msg('IMU')}`);
+  M.ctrl.forEach(j => a.push(`/${M.name}/${j}/cmd_pos@std_msgs/msg/Float64]${g.msg('Double')}`));
+  return a;
+}
+
+function rvizCfg(M, frame, gz, bbox) {
+  const qos = (topic, best) => [`        Value: ${topic}`, '        Depth: 5', `        Durability Policy: ${topic === '/robot_description' ? 'Transient Local' : 'Volatile'}`, '        History Policy: Keep Last', `        Reliability Policy: ${best ? 'Best Effort' : 'Reliable'}`];
+  const D = ['Panels:', '  - Class: rviz_common/Displays', '    Name: Displays', '  - Class: rviz_common/Views', '    Name: Views',
+    'Visualization Manager:', '  Class: ""', '  Displays:',
+    '    - Class: rviz_default_plugins/Grid', '      Name: Grid', '      Enabled: true', '      Cell Size: 0.1', '      Plane Cell Count: 40', '      Reference Frame: <Fixed Frame>', '      Value: true',
+    '    - Class: rviz_default_plugins/RobotModel', '      Name: RobotModel', '      Enabled: true', '      Description Source: Topic', '      Description Topic:', ...qos('/robot_description'), '      Visual Enabled: true', '      Collision Enabled: false', '      Value: true',
+    '    - Class: rviz_default_plugins/TF', '      Name: TF', '      Enabled: false', '      Show Names: false', '      Marker Scale: 0.3', '      Value: false'];
+  if (gz && M.sensors.lidar) D.push('    - Class: rviz_default_plugins/LaserScan', '      Name: LaserScan', '      Enabled: true', '      Topic:', ...qos('/scan', true), '      Size (m): 0.03', '      Style: Flat Squares', '      Color Transformer: Intensity', '      Value: true');
+  if (gz && M.sensors.camera) D.push('    - Class: rviz_default_plugins/Image', '      Name: Camera', '      Enabled: true', '      Topic:', ...qos('/camera/image_raw', true), '      Value: true');
+  const size = Math.max(bbox.x, bbox.y, bbox.z, 0.3);
+  D.push('  Enabled: true', '  Global Options:', '    Background Color: 48; 52; 54', `    Fixed Frame: ${frame}`, '    Frame Rate: 30',
+    '  Name: root', '  Tools:', '    - Class: rviz_default_plugins/Interact', '    - Class: rviz_default_plugins/MoveCamera', '    - Class: rviz_default_plugins/Measure',
+    '  Value: true', '  Views:', '    Current:', '      Class: rviz_default_plugins/Orbit', `      Distance: ${n(size * 2.4 + 0.4)}`,
+    '      Focal Point:', '        X: 0', '        Y: 0', `        Z: ${n(bbox.cz)}`, '      Name: Current View', '      Pitch: 0.45', '      Yaw: 0.8', '      Target Frame: <Fixed Frame>', '      Value: Orbit (rviz)',
+    '    Saved: ~', 'Window Geometry:', '  Height: 900', '  Width: 1500', '');
+  return D.join('\n');
+}
+
+function displayLaunch(pkg, M) {
+  return `import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    pkg_share = get_package_share_directory('${pkg}')
+    urdf_file = os.path.join(pkg_share, 'urdf', '${M.name}.urdf')
+    rviz_file = os.path.join(pkg_share, 'rviz', 'display.rviz')
+
+    with open(urdf_file, 'r') as f:
+        robot_description = f.read()
+
+    gui = LaunchConfiguration('gui')
+
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'gui', default_value='true',
+            description='Open the joint slider window'),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            parameters=[{'robot_description': robot_description}],
+            output='screen'),
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui',
+            condition=IfCondition(gui)),
+        Node(
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            condition=UnlessCondition(gui)),
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            arguments=['-d', rviz_file],
+            output='screen'),
+    ])
+`;
+}
+
+function gazeboLaunch(pkg, M) {
+  const args = bridgeArgs(M).map(a => `            '${a}',`).join('\n');
+  const jsTopic = `/world/empty/model/${M.name}/joint_state`;
+  return `import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    pkg_share = get_package_share_directory('${pkg}')
+    urdf_file = os.path.join(pkg_share, 'urdf', '${M.name}.urdf')
+    world_file = os.path.join(pkg_share, 'worlds', 'empty.sdf')
+    rviz_file = os.path.join(pkg_share, 'rviz', 'gazebo.rviz')
+
+    with open(urdf_file, 'r') as f:
+        robot_description = f.read()
+
+    use_rviz = LaunchConfiguration('rviz')
+
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
+        launch_arguments={'gz_args': f'-r {world_file}'}.items())
+
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[{'robot_description': robot_description, 'use_sim_time': True}],
+        output='screen')
+
+    spawn = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}'],
+        output='screen')
+
+    bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+${args}
+        ],
+        remappings=[('${jsTopic}', '/joint_states')],
+        parameters=[{'use_sim_time': True}],
+        output='screen')
+
+    rviz = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_file],
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(use_rviz),
+        output='screen')
+
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'rviz', default_value='${state.target === 'both' ? 'true' : 'false'}',
+            description='Open RViz next to Gazebo'),
+        gazebo,
+        robot_state_publisher,
+        spawn,
+        bridge,
+        rviz,
+    ])
+`;
+}
+
+function packageXml(pkg, gz) {
+  const deps = ['robot_state_publisher', 'joint_state_publisher', 'joint_state_publisher_gui', 'rviz2'];
+  if (gz) deps.push('ros_gz_sim', 'ros_gz_bridge');
+  return `<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>${pkg}</name>
+  <version>0.1.0</version>
+  <description>URDF description and launch files for ${state.names[state.type]} (${TYPES[state.type].label}).</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+${deps.map(d => `  <exec_depend>${d}</exec_depend>`).join('\n')}
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+`;
+}
+
+function cmakeLists(pkg, gz) {
+  return `cmake_minimum_required(VERSION 3.8)
+project(${pkg})
+
+find_package(ament_cmake REQUIRED)
+
+install(
+  DIRECTORY urdf launch rviz${gz ? ' worlds' : ''}
+  DESTINATION share/\${PROJECT_NAME}
+)
+
+ament_package()
+`;
+}
+
+function runCommands(pkg, M, forReadme) {
+  const d = state.distro, gz = state.target !== 'rviz';
+  const apt = [`ros-${d}-robot-state-publisher`, `ros-${d}-joint-state-publisher-gui`, `ros-${d}-rviz2`];
+  if (gz) apt.push(`ros-${d}-ros-gz`);
+  if (gz && M.wheels) apt.push(`ros-${d}-teleop-twist-keyboard`);
+  const L = [
+    '# 1. Install dependencies (once)',
+    `sudo apt install ${apt.join(' ')}`,
+    '',
+    '# 2. Put the package in a workspace and build it',
+    'mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src',
+    `unzip ~/Downloads/${pkg}.zip`,
+    `cd ~/ros2_ws && colcon build --packages-select ${pkg}`,
+    `source /opt/ros/${d}/setup.bash && source install/setup.bash`,
+    '',
+    '# 3. Launch',
+  ];
+  if (state.target === 'rviz') L.push(`ros2 launch ${pkg} display.launch.py`);
+  else L.push(`ros2 launch ${pkg} gazebo.launch.py${state.target === 'both' ? '' : '            # add rviz:=true for RViz'}`);
+  if (gz && M.wheels) L.push('', '# 4. Drive it (new terminal)', 'ros2 run teleop_twist_keyboard teleop_twist_keyboard');
+  if (gz && M.ctrl.length) {
+    const j = M.ctrl.find(x => /elbow|joint2|shoulder_pitch|lift/.test(x)) || M.ctrl[0];
+    const val = /lift/.test(j) ? 0.1 : -0.8;
+    L.push('', `# ${M.wheels ? '5' : '4'}. Move a joint (new terminal)`, `ros2 topic pub --once /${M.name}/${j}/cmd_pos std_msgs/msg/Float64 "{data: ${val}}"`);
+  }
+  if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
+  return L.join('\n');
+}
+
+function readme(pkg, M, bbox, stats) {
+  const gz = state.target !== 'rviz';
+  const p = M.p;
+  const rows = [];
+  TYPES[M.type].groups.forEach(([g, fs]) => fs.forEach(f => rows.push(`| ${g} | ${f.label} | ${f.bool ? (p[f.k] ? 'yes' : 'no') : n(p[f.k]) + ' ' + f.unit} |`)));
+  return `# ${pkg}
+
+${TYPES[M.type].label} robot \`${M.name}\`, generated by Robot URDF Studio for ROS 2 ${state.distro[0].toUpperCase() + state.distro.slice(1)}${gz ? ' and ' + gzNames().sim : ''}.
+
+- Links: ${M.links.length}
+- Movable joints: ${stats.dof}
+- Total mass: ${n(stats.mass)} kg
+- Bounding box (x × y × z): ${n(bbox.x)} × ${n(bbox.y)} × ${n(bbox.z)} m
+
+## Build and run
+
+\`\`\`bash
+${runCommands(pkg, M, true)}
+\`\`\`
+
+## Files
+
+| Path | Purpose |
+|---|---|
+| \`urdf/${M.name}.urdf\` | Robot model: links, joints, inertia${gz ? ', Gazebo plugins and sensors' : ''} |
+| \`launch/display.launch.py\` | robot_state_publisher + joint sliders + RViz |
+${gz ? `| \`launch/gazebo.launch.py\` | ${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`) |
+| \`worlds/empty.sdf\` | Ground plane, sun and the simulator systems the sensors need |
+` : ''}| \`rviz/*.rviz\` | Saved RViz layouts |
+| \`robot_spec.json\` | The inputs used to generate this package. Import it back into the studio to edit. |
+${gz ? `
+## Topics in Gazebo
+
+${bridgeArgs(M).map(a => '- `' + a.split('@')[0] + '`').join('\n')}
+${M.ctrl.length ? `
+Each controlled joint takes a \`std_msgs/msg/Float64\` target position on \`/${M.name}/<joint>/cmd_pos\`. Gains are in the URDF \`JointPositionController\` blocks; tune them if a joint oscillates or sags.` : ''}
+${M.type === 'humanoid' && !p.fixBase ? `
+The humanoid spawns free-standing with no balance controller, so it will fall over. Turn on "Pin pelvis to the world" in the studio to hang it from a fixed point instead.` : ''}` : ''}
+## Specification
+
+| Group | Parameter | Value |
+|---|---|---|
+${rows.join('\n')}
+`;
+}
+
+function specJson() {
+  const t = state.type;
+  return JSON.stringify({
+    generator: 'Robot URDF Studio', version: 1, type: t, robot_name: state.names[t], package_name: state.pkg[t],
+    distro: state.distro, target: state.target, colors: state.colors, sensors: state.sensors[t], params: cleanParams(),
+  }, null, 2) + '\n';
+}
+
+/* ---------- 3D preview ---------- */
+let renderer, scene, camera, controls, world, grid, ground, sun, robotRoot = null, jointObjs = {}, lastType = null;
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+function initViewer() {
+  const host = document.getElementById('viewport');
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    host.insertAdjacentHTML('beforeend', '<p style="position:absolute;inset:auto 16px 40px 16px" class="muted">3D preview needs WebGL, which this browser has turned off. The URDF and package below still update.</p>');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  host.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(38, 1, 0.01, 200);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.12;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x50585a, 0.75));
+  sun = new THREE.DirectionalLight(0xffffff, 0.85);
+  sun.position.set(2.5, 5, 3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  scene.add(sun, sun.target);
+  world = new THREE.Group(); world.rotation.x = -H; scene.add(world);   // ROS z-up inside world
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  ground.receiveShadow = true; world.add(ground);
+  const axes = new THREE.AxesHelper(0.12); axes.position.z = 0.001; world.add(axes);
+  applyTheme();
+  new ResizeObserver(resize).observe(host);
+  resize();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+}
+function resize() {
+  if (!renderer) return;
+  const host = document.getElementById('viewport'), w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+function applyTheme() {
+  if (!scene) return;
+  scene.background = lin(css('--view'));
+  if (grid) { scene.remove(grid); grid.geometry.dispose(); }
+  grid = new THREE.GridHelper(4, 40, lin(css('--grid1')), lin(css('--grid2')));
+  scene.add(grid);
+}
+function matFor(key) {
+  const c = { body: state.colors.body, accent: state.colors.accent, dark: '#2B3033', joint: '#8A9490', sensor: '#1E2326' }[key];
+  return new THREE.MeshStandardMaterial({ color: lin(c), roughness: key === 'dark' || key === 'sensor' ? 0.75 : 0.5, metalness: key === 'joint' ? 0.4 : 0.05 });
+}
+function meshFor(p, mats) {
+  let geo;
+  if (p.g[0] === 'box') geo = new THREE.BoxGeometry(p.g[1], p.g[2], p.g[3]);
+  else if (p.g[0] === 'cyl') { geo = new THREE.CylinderGeometry(p.g[1], p.g[1], p.g[2], 40); geo.rotateX(H); }
+  else geo = new THREE.SphereGeometry(p.g[1], 32, 20);
+  const m = new THREE.Mesh(geo, mats[p.mat]);
+  m.position.set(...p.xyz); m.rotation.set(p.rpy[0], p.rpy[1], p.rpy[2], 'ZYX');
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function disposeTree(o) { o.traverse(c => { if (c.geometry) c.geometry.dispose(); }); }
+
+function buildPreview(M) {
+  if (!world) return null;
+  if (robotRoot) { world.remove(robotRoot); disposeTree(robotRoot); }
+  const mats = Object.fromEntries(['body', 'accent', 'dark', 'joint', 'sensor'].map(k => [k, matFor(k)]));
+  const groups = {};
+  M.links.forEach(l => { const g = new THREE.Group(); l.parts.filter(p => p.vis).forEach(p => g.add(meshFor(p, mats))); groups[l.name] = g; });
+  const children = new Set(M.joints.map(j => j.child));
+  robotRoot = new THREE.Group();
+  M.links.filter(l => !children.has(l.name)).forEach(l => robotRoot.add(groups[l.name]));
+  jointObjs = {};
+  M.joints.forEach(j => {
+    const og = new THREE.Group(); og.position.set(...j.xyz); og.rotation.set(j.rpy[0], j.rpy[1], j.rpy[2], 'ZYX');
+    const mg = new THREE.Group(); og.add(mg); mg.add(groups[j.child]); groups[j.parent].add(og);
+    if (j.type !== 'fixed') jointObjs[j.name] = { j, mg };
+  });
+  robotRoot.position.z = M.previewZ;
+  world.add(robotRoot);
+  for (const [name, o] of Object.entries(jointObjs)) setJoint(name, state.q[name] || 0, o);
+  return measure();
+}
+function setJoint(name, q, o = jointObjs[name]) {
+  if (!o) return;
+  const ax = new THREE.Vector3(...o.j.axis).normalize();
+  if (o.j.type === 'prismatic') o.mg.position.copy(ax.multiplyScalar(q));
+  else o.mg.quaternion.setFromAxisAngle(ax, q);
+}
+function measure() {
+  scene.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(robotRoot);
+  // three: y-up; ROS: x = three x, y = -three z, z = three y
+  return { x: b.max.x - b.min.x, y: b.max.z - b.min.z, z: b.max.y - b.min.y, cz: (b.max.y + b.min.y) / 2, box: b };
+}
+function fitView(bb) {
+  if (!camera || !bb) return;
+  const c = bb.box.getCenter(new THREE.Vector3()), s = Math.max(bb.x, bb.y, bb.z, 0.2);
+  const d = s * 1.9 + 0.25;
+  camera.position.set(c.x + d * 0.85, c.y + d * 0.55, c.z + d * 0.95);
+  controls.target.copy(c); controls.update();
+  const sh = sun.shadow.camera, r = Math.max(1, s * 1.5);
+  sh.left = -r; sh.right = r; sh.top = r; sh.bottom = -r; sh.near = 0.1; sh.far = 20; sh.updateProjectionMatrix();
+}
+
+/* ---------- Checks ---------- */
+function checks(M, bb, stats) {
+  const p = M.p, out = [];
+  const warn = t => out.push(['warn', t]), info = t => out.push(['info', t]);
+  if (M.wheels) {
+    if (p.clear >= 2 * p.wheelR) warn(`Ground clearance (${n(p.clear)} m) is at least the wheel diameter, so the chassis floats above the wheels.`);
+    if (p.wheelX !== undefined && Math.abs(p.wheelX) > p.L / 2) warn('The drive axle sits outside the chassis length.');
+    if (p.casterX !== undefined) {
+      if (Math.abs(p.casterX) > p.L / 2) warn('The caster sits outside the chassis length.');
+      if (Math.sign(p.casterX) === Math.sign(p.wheelX) && p.wheelX !== 0) warn('Caster and drive axle are on the same side of center; the robot will tip.');
+      if (Math.abs(p.casterX - p.wheelX) < p.wheelR + p.casterR) warn('Caster overlaps the drive wheels.');
+    }
+    if (p.casterR && 2 * p.casterR > p.clear + p.H) warn('Caster is taller than the chassis.');
+    if (p.wheelbase !== undefined && p.wheelbase < 2 * p.wheelR + 0.005) warn(`Wheelbase ${n(p.wheelbase)} m is shorter than one wheel diameter plus clearance; front and rear wheels collide.`);
+    info(`Wheel separation for the drive plugin: ${n(M.wheels.sep)} m.`);
+  }
+  if (M.type === 'arm6') {
+    const reach = p.shoulderH + p.upperL + p.foreL + p.wristL * 2.4 + (p.gripper ? 0.03 + p.fingerL : 0);
+    info(`Vertical reach from base top: ${n(reach)} m. Horizontal reach from J2: ${n(p.upperL + p.foreL + p.wristL * 2.4)} m.`);
+    if (p.linkR * 1.25 > p.baseR) warn('Shoulder is wider than the base.');
+    const torque = 9.81 * ((p.upperM * p.upperL / 2) + (p.foreM + 2 * p.wristM) * (p.upperL + p.foreL / 2));
+    if (torque > p.effort) warn(`J2 needs about ${n(Math.round(torque))} N·m to hold the arm horizontal, more than the ${n(p.effort)} N·m limit.`);
+    else info(`J2 holding torque with arm horizontal: about ${n(Math.round(torque))} N·m (limit ${n(p.effort)}).`);
+  }
+  if (M.type === 'humanoid') {
+    if (p.hipW < 2 * p.legR * 1.2) warn('Hip spacing is narrower than both legs; the thighs overlap.');
+    if (p.hipW / 2 + p.legR > p.pelvisW / 2 + 0.03) warn('Legs stick out past the pelvis.');
+    if (!p.fixBase) warn('Free-standing humanoid: without a balance controller it falls over in Gazebo.');
+  }
+  if (M.type === 'semi') {
+    if (p.colR * 2 > Math.min(p.torsoD, p.torsoW)) warn('Torso column is wider than the torso.');
+    if (2 * p.casterR > p.wheelR * 2) warn('Casters are larger than the drive wheels.');
+    const hTop = bb.z, foot = Math.min(p.L, M.wheels.sep);
+    if (hTop / foot > 3.2) warn(`Tall for its footprint (height/width ${n(Math.round(hTop / foot * 10) / 10)}); it may tip when braking.`);
+  }
+  if (state.target !== 'rviz' && M.type !== 'arm6' && !M.wheels && M.p.fixBase) info('Pelvis is pinned to the world, so it hangs in place in Gazebo.');
+  const S = state.sensors[M.type];
+  if (S.lidar && !M.mounts.lidar) info('This robot type has no lidar mount.');
+  if (!out.some(o => o[0] === 'warn')) out.unshift(['ok', 'Geometry is consistent. No overlaps or impossible values found.']);
+  return out;
+}
+
+/* ---------- UI rendering ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function renderTypes() {
+  $('types').innerHTML = Object.entries(TYPES).map(([k, t]) =>
+    `<button type="button" class="type" data-type="${k}" aria-pressed="${k === state.type}">${GLYPHS[k]}<b>${t.label}</b><span>${t.sub}</span></button>`).join('');
+}
+
+function renderForm() {
+  const t = state.type, d = TYPES[t], P = state.params[t], S = state.sensors[t];
+  const probe = new Model('x', t); BUILD[t](probe, cleanParams());
+  const has = { lidar: !!probe.mounts.lidar, camera: !!probe.mounts.camera, imu: !!probe.mounts.imu };
+  let h = `<fieldset><legend>Identity</legend>
+    <div class="text"><label for="robotName">Robot name</label><input id="robotName" value="${state.names[t]}" spellcheck="false"></div>
+    <div class="text"><label for="pkgName">Package name</label><input id="pkgName" value="${state.pkg[t]}" spellcheck="false"></div></fieldset>`;
+  d.groups.forEach(([g, fs]) => {
+    h += `<fieldset><legend>${g}</legend>`;
+    fs.forEach(f => {
+      const id = `p_${t}_${f.k}`;
+      if (f.bool) h += `<label class="check"><input type="checkbox" id="${id}" data-k="${f.k}" ${P[f.k] ? 'checked' : ''}>${f.label}</label>`;
+      else h += `<div class="row"><label for="${id}">${f.label}</label><input type="number" id="${id}" data-k="${f.k}" value="${P[f.k]}" min="${f.min}" max="${f.max}" step="${f.step}" inputmode="decimal"><span class="unit">${f.unit}</span></div>`;
+    });
+    h += '</fieldset>';
+  });
+  const sens = [['lidar', '2D lidar', 'publishes /scan'], ['camera', 'RGB camera', '/camera/image_raw'], ['imu', 'IMU', '/imu']];
+  h += '<fieldset><legend>Sensors</legend>' + sens.map(([k, l, s]) => has[k]
+    ? `<label class="check"><input type="checkbox" id="s_${t}_${k}" data-s="${k}" ${S[k] ? 'checked' : ''}>${l} <small>${s}</small></label>`
+    : `<label class="check disabled"><input type="checkbox" disabled>${l} <small>no mount on this robot</small></label>`).join('') + '</fieldset>';
+  h += `<fieldset><legend>Appearance</legend><div class="colors">
+    <label><input type="color" id="colBody" value="${state.colors.body}">Body</label>
+    <label><input type="color" id="colAccent" value="${state.colors.accent}">Accent</label></div></fieldset>`;
+  $('spec').innerHTML = h;
+}
+
+function renderJoints(M) {
+  const js = M.joints.filter(j => j.type !== 'fixed');
+  if (!js.length) { $('joints').innerHTML = '<p class="muted">No movable joints.</p>'; return; }
+  $('joints').innerHTML = js.map(j => {
+    const lo = j.type === 'continuous' ? -PI : j.lim.lo, hi = j.type === 'continuous' ? PI : j.lim.hi;
+    const q = Math.min(hi, Math.max(lo, state.q[j.name] || 0));
+    state.q[j.name] = q;
+    return `<div class="joint"><label for="q_${j.name}" title="${j.name}">${j.name}</label><output id="o_${j.name}">${fmtQ(j, q)}</output>
+      <input type="range" id="q_${j.name}" data-j="${j.name}" min="${lo}" max="${hi}" step="${j.type === 'prismatic' ? 0.001 : 0.01}" value="${q}"></div>`;
+  }).join('');
+}
+const fmtQ = (j, q) => j.type === 'prismatic' ? `${q.toFixed(3)} m` : `${(q * 180 / PI).toFixed(0)}°`;
+
+let files = {}, curFile = null, lastModel = null;
+function hl(path, line) {
+  const e = esc(line);
+  if (/\.(urdf|xml|sdf)$/.test(path)) {
+    if (/^\s*&lt;!--/.test(e) || /^\s{5}Generated/.test(line)) return `<span class="cm">${e}</span>`;
+    return e.replace(/(&lt;\/?)([\w:?-]+)/g, '$1<span class="t">$2</span>').replace(/ ([\w:-]+)="([^"]*)"/g, ' <span class="a">$1</span>="<span class="s">$2</span>"');
+  }
+  if (/\.py$/.test(path)) {
+    if (/^\s*#/.test(line)) return `<span class="cm">${e}</span>`;
+    return e.replace(/('[^']*')/g, '<span class="s">$1</span>').replace(/\b(import|from|def|return|with|as)\b/g, '<span class="t">$1</span>');
+  }
+  if (/\.md$/.test(path) && /^#/.test(line)) return `<span class="t">${e}</span>`;
+  return e;
+}
+function showFile(path) {
+  curFile = path;
+  $('curPath').textContent = path;
+  $('code').innerHTML = files[path].split('\n').map((l, i) => `<span class="ln" data-n="${i + 1}">${hl(path, l) || ' '}</span>`).join('');
+  document.querySelectorAll('#tree button').forEach(b => b.setAttribute('aria-current', b.dataset.f === path));
+}
+function renderTree(pkg) {
+  const order = Object.keys(files);
+  $('tree').innerHTML = `<div class="root">${esc(pkg)}/</div>` + order.map(f => {
+    const parts = f.split('/'), name = parts.pop();
+    return `<button type="button" data-f="${f}" aria-current="${f === curFile}">${parts.length ? `<span>${parts.join('/')}/</span>` : ''}${name}</button>`;
+  }).join('');
+}
+
+/* ---------- Main rebuild ---------- */
+let timer = null;
+function schedule() { clearTimeout(timer); timer = setTimeout(rebuild, 90); }
+
+function rebuild() {
+  const M = buildModel(); lastModel = M;
+  const typeChanged = lastType !== state.type; lastType = state.type;
+  let bb = buildPreview(M);
+  if (!bb) bb = { x: 0, y: 0, z: 0, cz: 0 };
+  if (typeChanged) fitView(bb);
+  const stats = { mass: M.links.reduce((s, l) => s + (l.mass || 0), 0), dof: M.joints.filter(j => j.type !== 'fixed').length };
+  $('hud').innerHTML = [
+    ['mass', `${stats.mass.toFixed(2)} kg`], ['links', M.links.length], ['joints', stats.dof],
+    ['size', `${bb.x.toFixed(2)}×${bb.y.toFixed(2)}×${bb.z.toFixed(2)} m`],
+  ].map(([k, v]) => `<span class="chip"><i>${k}</i>${v}</span>`).join('');
+  if (typeChanged || !$('joints').children.length || $('joints').dataset.sig !== M.joints.map(j => j.name + j.type).join()) {
+    renderJoints(M); $('joints').dataset.sig = M.joints.map(j => j.name + j.type).join();
+  }
+  $('checks').innerHTML = checks(M, bb, stats).map(([lv, t]) => `<li><span class="pill ${lv}">${lv === 'ok' ? 'ok' : lv === 'warn' ? 'check' : 'note'}</span><span>${esc(t)}</span></li>`).join('');
+
+  const pkg = state.pkg[state.type], gz = state.target !== 'rviz';
+  files = {};
+  files[`urdf/${M.name}.urdf`] = toURDF(M, gz);
+  files['launch/display.launch.py'] = displayLaunch(pkg, M);
+  if (gz) files['launch/gazebo.launch.py'] = gazeboLaunch(pkg, M);
+  files['rviz/display.rviz'] = rvizCfg(M, M.fixedFrame, false, bb);
+  if (gz) {
+    files['rviz/gazebo.rviz'] = rvizCfg(M, M.gzFixedFrame, true, bb);
+    files['worlds/empty.sdf'] = worldSdf(M);
+  }
+  files['package.xml'] = packageXml(pkg, gz);
+  files['CMakeLists.txt'] = cmakeLists(pkg, gz);
+  files['README.md'] = readme(pkg, M, bb, stats);
+  files['robot_spec.json'] = specJson();
+  if (!files[curFile]) curFile = `urdf/${M.name}.urdf`;
+  renderTree(pkg);
+  showFile(curFile);
+  $('runCmd').innerHTML = runCommands(pkg, M, false).split('\n').map(l => l.startsWith('#') ? `<span class="c">${esc(l)}</span>` : esc(l)).join('\n');
+  $('zipBtn').textContent = `Download ${pkg}.zip`;
+  try { localStorage.setItem('urdf-studio-v1', JSON.stringify({ type: state.type, params: state.params, sensors: state.sensors, names: state.names, pkg: state.pkg, pkgAuto: state.pkgAuto, colors: state.colors, distro: state.distro, target: state.target })); } catch (e) {}
+}
+
+/* ---------- Events ---------- */
+const slug = s => (s || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').replace(/_+$/, '') || 'robot';
+
+$('types').addEventListener('click', e => {
+  const b = e.target.closest('.type'); if (!b) return;
+  state.type = b.dataset.type; renderTypes(); renderForm(); rebuild();
+});
+$('spec').addEventListener('input', e => {
+  const el = e.target, t = state.type;
+  if (el.id === 'robotName') {
+    state.names[t] = slug(el.value);
+    if (state.pkgAuto[t]) { state.pkg[t] = state.names[t] + '_description'; $('pkgName').value = state.pkg[t]; }
+  } else if (el.id === 'pkgName') {
+    state.pkg[t] = slug(el.value); state.pkgAuto[t] = false;
+  } else if (el.id === 'colBody') state.colors.body = el.value;
+  else if (el.id === 'colAccent') state.colors.accent = el.value;
+  else if (el.dataset.s) state.sensors[t][el.dataset.s] = el.checked;
+  else if (el.dataset.k) {
+    if (el.type === 'checkbox') state.params[t][el.dataset.k] = el.checked;
+    else {
+      const f = TYPES[t].groups.flatMap(g => g[1]).find(x => x.k === el.dataset.k), v = parseFloat(el.value);
+      const bad = !isFinite(v) || v < f.min || v > f.max;
+      el.setAttribute('aria-invalid', bad);
+      el.title = bad ? `Enter a value from ${f.min} to ${f.max}` : '';
+      if (isFinite(v)) state.params[t][f.k] = v;
+    }
+  }
+  schedule();
+});
+$('spec').addEventListener('change', e => {
+  if (e.target.id === 'robotName') e.target.value = state.names[state.type];
+  if (e.target.id === 'pkgName') e.target.value = state.pkg[state.type];
+});
+$('spec').addEventListener('submit', e => e.preventDefault());
+$('joints').addEventListener('input', e => {
+  const el = e.target; if (!el.dataset.j) return;
+  const q = parseFloat(el.value); state.q[el.dataset.j] = q; setJoint(el.dataset.j, q);
+  $('o_' + el.dataset.j).textContent = fmtQ(jointObjs[el.dataset.j]?.j || lastModel.joints.find(j => j.name === el.dataset.j), q);
+});
+$('zeroBtn').addEventListener('click', () => {
+  document.querySelectorAll('#joints input[type=range]').forEach(el => {
+    const lo = +el.min, hi = +el.max, q = Math.min(hi, Math.max(lo, 0));
+    el.value = q; state.q[el.dataset.j] = q; setJoint(el.dataset.j, q);
+    $('o_' + el.dataset.j).textContent = fmtQ(lastModel.joints.find(j => j.name === el.dataset.j), q);
+  });
+});
+$('fitBtn').addEventListener('click', () => robotRoot && fitView(measure()));
+document.querySelectorAll('input[name=target]').forEach(r => r.addEventListener('change', () => { state.target = r.value; rebuild(); }));
+$('distro').addEventListener('change', e => { state.distro = e.target.value; rebuild(); });
+$('tree').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showFile(b.dataset.f); });
+
+function toast(msg, err) { const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); }
+$('copyBtn').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(files[curFile]); toast(`Copied ${curFile}`); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('code')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast('Copy was blocked here. The file is selected; press Ctrl+C or ⌘C.', true);
+  }
+});
+
+let downloads = null;
+async function save(filename, data) {
+  if (!downloads) {
+    // Outside the Claude viewer (e.g. GitHub Pages) a plain blob link works
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+    a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(`Saved ${filename}`); return;
+  }
+  try { await downloads.save({ filename, data }); toast(`Saved ${filename}`); }
+  catch (e) {
+    const c = e && e.code;
+    if (c === 'declined') toast('Download cancelled.');
+    else if (c === 'rate_limited') toast('A save prompt is already open. Finish it, then try again.', true);
+    else toast('Downloads are not available in this view. Use Copy file for each file instead.', true);
+  }
+}
+$('zipBtn').addEventListener('click', async () => {
+  if (typeof JSZip === 'undefined') { toast('The zip library did not load. Use Copy file for each file instead.', true); return; }
+  const pkg = state.pkg[state.type], zip = new JSZip(), dir = zip.folder(pkg);
+  for (const [p, c] of Object.entries(files)) dir.file(p, c);
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  save(`${pkg}.zip`, blob);
+});
+$('exportSpecBtn').addEventListener('click', () => save(`${state.names[state.type]}_spec.json`, specJson()));
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const s = JSON.parse(await f.text());
+    if (!TYPES[s.type]) throw new Error('type');
+    const t = s.type;
+    state.type = t;
+    Object.keys(state.params[t]).forEach(k => { if (s.params && k in s.params) state.params[t][k] = s.params[k]; });
+    if (s.sensors) Object.assign(state.sensors[t], s.sensors);
+    if (s.robot_name) state.names[t] = slug(s.robot_name);
+    if (s.package_name) { state.pkg[t] = slug(s.package_name); state.pkgAuto[t] = false; }
+    if (s.colors) Object.assign(state.colors, s.colors);
+    if (s.distro === 'jazzy' || s.distro === 'humble') state.distro = s.distro;
+    if (['rviz', 'gazebo', 'both'].includes(s.target)) state.target = s.target;
+    syncControls(); renderTypes(); renderForm(); lastType = null; rebuild();
+    toast(`Loaded ${f.name}`);
+  } catch (err) { toast('That file is not a Robot URDF Studio spec. Choose a robot_spec.json saved from this page.', true); }
+  e.target.value = '';
+});
+function syncControls() {
+  $('distro').value = state.distro;
+  document.querySelectorAll('input[name=target]').forEach(r => r.checked = r.value === state.target);
+}
+
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener && mq.addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- Boot ---------- */
+try {
+  const saved = JSON.parse(localStorage.getItem('urdf-studio-v1') || 'null');
+  if (saved && TYPES[saved.type]) {
+    state.type = saved.type;
+    for (const t of Object.keys(TYPES)) {
+      if (saved.params?.[t]) Object.keys(state.params[t]).forEach(k => { if (k in saved.params[t]) state.params[t][k] = saved.params[t][k]; });
+      if (saved.sensors?.[t]) Object.assign(state.sensors[t], saved.sensors[t]);
+      if (saved.names?.[t]) state.names[t] = saved.names[t];
+      if (saved.pkg?.[t]) state.pkg[t] = saved.pkg[t];
+      if (saved.pkgAuto && t in saved.pkgAuto) state.pkgAuto[t] = saved.pkgAuto[t];
+    }
+    if (saved.colors) Object.assign(state.colors, saved.colors);
+    if (saved.distro) state.distro = saved.distro;
+    if (saved.target) state.target = saved.target;
+  }
+} catch (e) {}
+syncControls();
+renderTypes();
+renderForm();
+if (typeof THREE !== 'undefined' && THREE.OrbitControls) initViewer();
+else $('viewport').insertAdjacentHTML('beforeend', '<p style="position:absolute;inset:auto 16px 40px 16px" class="muted">The 3D library did not load. The URDF and package below still update.</p>');
+rebuild();
+(async () => {
+  try { downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { downloads = null; }
+})();
+})();
+</script>
+
+</body>
+</html>
