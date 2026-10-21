@@ -109,7 +109,8 @@ if (!hostId) {
   showProblem('Use Chrome on Android.');
 } else {
   const opts = { config: { iceServers: [] }, debug: 0 };
-  if (/^(localhost|127\.0\.0\.1):\d+$/.test(params.get('peerhost') || '')) {   // local test server only const [h, p] = params.get('peerhost').split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
+  // peerhost: local test pairing server only
+  if (/^(localhost|127\.0\.0\.1):\d+$/.test(params.get('peerhost') || '')) { const [h, p] = params.get('peerhost').split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
   const peer = new Peer(undefined, opts);
   const failTimer = setTimeout(() => {
     if (connected) return;
