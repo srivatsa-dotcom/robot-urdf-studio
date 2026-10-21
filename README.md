@@ -27,6 +27,17 @@ For the 6-DOF arm, humanoid and semi-humanoid it can also generate a `<robot>_mo
 - One `JointTrajectoryController` per group, wired to MoveIt
 - `demo.launch.py` (MoveIt + RViz, no physics) and `gazebo.launch.py` (Gazebo + MoveIt + RViz)
 
+Gazebo worlds included in every package (pick the default in the app, switch at launch with `world:=<name>`):
+
+| World | Contents |
+|---|---|
+| `empty` | Flat ground |
+| `factory` | Conveyor lines, CNC machines, work tables, bin racks, marked robot cell |
+| `warehouse` | Four rows of pallet racks with boxes, 2 m aisles, floor lanes, loading dock |
+| `office` | Desk clusters with monitors and chairs, meeting room, cabinets, sofa, plants |
+
+Worlds are built from simple shapes, so they load offline with no model downloads.
+
 Supports ROS 2 Jazzy (Gazebo Harmonic) and Humble (Gazebo Fortress).
 
 ## Run locally (optional)
