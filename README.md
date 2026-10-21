@@ -42,7 +42,12 @@ Worlds are built from simple shapes, so they load offline with no model download
 
 Pick **Custom map** in Step 3. There are two ways to get a map:
 
-**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Send the file to your computer, choose it in the dialog, click the map where the robot starts and rotate until its forward direction points up. Up axis, units and upside-down are detected automatically and can be corrected.
+**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Then either:
+
+- open the **From your phone (QR)** tab, scan the QR code with the phone (same Wi-Fi), tap **Send scan file** and pick the scan; it opens on the computer straight away, or
+- copy the file to the computer and choose it in the **Import a 3D scan** tab.
+
+Click the map where the robot starts and rotate until its forward direction points up. Up axis, units and upside-down are detected automatically and can be corrected.
 
 **Scan live with an Android phone:**
 
@@ -65,12 +70,11 @@ Supports ROS 2 Jazzy (Gazebo Harmonic) and Humble (Gazebo Fortress).
 
 ## Run locally (optional)
 
-Open `index.html` in a browser, or serve the folder:
-
 ```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
+python3 serve.py
 ```
+
+It prints an address like `http://192.168.1.23:8000/`. Open that on your computer (not `localhost`), so a phone on the same Wi-Fi can open the QR link and send scan files. Live Android scanning needs HTTPS, so it only works from GitHub Pages.
 
 It loads three.js and JSZip from public CDNs, so it needs internet access.
 

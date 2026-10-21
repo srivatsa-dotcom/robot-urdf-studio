@@ -1833,13 +1833,19 @@ function onScanMsg(m) {
     scanStatus(`Receiving ${live.file.name} from the phone…`, 'wait');
   } else if (m.t === 'file-chunk' && live.file && typeof m.d === 'string') {
     const F = live.file;
-    if (!F.parts[m.i]) { F.parts[m.i] = m.d; F.got++; }
+    const i = m.i | 0;
+    if (i >= 0 && i < F.n && typeof F.parts[i] !== 'string') { F.parts[i] = m.d; F.got++; }
     if (F.got % 20 === 0 || F.got === F.n) scanStatus(`Receiving ${F.name}: ${Math.round(F.got / Math.max(1, F.n) * 100)}%`, 'wait');
   } else if (m.t === 'file-end' && live.file) {
     const F = live.file; live.file = null;
     try {
-      const chunks = F.parts.map(d => Uint8Array.from(atob(d), c => c.charCodeAt(0)));
-      if (chunks.length !== F.n || chunks.some(c => !c)) throw new Error('missing pieces');
+      if (F.got !== F.n) throw new Error('missing pieces');
+      const chunks = [];
+      for (let i = 0; i < F.n; i++) {
+        if (typeof F.parts[i] !== 'string') throw new Error('missing pieces');
+        chunks.push(Uint8Array.from(atob(F.parts[i]), c => c.charCodeAt(0)));
+      }
+      if (chunks.reduce((a, c) => a + c.length, 0) !== F.size) throw new Error('size mismatch');
       const file = new File(chunks, F.name);
       showScanTab('import', true);
       onScanFile(file);

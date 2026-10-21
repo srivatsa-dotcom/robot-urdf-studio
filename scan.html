@@ -419,7 +419,8 @@ function flush(final) {
   if (outbox.length) { send({ t: 'pts', v: outbox }); outbox = []; }
 }
 
-/* ---------- Send a scan file in 48 KB pieces over the same data channel ---------- */
+/* ---------- Send a scan file in small pieces over the same data channel ----------
+   PeerJS drops JSON messages over ~16 KB, so each piece is 11 KB (15 KB as base64). */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function sendFile(file) {
   if (!file) return;
@@ -427,8 +428,8 @@ async function sendFile(file) {
   if (!['obj', 'ply', 'stl', 'glb', 'gltf'].includes(ext)) { $('sendNote').textContent = `"${file.name}" isn't a scan file. Choose an OBJ, PLY, STL or GLB file.`; return; }
   if (file.size > 300e6) { $('sendNote').textContent = 'That file is over 300 MB. Export a lighter version (lower detail) and try again.'; return; }
   if (!connected) { $('sendNote').textContent = 'Not connected to your computer. Scan the QR code again.'; return; }
-  const buf = new Uint8Array(await file.arrayBuffer()), CH = 48 * 1024, n = Math.ceil(buf.length / CH);
-  $('sendLabel').classList.add('busy'); $('sendFile').disabled = true;
+  const buf = new Uint8Array(await file.arrayBuffer()), CH = 11 * 1024, n = Math.ceil(buf.length / CH);
+  $('sendFile').disabled = true;
   $('sendProg').hidden = false; $('sendProg').value = 0;
   send({ t: 'file-start', name: file.name, size: buf.length, chunks: n });
   for (let i = 0; i < n; i++) {
@@ -438,8 +439,7 @@ async function sendFile(file) {
     send({ t: 'file-chunk', i, d: btoa(bin) });
     const dc = conn.dataChannel;
     while (dc && dc.bufferedAmount > 4e6) await sleep(25);
-    $('sendProg').value = (i + 1) / n;
-    $('sendNote').textContent = `Sending ${file.name}: ${Math.round((i + 1) / n * 100)}%`;
+    if (i % 25 === 0 || i === n - 1) { $('sendProg').value = (i + 1) / n; $('sendNote').textContent = `Sending ${file.name}: ${Math.round((i + 1) / n * 100)}%`; }
   }
   if (connected) { send({ t: 'file-end' }); $('sendNote').textContent = `Sent ${file.name}. Finish on your computer screen.`; }
   $('sendFile').disabled = false; $('sendFile').value = '';
