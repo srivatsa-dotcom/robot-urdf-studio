@@ -1740,7 +1740,7 @@ function openScanner() {
   }
   const id = 'urdfstudio-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 14);
   const opts = { config: { iceServers: [] }, debug: 0 };
-  const ph = new URLSearchParams(location.search).get('peerhost');
+  const ph = (new URLSearchParams(location.search).get('peerhost') || '').match(/^(localhost|127\.0\.0\.1):\d+$/) ? new URLSearchParams(location.search).get('peerhost') : null;   // local test server only
   if (ph) { const [h, p] = ph.split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
   scanStatus('Getting a QR code ready…', 'wait');
   scanPeer = new Peer(id, opts);
