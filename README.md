@@ -42,7 +42,7 @@ Worlds are built from simple shapes, so they load offline with no model download
 
 Pick **Custom map** in Step 3. There are two ways to get a map:
 
-**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Then either:
+**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed; its OBJ comes as a .zip, which the app opens directly) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Then either:
 
 - open the **From your phone (QR)** tab and pick **iPhone**: it lists the Scaniverse steps and shows a QR code. Scan it (same Wi-Fi), tap **Send scan file** and pick the scan; it opens on the computer straight away, or
 - copy the file to the computer and choose it in the **Import a 3D scan** tab.

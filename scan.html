@@ -66,7 +66,7 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
     <h2>Send a scan file</h2>
     <ol>
       <li>Scan the room in <b>Scaniverse</b> (or Polycam), keeping people and pets out of view.</li>
-      <li>Export it as <b>OBJ</b> or <b>PLY</b> (GLB from Polycam) and choose <b>Save to Files</b>.</li>
+      <li>Export it as <b>OBJ</b> or <b>PLY</b> (GLB from Polycam) and choose <b>Save to Files</b>. A <b>.zip</b> is fine; no need to unzip it.</li>
       <li>Tap <b>Send scan file</b> below and pick it. It opens on your computer screen.</li>
     </ol>
     <label class="btn primary" for="sendFile" id="sendLabel">Send scan file</label>
@@ -472,7 +472,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function sendFile(file) {
   if (!file) return;
   const ext = (file.name.split('.').pop() || '').toLowerCase();
-  if (!['obj', 'ply', 'stl', 'glb', 'gltf'].includes(ext)) { $('sendNote').textContent = `"${file.name}" isn't a scan file. Choose an OBJ, PLY, STL or GLB file.`; return; }
+  if (!['obj', 'ply', 'stl', 'glb', 'gltf', 'zip'].includes(ext)) { $('sendNote').textContent = `"${file.name}" isn't a scan file. Choose an OBJ, PLY, STL or GLB file, or the .zip Scaniverse exports.`; return; }
   if (file.size > 300e6) { $('sendNote').textContent = 'That file is over 300 MB. Export a lighter version (lower detail) and try again.'; return; }
   if (!connected) { $('sendNote').textContent = 'Not connected to your computer. Scan the QR code again.'; return; }
   const buf = new Uint8Array(await file.arrayBuffer()), CH = 11 * 1024, n = Math.ceil(buf.length / CH);

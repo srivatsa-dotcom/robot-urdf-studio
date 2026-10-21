@@ -357,8 +357,8 @@ pre.cmd .c { color: var(--muted); }
         <button type="button" role="tab" id="tabPhone" aria-selected="false">From your phone (QR)</button>
       </div>
       <div id="paneImport" class="pane">
-        <label class="drop" id="dropZone" for="scanFile"><b>Choose or drop a scan file</b><span>OBJ, PLY, STL or GLB</span></label>
-        <input type="file" id="scanFile" accept=".obj,.ply,.stl,.glb,.gltf" hidden>
+        <label class="drop" id="dropZone" for="scanFile"><b>Choose or drop a scan file</b><span>OBJ, PLY, STL, GLB, or a .zip containing one</span></label>
+        <input type="file" id="scanFile" accept=".obj,.ply,.stl,.glb,.gltf,.zip" hidden>
         <div class="impopts" id="impOpts" hidden>
           <div class="text"><label for="impUp">Up axis</label><select id="impUp"><option value="y">Y (most apps)</option><option value="z">Z</option></select></div>
           <div class="text"><label for="impUnit">Units</label><select id="impUnit"><option value="m">meters</option><option value="cm">centimeters</option><option value="mm">millimeters</option></select></div>
@@ -383,7 +383,7 @@ pre.cmd .c { color: var(--muted); }
         <li>Open it and start a <b>new scan</b>. Pick a <b>mesh</b> scan for a room or large area, not a splat.</li>
         <li>Start where the robot will start. Walk slowly around the room and point the phone at every wall and piece of furniture. Keep people and pets out of view.</li>
         <li>Stop the scan and let Scaniverse finish processing it.</li>
-        <li>Tap the share or export button, choose <b>OBJ</b> (or PLY), then <b>Save to Files</b>.</li>
+        <li>Tap the share or export button, choose <b>OBJ</b> (or PLY), then <b>Save to Files</b>. Scaniverse saves OBJ as a <b>.zip</b>; send it as it is, no need to unzip.</li>
         <li>Connect the iPhone to the <b>same Wi-Fi</b> as this computer and scan the QR code below with the Camera app.</li>
         <li>On the page that opens, tap <b>Send scan file</b> and pick the file you saved. It appears on this screen.</li>
         <li>Click the map where the robot starts, rotate it to face forward, then click <b>Use this map</b>.</li>
@@ -1925,7 +1925,21 @@ let imp = null;     // { raw, pts, start: [x, y], heading, name }
 let scanTab = 'import';
 try { scanTab = localStorage.getItem('urdf-studio-scantab') || 'import'; } catch (e) {}
 
+const SCAN_EXTS = ['obj', 'ply', 'stl', 'glb', 'gltf'];
+// Scaniverse and others ship OBJ inside a .zip with its .mtl and textures: use the largest model file in it
+async function unzipScan(file) {
+  if (typeof JSZip === 'undefined') throw new Error('The zip reader did not load. Check your internet connection and reload.');
+  let zip;
+  try { zip = await JSZip.loadAsync(await file.arrayBuffer()); } catch (e) { throw new Error(`${file.name} isn't a readable zip file.`); }
+  const models = Object.values(zip.files).filter(z => !z.dir && !/(^|\/)__MACOSX\//.test(z.name) && SCAN_EXTS.includes((z.name.split('.').pop() || '').toLowerCase()));
+  if (!models.length) throw new Error(`${file.name} has no OBJ, PLY, STL or GLB file inside.`);
+  const data = await Promise.all(models.map(z => z.async('arraybuffer')));
+  const sizes = data.map(d => d.byteLength), i = sizes.indexOf(Math.max(...sizes));
+  return new File([data[i]], models[i].name.split('/').pop());
+}
+
 async function parseScanFile(file) {
+  if (/\.zip$/i.test(file.name)) file = await unzipScan(file);
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   const buf = await file.arrayBuffer();
   if (typeof THREE === 'undefined' || !THREE.OBJLoader) throw new Error('The 3D file readers did not load. Check your internet connection and reload.');
@@ -1942,7 +1956,7 @@ async function parseScanFile(file) {
       if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
       l.parse(buf, '', g => res(g.scene), e => rej(new Error('Could not read this glTF file' + (ext === 'gltf' ? '. Export as .glb (a single file) instead.' : '.'))));
     });
-  } else throw new Error(`.${ext} files aren't supported. Export the scan as OBJ, PLY, STL or GLB.`);
+  } else throw new Error(`.${ext} files aren't supported. Export the scan as OBJ, PLY, STL or GLB (a .zip of one works too).`);
   obj.updateMatrixWorld(true);
   const out = [], r = rng(1), MAX = 3e6;
   const A = new THREE.Vector3(), Bv = new THREE.Vector3(), C = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
