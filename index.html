@@ -408,6 +408,7 @@ pre.cmd .c { color: var(--muted); }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -1017,14 +1018,16 @@ function worldSdf(M, key) {
     '      <diffuse>0.8 0.8 0.8 1</diffuse>', '      <specular>0.2 0.2 0.2 1</specular>', '      <direction>-0.5 0.1 -0.9</direction>', '    </light>', '',
     '    <model name="ground_plane">', '      <static>true</static>', `      <pose>${n(env.cx || 0)} ${n(env.cy || 0)} 0 0 0 0</pose>`, '      <link name="link">',
     '        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>',
-    '        <visual name="visual">', `          <geometry><plane><normal>0 0 1</normal><size>${size}</size></plane></geometry>`,
-    `          <material><ambient>${fc}</ambient><diffuse>${fc}</diffuse></material>`, '        </visual>',
+    ...(key === 'custom' && scanMeshSdf() ? [] : ['        <visual name="visual">', `          <geometry><plane><normal>0 0 1</normal><size>${size}</size></plane></geometry>`,
+    `          <material><ambient>${fc}</ambient><diffuse>${fc}</diffuse></material>`, '        </visual>']),
     '      </link>', '    </model>');
+  const meshSdf = key === 'custom' ? scanMeshSdf() : null;
+  if (meshSdf) L.push(...meshSdf);
   env.objects.forEach(ob => {
     L.push('', `    <model name="${ob.name}">`, '      <static>true</static>', `      <pose>${n(ob.x)} ${n(ob.y)} 0 0 0 ${n(ob.yaw)}</pose>`, '      <link name="link">');
     ob.parts.forEach((p, i) => {
       const pose = `<pose>${v3(p.xyz)} 0 0 0</pose>`, c = rgbaOf(p.color);
-      L.push(`        <visual name="v${i}">${pose}<geometry>${geomSdf(p.g)}</geometry><material><ambient>${c}</ambient><diffuse>${c}</diffuse></material></visual>`);
+      if (!meshSdf) L.push(`        <visual name="v${i}">${pose}<geometry>${geomSdf(p.g)}</geometry><material><ambient>${c}</ambient><diffuse>${c}</diffuse></material></visual>`);
       if (p.col) L.push(`        <collision name="c${i}">${pose}<geometry>${geomSdf(p.g)}</geometry></collision>`);
     });
     L.push('      </link>', '    </model>');
@@ -1117,7 +1120,7 @@ function gazeboLaunch(pkg, M) {
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -1177,6 +1180,7 @@ ${args}
         DeclareLaunchArgument(
             'world', default_value='${state.world}',
             description='${worldKeys().join(', ')}'),
+        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -1554,7 +1558,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -1633,6 +1637,7 @@ ${bridgeArgs(M).map(a => `            '${a}',`).join('\n')}
         DeclareLaunchArgument('moveit', default_value='true', description='Start MoveIt move_group'),
         DeclareLaunchArgument('rviz', default_value='true', description='Open RViz with the MotionPlanning panel'),
         DeclareLaunchArgument('world', default_value='${state.world}', description='${worldKeys().join(', ')}'),
+        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -1910,6 +1915,11 @@ function drawLive() {
 function useScan() {
   if (!live || live.v.length < 300) return;
   state.scan = { id: Date.now(), v: live.v.slice() };
+  if (imp && scanTab === 'import' && imp.files) {
+    state.scan.mesh = { ext: imp.ext, matrix: meshMatrix(imp), name: imp.name };
+    meshFiles = { id: state.scan.id, files: imp.files, main: imp.main };
+    idbPut(meshFiles);
+  } else meshFiles = null;
   state.world = 'custom';
   saveScan();
   closeScanner();
@@ -1935,13 +1945,21 @@ async function unzipScan(file) {
   if (!models.length) throw new Error(`${file.name} has no OBJ, PLY, STL or GLB file inside.`);
   const data = await Promise.all(models.map(z => z.async('arraybuffer')));
   const sizes = data.map(d => d.byteLength), i = sizes.indexOf(Math.max(...sizes));
-  return new File([data[i]], models[i].name.split('/').pop());
+  const extras = {};
+  for (const z of Object.values(zip.files)) {
+    if (z.dir || /(^|\/)__MACOSX\//.test(z.name) || z === models[i]) continue;
+    if (/\.(mtl|jpe?g|png|webp|bmp|tga)$/i.test(z.name)) extras[z.name.split('/').pop()] = await z.async('arraybuffer');
+  }
+  const main = new File([data[i]], models[i].name.split('/').pop());
+  main.extras = extras;
+  return main;
 }
 
 async function parseScanFile(file) {
   if (/\.zip$/i.test(file.name)) file = await unzipScan(file);
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   const buf = await file.arrayBuffer();
+  const files = { ...(file.extras || {}), [file.name]: buf };
   if (typeof THREE === 'undefined' || !THREE.OBJLoader) throw new Error('The 3D file readers did not load. Check your internet connection and reload.');
   let obj;
   if (ext === 'obj') obj = new THREE.OBJLoader().parse(new TextDecoder().decode(buf));
@@ -1981,7 +1999,7 @@ async function parseScanFile(file) {
     }
   });
   if (out.length < 300) throw new Error('This file has almost no geometry. Export the full scan as a mesh or point cloud.');
-  return { raw: Float32Array.from(out), ext };
+  return { raw: Float32Array.from(out), ext, files, main: file.name };
 }
 
 function guessUnit(raw) {
@@ -2018,7 +2036,7 @@ function orientScan(raw, up, unit, flipOpt) {
     pts.push(Math.round(x * 20) / 20, Math.round(y * 20) / 20, Math.round(z * 20) / 20);
     if (Math.abs(z) < 0.06) { fx += x; fy += y; fn++; }
   }
-  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip };
+  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip, floor, scale: s };
 }
 
 // Robot frame: origin at the chosen start, x along the chosen heading
@@ -2041,8 +2059,8 @@ async function onScanFile(file) {
   scanStatus(`Reading ${file.name}…`, 'wait');
   $('impOpts').hidden = true;
   try {
-    const { raw, ext } = await parseScanFile(file);
-    imp = { raw, name: file.name, heading: 0 };
+    const { raw, ext, files, main } = await parseScanFile(file);
+    imp = { raw, name: file.name, heading: 0, ext, files, main };
     $('impUp').value = 'y';               // glTF is always Y-up; most phone apps export OBJ/PLY Y-up too
     $('impUnit').value = guessUnit(raw);
     $('impFlip').checked = false;
@@ -2058,6 +2076,7 @@ function reorient() {
   if (!imp) return;
   const o = orientScan(imp.raw, $('impUp').value, $('impUnit').value, $('impFlip').checked);
   imp.pts = o.pts; imp.start = o.start; imp.heading = 0;
+  Object.assign(imp, { up: $('impUp').value, scale: o.scale, floor: o.floor, flipped: o.flipped });
   applyImport();
 }
 function rotateImport(deg) { if (!imp) return; imp.heading += deg * PI / 180; applyImport(); }
@@ -2103,6 +2122,127 @@ function saveScan() {
   try { localStorage.setItem('urdf-studio-scan', state.scan ? JSON.stringify(state.scan) : ''); } catch (e) {}
 }
 
+/* ---------- The scanned mesh itself (preview, Gazebo visual, download) ----------
+   Points from the scan still drive the Nav2 map and the invisible collision blocks;
+   the original model is what people and simulated cameras see. */
+let meshFiles = null;          // { id, files: { name: ArrayBuffer }, main }
+const CEILING_CUT = 2.3;       // m above the floor: hide scanned ceilings so rooms are visible from above
+const hasMesh = () => !!(state.scan && state.scan.mesh && meshFiles && meshFiles.id === state.scan.id);
+
+const idb = (() => {
+  let p = null;
+  return () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('urdf-studio', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('meshes');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+})();
+async function idbPut(v) {
+  try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('meshes', 'readwrite'); tx.objectStore('meshes').put(v, 'scan'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {}
+}
+async function idbGet() {
+  try { const db = await idb(); return await new Promise((res, rej) => { const r = db.transaction('meshes').objectStore('meshes').get('scan'); r.onsuccess = () => res(r.result || null); r.onerror = () => rej(r.error); }); } catch (e) { return null; }
+}
+
+// File coordinates -> robot frame (meters, z up, floor at 0, origin at the chosen start)
+function meshMatrix(i) {
+  const M = new THREE.Matrix4(), t = new THREE.Matrix4();
+  M.makeRotationZ(-i.heading);
+  M.multiply(t.makeTranslation(-i.start[0], -i.start[1], 0));
+  if (i.flipped) M.multiply(t.makeRotationX(PI));
+  M.multiply(t.makeTranslation(0, 0, -i.floor));
+  if (i.up === 'y') M.multiply(t.makeRotationX(H));
+  M.multiply(t.makeScale(i.scale, i.scale, i.scale));
+  return M.toArray();
+}
+
+async function buildScanMesh(mf, mesh) {
+  const files = mf.files, buf = files[mf.main], dec = b => new TextDecoder().decode(b);
+  const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), CEILING_CUT)];   // three.js world is y-up
+  const urls = [], mgr = new THREE.LoadingManager();
+  mgr.setURLModifier(u => {
+    const k = decodeURIComponent(u.split(/[\\/]/).pop());
+    if (!files[k]) return u;
+    const url = URL.createObjectURL(new Blob([files[k]])); urls.push(url); return url;
+  });
+  let obj;
+  if (mesh.ext === 'obj') {
+    const text = dec(buf), loader = new THREE.OBJLoader(mgr), lib = text.match(/^mtllib\s+(.+?)\s*$/m);
+    const mtlKey = lib && Object.keys(files).find(k => k === lib[1].split(/[\\/]/).pop());
+    if (mtlKey && THREE.MTLLoader) {
+      const mats = new THREE.MTLLoader(mgr).setResourcePath('').parse(dec(files[mtlKey]), '');
+      mats.preload(); loader.setMaterials(mats);
+    }
+    obj = loader.parse(text);
+  } else if (mesh.ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf), new THREE.MeshStandardMaterial({ color: 0xb8bcbf }));
+  else if (mesh.ext === 'ply') {
+    const g = new THREE.PLYLoader().parse(buf), vc = !!g.attributes.color;
+    obj = /element face [1-9]/.test(dec(buf.slice(0, 4096)))
+      ? new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: vc ? 0xffffff : 0xb8bcbf, vertexColors: vc }))
+      : new THREE.Points(g, new THREE.PointsMaterial({ size: 0.025, color: vc ? 0xffffff : 0x8796a3, vertexColors: vc }));
+  } else {
+    obj = await new Promise((res, rej) => {
+      const l = new THREE.GLTFLoader(mgr);
+      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
+      l.parse(buf, '', g => res(g.scene), rej);
+    });
+  }
+  obj.traverse(o => {
+    if (!o.material) return;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+      m.side = THREE.DoubleSide; m.clippingPlanes = clip;
+      if (m.map) m.map.encoding = THREE.sRGBEncoding;
+      m.needsUpdate = true;
+    });
+    o.receiveShadow = true;
+  });
+  obj.matrixAutoUpdate = false;
+  obj.matrix.fromArray(mesh.matrix);
+  setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 20000);
+  return obj;
+}
+
+// Package copies of the scan: safe file names, ceiling faces removed from OBJ
+const safeName = s => s.replace(/[^\w.-]+/g, '_');
+function gazeboMeshOK(ext) { return ext === 'obj' || ext === 'stl' || (ext === 'glb' && state.distro !== 'humble'); }
+function scanPackageFiles() {
+  if (!hasMesh() || !gazeboMeshOK(state.scan.mesh.ext)) return {};
+  const mf = meshFiles, mesh = state.scan.mesh, out = {}, m = mesh.matrix, dec = b => new TextDecoder().decode(b);
+  const mainName = 'scan_model.' + mesh.ext, rename = {};
+  Object.keys(mf.files).forEach(k => { rename[k] = k === mf.main ? mainName : safeName(k); });
+  Object.entries(mf.files).forEach(([k, buf]) => {
+    const ext = (k.split('.').pop() || '').toLowerCase();
+    if (k === mf.main && ext === 'obj') {
+      const lines = dec(buf).split('\n'), vz = [];
+      for (const l of lines) if (l.startsWith('v ')) { const p = l.trim().split(/\s+/); vz.push(m[2] * p[1] + m[6] * p[2] + m[10] * p[3] + m[14]); }
+      let vc = 0;
+      const kept = lines.filter(l => {
+        if (l.startsWith('v ')) { vc++; return true; }
+        if (l.startsWith('mtllib')) return true;
+        if (!l.startsWith('f ')) return true;
+        const idx = l.trim().split(/\s+/).slice(1).map(t => { const i = parseInt(t, 10); return i < 0 ? vc + i : i - 1; });
+        return !idx.every(i => vz[i] > CEILING_CUT);
+      }).map(l => l.startsWith('mtllib') ? l.replace(/^mtllib\s+(.+?)\s*$/, (_, n) => 'mtllib ' + (rename[n.split(/[\\/]/).pop()] || safeName(n))) : l);
+      out[`worlds/custom_scan/${mainName}`] = kept.join('\n');
+    } else if (ext === 'mtl') {
+      let t = dec(buf);
+      Object.keys(mf.files).forEach(o => { if (o !== rename[o]) t = t.split(o).join(rename[o]); });
+      out[`worlds/custom_scan/${rename[k]}`] = t;
+    } else out[`worlds/custom_scan/${rename[k]}`] = { bin: buf };
+  });
+  return out;
+}
+function scanMeshSdf() {
+  if (!hasMesh() || !gazeboMeshOK(state.scan.mesh.ext)) return null;
+  const M = new THREE.Matrix4().fromArray(state.scan.mesh.matrix), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+  M.decompose(p, q, s);
+  const e = new THREE.Euler().setFromQuaternion(q, 'ZYX');
+  return ['', '    <model name="scanned_room">', '      <static>true</static>', `      <pose>${n(p.x)} ${n(p.y)} ${n(p.z)} ${n(e.x)} ${n(e.y)} ${n(e.z)}</pose>`,
+    '      <link name="link">', '        <visual name="scan">',
+    `          <geometry><mesh><uri>custom_scan/scan_model.${state.scan.mesh.ext}</uri><scale>${n(s.x)} ${n(s.x)} ${n(s.x)}</scale></mesh></geometry>`,
+    '        </visual>', '      </link>', '    </model>'];
+}
+
 /* ---------- 3D preview ---------- */
 let renderer, scene, camera, controls, world, grid, ground, sun, robotRoot = null, jointObjs = {}, lastType = null;
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -2119,6 +2259,7 @@ function initViewer() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true;
+  renderer.localClippingEnabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.prepend(renderer.domElement);
   scene = new THREE.Scene();
@@ -2211,11 +2352,19 @@ function fitView(bb) {
 let envGroup = null, envKey = null;
 const activeWorld = () => state.target !== 'rviz' && (state.world !== 'custom' || state.scan) ? state.world : 'empty';
 function updateEnvPreview() {
-  const key = activeWorld() + (activeWorld() === 'custom' ? ':' + state.scan.id : '');
+  const key = activeWorld() + (activeWorld() === 'custom' ? ':' + state.scan.id + (hasMesh() ? ':mesh' : '') : '');
   if (!world || key === envKey) return;
   if (envGroup) { world.remove(envGroup); disposeTree(envGroup); envGroup = null; }
   envKey = key;
   const env = buildEnv(activeWorld());
+  if (activeWorld() === 'custom' && hasMesh()) {
+    // show the real scan instead of the blocks; the blocks stay as collision shapes for Gazebo
+    envGroup = new THREE.Group(); world.add(envGroup);
+    const g = envGroup;
+    buildScanMesh(meshFiles, state.scan.mesh).then(o => { if (envGroup === g) g.add(o); })
+      .catch(() => toast('Could not draw the scanned mesh; showing blocks instead.', true));
+    return;
+  }
   if (!env.objects.length) return;
   envGroup = new THREE.Group();
   const mats = {};
@@ -2370,7 +2519,9 @@ function hl(path, line) {
 function showFile(path) {
   curFile = path;
   $('curPath').textContent = path;
-  $('code').innerHTML = files[path].split('\n').map((l, i) => `<span class="ln" data-n="${i + 1}">${hl(path, l) || ' '}</span>`).join('');
+  const c = files[path];
+  const text = typeof c === 'string' ? c : `Binary file (${(c.bin.byteLength / 1048576).toFixed(1)} MB). It is included in the download.`;
+  $('code').innerHTML = text.split('\n').map((l, i) => `<span class="ln" data-n="${i + 1}">${hl(path, l) || ' '}</span>`).join('');
   document.querySelectorAll('#tree button').forEach(b => b.setAttribute('aria-current', b.dataset.f === path));
 }
 function renderTree(pkg) {
@@ -2417,6 +2568,7 @@ function rebuild() {
   }
   if (state.scan) {
     Object.assign(d, mapFiles());
+    if (gz) Object.assign(d, scanPackageFiles());
   }
   d['package.xml'] = packageXml(pkg, gz && !M.moveit);
   d['CMakeLists.txt'] = cmakeLists(pkg, gz);
@@ -2522,6 +2674,7 @@ $('copyCmd').addEventListener('click', async () => {
   }
 });
 $('copyBtn').addEventListener('click', async () => {
+  if (typeof files[curFile] !== 'string') { toast('That file is binary. It is in the downloaded zip.'); return; }
   try { await navigator.clipboard.writeText(files[curFile]); toast(`Copied ${curFile}`); }
   catch (e) {
     const r = document.createRange(); r.selectNodeContents($('code')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -2550,7 +2703,7 @@ async function save(filename, data) {
 $('zipBtn').addEventListener('click', async () => {
   if (typeof JSZip === 'undefined') { toast('The zip library did not load. Use Copy file for each file instead.', true); return; }
   const zip = new JSZip();
-  for (const [p, c] of Object.entries(files)) zip.file(p, c);
+  for (const [p, c] of Object.entries(files)) zip.file(p, typeof c === 'string' ? c : c.bin);
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   save(zipName(lastModel), blob);
 });
@@ -2607,6 +2760,7 @@ try {
   }
 } catch (e) {}
 try { const sc = localStorage.getItem('urdf-studio-scan'); if (sc) { const o = JSON.parse(sc); if (o && Array.isArray(o.v)) state.scan = o; } } catch (e) {}
+if (state.scan && state.scan.mesh) idbGet().then(m => { if (m && state.scan && m.id === state.scan.id) { meshFiles = m; envKey = null; rebuild(); } });
 if (state.world === 'custom' && !state.scan) state.world = 'empty';
 syncControls();
 renderTypes();

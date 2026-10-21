@@ -56,7 +56,9 @@ Click the map where the robot starts and rotate until its forward direction poin
 3. Walk slowly and sweep over walls and furniture. The computer shows the map growing live.
 4. Tap **Finish**, then **Use this map**.
 
-The package then also contains `worlds/custom.sdf` (every obstacle the phone saw, as static blocks) and `maps/custom_map.pgm/.yaml` (a 5 cm Nav2 occupancy map). The scan start point is the map origin and the robot spawn point.
+The package then also contains `worlds/custom.sdf` and `maps/custom_map.pgm/.yaml` (a 5 cm Nav2 occupancy map). The scan start point is the map origin and the robot spawn point.
+
+For imported scans in OBJ or STL (and GLB on Jazzy), the Gazebo world shows the **real scanned mesh with its textures** (`worlds/custom_scan/`), so simulated cameras and lidar see your actual room; the ceiling is cut off above 2.3 m. Collisions use simplified invisible blocks so physics stays fast. Live Android scans and PLY point clouds use visible blocks instead.
 
 How it works and what it needs:
 
