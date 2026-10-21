@@ -348,7 +348,7 @@ pre.cmd .c { color: var(--muted); }
     <div class="qrside">
       <div class="tabs" role="tablist">
         <button type="button" role="tab" id="tabImport" aria-selected="true">Import a 3D scan</button>
-        <button type="button" role="tab" id="tabPhone" aria-selected="false">Scan with Android phone</button>
+        <button type="button" role="tab" id="tabPhone" aria-selected="false">From your phone (QR)</button>
       </div>
       <div id="paneImport" class="pane">
         <label class="drop" id="dropZone" for="scanFile"><b>Choose or drop a scan file</b><span>OBJ, PLY, STL or GLB</span></label>
@@ -373,10 +373,11 @@ pre.cmd .c { color: var(--muted); }
       <ol class="scansteps">
         <li>Connect your phone to the <b>same Wi-Fi</b> as this computer.</li>
         <li>Point the phone camera at the QR code and open the link.</li>
-        <li>Stand where the robot should start, face its forward direction, tap <b>Start scan</b>.</li>
-        <li>Walk slowly and sweep over walls and furniture, then tap <b>Finish</b>. People and animals are left out automatically.</li>
+        <li><b>iPhone:</b> tap <b>Send scan file</b> and pick the scan you exported from Scaniverse. It opens here straight away.</li>
+        <li><b>Android:</b> send a file the same way, or tap <b>Start scan</b> to scan live. People and animals are left out of live scans automatically.</li>
       </ol>
-      <p class="muted small">Needs Chrome on an Android phone with ARCore. iPhones can't scan in the browser; use Import instead. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+      <p class="muted small" id="localHint" hidden>This page is open as <b>localhost</b>, which your phone can't reach. If the link doesn't open on the phone, start the app with <code>python3 serve.py</code> and open the address it prints.</p>
+      <p class="muted small">Live scanning needs Chrome on an Android phone with ARCore. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
       </div>
     </div>
     <div class="liveside">
@@ -1784,7 +1785,10 @@ function startPairing() {
   scanStatus('Getting a QR code ready…', 'wait');
   scanPeer = new Peer(id, opts);
   scanPeer.on('open', () => {
-    const url = `${/github\.io$/.test(location.hostname) ? new URL('scan.html', location.href).href.split('?')[0] : SCAN_PAGE}?id=${id}${ph ? '&peerhost=' + ph : ''}`;
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    $('localHint').hidden = !local;
+    const base = !local && /^https?:$/.test(location.protocol) ? new URL('scan.html', location.href).href.split('?')[0] : SCAN_PAGE;
+    const url = `${base}?id=${id}${ph ? '&peerhost=' + ph : ''}`;
     const q = qrcode(0, 'M'); q.addData(url); q.make();
     $('qr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
     $('scanUrl').textContent = url;
@@ -1822,6 +1826,25 @@ function onScanMsg(m) {
     if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250);
   } else if (m.t === 'pose') { live.pose = m; if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250); }
   else if (m.t === 'status' && typeof m.msg === 'string') scanStatus('Phone: ' + m.msg.slice(0, 120), m.level === 'warn' ? 'warn' : 'ok');
+  else if (m.t === 'file-start') {
+    const size = m.size | 0;
+    if (size <= 0 || size > 300e6) { scanStatus('The phone tried to send a file over 300 MB. Export a lighter scan.', 'warn'); return; }
+    live.file = { name: String(m.name || 'scan').replace(/[^\w.\- ]/g, '_').slice(0, 120), size, n: m.chunks | 0, parts: [], got: 0 };
+    scanStatus(`Receiving ${live.file.name} from the phone…`, 'wait');
+  } else if (m.t === 'file-chunk' && live.file && typeof m.d === 'string') {
+    const F = live.file;
+    if (!F.parts[m.i]) { F.parts[m.i] = m.d; F.got++; }
+    if (F.got % 20 === 0 || F.got === F.n) scanStatus(`Receiving ${F.name}: ${Math.round(F.got / Math.max(1, F.n) * 100)}%`, 'wait');
+  } else if (m.t === 'file-end' && live.file) {
+    const F = live.file; live.file = null;
+    try {
+      const chunks = F.parts.map(d => Uint8Array.from(atob(d), c => c.charCodeAt(0)));
+      if (chunks.length !== F.n || chunks.some(c => !c)) throw new Error('missing pieces');
+      const file = new File(chunks, F.name);
+      showScanTab('import', true);
+      onScanFile(file);
+    } catch (e) { scanStatus('The file arrived incomplete. Send it again from the phone.', 'warn'); }
+  }
   else if (m.t === 'done') { live.done = true; drawLive(); scanStatus(live.v.length >= 300 ? 'Scan finished. Click "Use this map".' : 'Scan ended with too few points. Scan again and sweep more slowly.', live.v.length >= 300 ? 'ok' : 'warn'); }
 }
 function drawLive() {
@@ -2011,7 +2034,7 @@ function clickImportMap(e) {
   applyImport();
 }
 
-function showScanTab(tab) {
+function showScanTab(tab, keepPeer) {
   scanTab = tab;
   try { localStorage.setItem('urdf-studio-scantab', tab); } catch (e) {}
   $('tabImport').setAttribute('aria-selected', tab === 'import');
@@ -2022,8 +2045,8 @@ function showScanTab(tab) {
   $('scanUse').disabled = true;
   if (tab === 'phone') { imp = null; $('impOpts').hidden = true; if (!scanPeer) startPairing(); }
   else {
-    if (scanPeer) { scanPeer.destroy(); scanPeer = scanConn = null; }
-    scanStatus('Choose a scan file exported from your phone.', '');
+    if (scanPeer && !keepPeer) { scanPeer.destroy(); scanPeer = scanConn = null; }
+    if (!keepPeer) scanStatus('Choose a scan file, or use the QR tab to send one straight from your phone.', '');
   }
   drawLive();
 }

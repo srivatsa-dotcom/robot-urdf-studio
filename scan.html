@@ -31,6 +31,10 @@ h1 { font-family: var(--font-display); font-size: 26px; line-height: 1.1; margin
 .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.wait { background: var(--accent); animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .dot.wait { animation: none; } }
+.card { display: flex; flex-direction: column; gap: 12px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.card h2 { font-family: var(--font-display); font-size: 18px; margin: 0; }
+label.btn { display: block; text-align: center; cursor: pointer; }
+progress { width: 100%; height: 10px; accent-color: var(--accent); }
 ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--ink); }
 ol li::marker { color: var(--accent); font-family: var(--font-mono); }
 .btn { width: 100%; padding: 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 17px var(--font-body); }
@@ -54,10 +58,24 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
 <main>
   <div>
     <div class="eyebrow">Robot URDF Studio · custom map</div>
-    <h1>Scan your space</h1>
+    <h1>Send your space to the computer</h1>
   </div>
   <div class="status"><span class="dot wait" id="dot"></span><span id="status">Connecting to your computer…</span></div>
   <div id="unsupported" class="warnbox" hidden></div>
+  <section class="card" id="sendBox" hidden>
+    <h2>Send a scan file</h2>
+    <ol>
+      <li>Scan the room in <b>Scaniverse</b> (or Polycam), keeping people and pets out of view.</li>
+      <li>Export it as <b>OBJ</b> or <b>PLY</b> (GLB from Polycam) and choose <b>Save to Files</b>.</li>
+      <li>Tap <b>Send scan file</b> below and pick it. It opens on your computer screen.</li>
+    </ol>
+    <label class="btn primary" for="sendFile" id="sendLabel">Send scan file</label>
+    <input type="file" id="sendFile" hidden>
+    <progress id="sendProg" max="1" value="0" hidden></progress>
+    <p class="note" id="sendNote"></p>
+  </section>
+  <section class="card" id="liveBox" hidden>
+  <h2>Scan live</h2>
   <ol id="steps">
     <li>Stand where the robot should start and face the direction it should drive forward.</li>
     <li>Tap <b>Start scan</b>, allow the camera, and keep the phone at chest height.</li>
@@ -69,6 +87,8 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
   <p class="note" id="mode"></p>
   <p class="note" id="filterNote">Loading the people and animal filter…</p>
   <p class="note">Your camera picture stays on this phone. Only 3D points (no images) go to your computer, directly over your Wi-Fi.</p>
+  </section>
+  <p class="note" id="liveNote" hidden>Live scanning needs Chrome on an Android phone with AR support. This phone can send a scan file instead.</p>
 </main>
 
 <div id="overlay">
@@ -107,7 +127,7 @@ if (!hostId) {
   showProblem('Open this page by scanning the QR code shown in Robot URDF Studio on your computer.');
 } else if (typeof Peer === 'undefined' || typeof RTCPeerConnection === 'undefined') {
   setStatus('This browser cannot make a direct connection.', 'warn');
-  showProblem('Use Chrome on Android.');
+  showProblem('Update your phone\'s browser (Safari or Chrome) and scan the QR code again.');
 } else {
   const opts = { config: { iceServers: [] }, debug: 0 };
   // peerhost: local test pairing server only
@@ -124,6 +144,7 @@ if (!hostId) {
       connected = true; clearTimeout(failTimer);
       setStatus('Connected to your computer over Wi-Fi.', 'ok');
       send({ t: 'hello', ua: navigator.userAgent });
+      $('sendBox').hidden = false;
       checkXR();
     });
     conn.on('data', m => { if (m && m.t === 'stop' && session) session.end(); });
@@ -141,11 +162,13 @@ let useDepth = false;
 async function checkXR() {
   const ok = navigator.xr && await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!ok) {
-    send({ t: 'status', level: 'warn', msg: 'Phone browser has no AR support' });
-    showProblem('This phone\'s browser can\'t do AR mapping. Use <b>Chrome on an Android phone</b> that supports Google Play Services for AR. iPhones are not supported yet because Safari has no WebXR.');
+    send({ t: 'status', level: 'ok', msg: 'Phone connected. Waiting for a scan file' });
+    $('liveNote').hidden = false;
     return;
   }
   xrOK = true;
+  $('liveBox').hidden = false;
+  loadFilter();
   $('mode').textContent = 'The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
   updateStart();
 }
@@ -396,10 +419,36 @@ function flush(final) {
   if (outbox.length) { send({ t: 'pts', v: outbox }); outbox = []; }
 }
 
+/* ---------- Send a scan file in 48 KB pieces over the same data channel ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function sendFile(file) {
+  if (!file) return;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (!['obj', 'ply', 'stl', 'glb', 'gltf'].includes(ext)) { $('sendNote').textContent = `"${file.name}" isn't a scan file. Choose an OBJ, PLY, STL or GLB file.`; return; }
+  if (file.size > 300e6) { $('sendNote').textContent = 'That file is over 300 MB. Export a lighter version (lower detail) and try again.'; return; }
+  if (!connected) { $('sendNote').textContent = 'Not connected to your computer. Scan the QR code again.'; return; }
+  const buf = new Uint8Array(await file.arrayBuffer()), CH = 48 * 1024, n = Math.ceil(buf.length / CH);
+  $('sendLabel').classList.add('busy'); $('sendFile').disabled = true;
+  $('sendProg').hidden = false; $('sendProg').value = 0;
+  send({ t: 'file-start', name: file.name, size: buf.length, chunks: n });
+  for (let i = 0; i < n; i++) {
+    if (!connected) { $('sendNote').textContent = 'The connection dropped. Scan the QR code again.'; break; }
+    const part = buf.subarray(i * CH, (i + 1) * CH);
+    let bin = ''; for (let j = 0; j < part.length; j += 0x8000) bin += String.fromCharCode.apply(null, part.subarray(j, j + 0x8000));
+    send({ t: 'file-chunk', i, d: btoa(bin) });
+    const dc = conn.dataChannel;
+    while (dc && dc.bufferedAmount > 4e6) await sleep(25);
+    $('sendProg').value = (i + 1) / n;
+    $('sendNote').textContent = `Sending ${file.name}: ${Math.round((i + 1) / n * 100)}%`;
+  }
+  if (connected) { send({ t: 'file-end' }); $('sendNote').textContent = `Sent ${file.name}. Finish on your computer screen.`; }
+  $('sendFile').disabled = false; $('sendFile').value = '';
+}
+$('sendFile').addEventListener('change', e => sendFile(e.target.files[0]));
+
 let stopReason = '';
 $('start').addEventListener('click', start);
 $('startAnyway').addEventListener('click', () => { allowUnfiltered = true; $('unsupported').hidden = true; start(); });
-loadFilter();
 $('finish').addEventListener('click', () => session && session.end());
 })();
 </script>
