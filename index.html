@@ -48,6 +48,7 @@
   --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -177,6 +178,16 @@ dialog#scanDlg::backdrop { background: rgba(10, 14, 13, .55); }
 .status { display: flex; gap: 10px; align-items: center; font-size: 13px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.wait { background: var(--accent); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; font-weight: 500; color: var(--muted); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.pane { display: flex; flex-direction: column; gap: 10px; }
+.drop { display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; text-align: center; padding: 22px 12px; border: 1.5px dashed var(--muted); border-radius: 6px; cursor: pointer; }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop span { font-size: 12px; color: var(--muted); }
+.impopts { display: flex; flex-direction: column; gap: 8px; }
+.impopts .text { grid-template-columns: 80px minmax(0, 1fr); }
+#scanMap { cursor: crosshair; }
 #scanMap { width: 100%; max-width: 440px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 6px; }
 .target { position: relative; }
 .target input { position: absolute; opacity: 0; pointer-events: none; }
@@ -332,9 +343,31 @@ pre.cmd .c { color: var(--muted); }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <dialog id="scanDlg" aria-labelledby="scanTitle">
-  <div class="dlghead"><h3 id="scanTitle">Scan a custom map</h3><button class="btn" type="button" id="scanClose" aria-label="Close">Close</button></div>
+  <div class="dlghead"><h3 id="scanTitle">Custom map</h3><button class="btn" type="button" id="scanClose" aria-label="Close">Close</button></div>
   <div class="dlgbody">
     <div class="qrside">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tabImport" aria-selected="true">Import a 3D scan</button>
+        <button type="button" role="tab" id="tabPhone" aria-selected="false">Scan with Android phone</button>
+      </div>
+      <div id="paneImport" class="pane">
+        <label class="drop" id="dropZone" for="scanFile"><b>Choose or drop a scan file</b><span>OBJ, PLY, STL or GLB</span></label>
+        <input type="file" id="scanFile" accept=".obj,.ply,.stl,.glb,.gltf" hidden>
+        <div class="impopts" id="impOpts" hidden>
+          <div class="text"><label for="impUp">Up axis</label><select id="impUp"><option value="y">Y (most apps)</option><option value="z">Z</option></select></div>
+          <div class="text"><label for="impUnit">Units</label><select id="impUnit"><option value="m">meters</option><option value="cm">centimeters</option><option value="mm">millimeters</option></select></div>
+          <label class="check"><input type="checkbox" id="impFlip">Upside down</label>
+          <div class="actions"><button class="btn" type="button" id="rotL">Rotate −15°</button><button class="btn" type="button" id="rotR">Rotate +15°</button><button class="btn" type="button" id="rot90">+90°</button></div>
+          <p class="muted small">Click the map where the robot should start. Rotate until the robot's forward direction points up the map. If the map looks like a wall instead of a floor plan, change the up axis.</p>
+        </div>
+        <ol class="scansteps">
+          <li>On your iPhone, install <b>Scaniverse</b> (free) from the App Store.</li>
+          <li>Start a new scan as a <b>mesh</b>, not a splat, and walk slowly around the room. Keep people and pets out of view; imported files are not filtered.</li>
+          <li>Export the scan as <b>OBJ</b> or <b>PLY</b> and send it to this computer (AirDrop, iCloud Drive or email).</li>
+          <li>Choose the file here. Polycam's free <b>GLB</b> export works too.</li>
+        </ol>
+      </div>
+      <div id="panePhone" class="pane" hidden>
       <div id="qr" class="qr"></div>
       <code id="scanUrl" class="scanurl"></code>
       <ol class="scansteps">
@@ -343,7 +376,8 @@ pre.cmd .c { color: var(--muted); }
         <li>Stand where the robot should start, face its forward direction, tap <b>Start scan</b>.</li>
         <li>Walk slowly and sweep over walls and furniture, then tap <b>Finish</b>. People and animals are left out automatically.</li>
       </ol>
-      <p class="muted small">Needs Chrome on an Android phone with ARCore. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+      <p class="muted small">Needs Chrome on an Android phone with ARCore. iPhones can't scan in the browser; use Import instead. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+      </div>
     </div>
     <div class="liveside">
       <div class="status"><span class="dot" id="scanDot"></span><span id="scanStatus"></span></div>
@@ -355,6 +389,11 @@ pre.cmd .c { color: var(--muted); }
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
@@ -809,7 +848,7 @@ const WORLDS = {
   factory: { label: 'Factory', sub: 'Conveyors, CNC machines and a marked robot cell.' },
   warehouse: { label: 'Warehouse', sub: 'Pallet racks, 2 m aisles and a loading dock.' },
   office: { label: 'Office', sub: 'Desk clusters, chairs and a meeting room.' },
-  custom: { label: 'Custom map', sub: 'Scan a real space with your phone.' },
+  custom: { label: 'Custom map', sub: 'Import a phone scan (any phone) or scan live with Android.' },
 };
 const WORLD_GLYPHS = {
   custom: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="22" y="3" width="16" height="26" rx="3"/><path class="hl" d="M6 10 V5 H11 M58 10 V5 H53 M6 22 V27 H11 M58 22 V27 H53"/></svg>',
@@ -1728,10 +1767,10 @@ let scanPeer = null, scanConn = null, live = null;
 function scanStatus(text, kind) { $('scanStatus').textContent = text; $('scanDot').className = 'dot ' + (kind || ''); }
 function openScanner() {
   const dlg = $('scanDlg');
-  live = { v: [], keys: new Set(), pose: null, done: false };
-  $('scanUse').disabled = true; $('scanStats').textContent = 'No points yet';
-  drawLive();
   if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  showScanTab(scanTab);
+}
+function startPairing() {
   $('qr').innerHTML = ''; $('scanUrl').textContent = '';
   if (window.claude || typeof Peer === 'undefined' || typeof RTCPeerConnection === 'undefined') {
     scanStatus('Phone scanning can\'t run inside this viewer.', 'warn');
@@ -1767,7 +1806,7 @@ function openScanner() {
 function closeScanner() {
   try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {}
   if (scanPeer) scanPeer.destroy();
-  scanPeer = scanConn = null;
+  scanPeer = scanConn = null; imp = null;
   const dlg = $('scanDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
 }
 let liveTimer = null;
@@ -1809,14 +1848,17 @@ function drawLive() {
     ctx.fillStyle = dz > 8 ? css('--accent') : css('--muted');
     ctx.fillRect(c - V[i + 1] * s - 1.5, c - V[i] * s - 1.5, 3, 3);
   }
-  ctx.fillStyle = css('--ok'); ctx.beginPath(); ctx.arc(c, c, 5, 0, 2 * PI); ctx.fill();
+  ctx.fillStyle = css('--ok'); ctx.beginPath(); ctx.arc(c, c, 6, 0, 2 * PI); ctx.fill();
+  ctx.strokeStyle = css('--ok'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(c, c - 22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c - 6, c - 15); ctx.lineTo(c, c - 23); ctx.lineTo(c + 6, c - 15); ctx.stroke();
+  drawLive.view = { c, s };
   if (live && live.pose) {
     const p = live.pose, px = c - p.y * s, py = c - p.x * s;
     ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 6, 0, 2 * PI); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - Math.sin(p.yaw) * 16, py - Math.cos(p.yaw) * 16); ctx.stroke();
   }
   const n3 = V.length / 3;
-  $('scanStats').textContent = n3 ? `${n3.toLocaleString()} points · ${((x1 - x0) / 100).toFixed(1)} × ${((y1 - y0) / 100).toFixed(1)} m · green dot = robot start, ring = phone` : 'No points yet';
+  $('scanStats').textContent = n3 ? `${n3.toLocaleString()} points · ${((x1 - x0) / 100).toFixed(1)} × ${((y1 - y0) / 100).toFixed(1)} m · green arrow = robot start and heading${scanTab === 'phone' ? ', ring = phone' : ''}` : 'No points yet';
 }
 function useScan() {
   if (!live || live.v.length < 300) return;
@@ -1828,6 +1870,164 @@ function useScan() {
   const a = analyzeScan(state.scan);
   toast(`Custom map ready: ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.${a.blocked ? ' Something was detected at the robot start; clear that spot or rescan from an open area.' : ''}`, a.blocked);
 }
+/* ---------- Import a 3D scan file (Scaniverse, Polycam, …) ----------
+   Mesh triangles are sampled into points, turned z-up with the floor at 0, then the
+   viewer picks the robot start and heading on the top-down map. */
+const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/';
+let imp = null;     // { raw, pts, start: [x, y], heading, name }
+let scanTab = 'import';
+try { scanTab = localStorage.getItem('urdf-studio-scantab') || 'import'; } catch (e) {}
+
+async function parseScanFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const buf = await file.arrayBuffer();
+  if (typeof THREE === 'undefined' || !THREE.OBJLoader) throw new Error('The 3D file readers did not load. Check your internet connection and reload.');
+  let obj;
+  if (ext === 'obj') obj = new THREE.OBJLoader().parse(new TextDecoder().decode(buf));
+  else if (ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf));
+  else if (ext === 'ply') {
+    const head = new TextDecoder().decode(buf.slice(0, 4096));
+    const g = new THREE.PLYLoader().parse(buf);
+    obj = /element face [1-9]/.test(head) ? new THREE.Mesh(g) : new THREE.Points(g);
+  } else if (ext === 'glb' || ext === 'gltf') {
+    obj = await new Promise((res, rej) => {
+      const l = new THREE.GLTFLoader();
+      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
+      l.parse(buf, '', g => res(g.scene), e => rej(new Error('Could not read this glTF file' + (ext === 'gltf' ? '. Export as .glb (a single file) instead.' : '.'))));
+    });
+  } else throw new Error(`.${ext} files aren't supported. Export the scan as OBJ, PLY, STL or GLB.`);
+  obj.updateMatrixWorld(true);
+  const out = [], r = rng(1), MAX = 3e6;
+  const A = new THREE.Vector3(), Bv = new THREE.Vector3(), C = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  obj.traverse(o => {
+    const g = o.geometry; if (!g || !g.attributes || !g.attributes.position) return;
+    const pos = g.attributes.position, M = o.matrixWorld, idx = g.index;
+    if (o.isPoints || (!idx && pos.count % 3)) {
+      for (let i = 0; i < pos.count && out.length < MAX * 3; i++) { A.fromBufferAttribute(pos, i).applyMatrix4(M); out.push(A.x, A.y, A.z); }
+      return;
+    }
+    const nt = (idx ? idx.count : pos.count) / 3;
+    for (let t = 0; t < nt && out.length < MAX * 3; t++) {
+      const ia = idx ? idx.getX(t * 3) : t * 3, ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+      A.fromBufferAttribute(pos, ia).applyMatrix4(M); Bv.fromBufferAttribute(pos, ib).applyMatrix4(M); C.fromBufferAttribute(pos, ic).applyMatrix4(M);
+      out.push(A.x, A.y, A.z);
+      const area = e1.subVectors(Bv, A).cross(e2.subVectors(C, A)).length() / 2;
+      const k = Math.min(50000, Math.floor(area / 9e-4));   // about one sample per 3 cm × 3 cm (file units; rescaled below if not meters)
+      for (let s = 0; s < k; s++) {
+        let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        out.push(A.x + (Bv.x - A.x) * u + (C.x - A.x) * v, A.y + (Bv.y - A.y) * u + (C.y - A.y) * v, A.z + (Bv.z - A.z) * u + (C.z - A.z) * v);
+      }
+    }
+  });
+  if (out.length < 300) throw new Error('This file has almost no geometry. Export the full scan as a mesh or point cloud.');
+  return { raw: Float32Array.from(out), ext };
+}
+
+function guessUnit(raw) {
+  let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < raw.length; i += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], raw[i + a]); hi[a] = Math.max(hi[a], raw[i + a]); }
+  const d = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
+  return d > 1500 ? 'mm' : d > 80 ? 'cm' : 'm';
+}
+
+// Rotate to z-up, scale to meters, pick the floor (denser end), voxelize to 5 cm
+function orientScan(raw, up, unit, flipOpt) {
+  const s = { m: 1, cm: 0.01, mm: 0.001 }[unit];
+  const N = raw.length / 3, P = new Float32Array(raw.length);
+  for (let i = 0; i < N; i++) {
+    const x = raw[i * 3] * s, y = raw[i * 3 + 1] * s, z = raw[i * 3 + 2] * s;
+    if (up === 'y') { P[i * 3] = x; P[i * 3 + 1] = -z; P[i * 3 + 2] = y; } else { P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; }
+  }
+  const slab = sign => {   // densest 5 cm slab within 1 m of the low (sign 1) or high (sign -1) end
+    let ext = Infinity; for (let i = 2; i < P.length; i += 3) ext = Math.min(ext, sign * P[i]);
+    const h = new Map(); let best = 0, at = ext;
+    for (let i = 2; i < P.length; i += 3) { const d = sign * P[i] - ext; if (d <= 1) { const b = Math.floor(d / 0.05); const c = (h.get(b) || 0) + 1; h.set(b, c); if (c > best) { best = c; at = ext + (b + 0.5) * 0.05; } } }
+    return { best, at: sign * at };
+  };
+  const low = slab(1), high = slab(-1);
+  let flip = high.best > low.best * 1.3;           // floor usually has more points than the ceiling
+  if (flipOpt) flip = !flip;
+  const floor = flip ? high.at : low.at, fs = flip ? -1 : 1;
+  const seen = new Set(), pts = [];
+  let fx = 0, fy = 0, fn = 0;
+  for (let i = 0; i < N; i++) {
+    const x = P[i * 3], y = P[i * 3 + 1] * fs, z = (P[i * 3 + 2] - floor) * fs;
+    const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20);
+    if (seen.has(k)) continue; seen.add(k);
+    pts.push(Math.round(x * 20) / 20, Math.round(y * 20) / 20, Math.round(z * 20) / 20);
+    if (Math.abs(z) < 0.06) { fx += x; fy += y; fn++; }
+  }
+  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip };
+}
+
+// Robot frame: origin at the chosen start, x along the chosen heading
+function applyImport() {
+  if (!imp) return;
+  const [sx, sy] = imp.start, c = Math.cos(imp.heading), s = Math.sin(imp.heading), P = imp.pts;
+  const keys = new Set(), v = [];
+  for (let i = 0; i < P.length; i += 3) {
+    const dx = P[i] - sx, dy = P[i + 1] - sy;
+    const x = Math.round((c * dx + s * dy) * 20) * 5, y = Math.round((-s * dx + c * dy) * 20) * 5, z = Math.round(P[i + 2] * 20) * 5;
+    const k = x + ',' + y + ',' + z; if (keys.has(k)) continue; keys.add(k); v.push(x, y, z);
+  }
+  live.v = v; live.keys = keys; live.pose = null; live.done = true;
+  $('scanUse').disabled = v.length < 300;
+  drawLive();
+}
+
+async function onScanFile(file) {
+  if (!file) return;
+  scanStatus(`Reading ${file.name}…`, 'wait');
+  $('impOpts').hidden = true;
+  try {
+    const { raw, ext } = await parseScanFile(file);
+    imp = { raw, name: file.name, heading: 0 };
+    $('impUp').value = 'y';               // glTF is always Y-up; most phone apps export OBJ/PLY Y-up too
+    $('impUnit').value = guessUnit(raw);
+    $('impFlip').checked = false;
+    reorient();
+    $('impOpts').hidden = false;
+    scanStatus(`Loaded ${file.name}. Click the map where the robot should start, then rotate so it faces up the map.`, 'ok');
+  } catch (e) {
+    imp = null;
+    scanStatus(e.message || 'Could not read that file.', 'warn');
+  }
+}
+function reorient() {
+  if (!imp) return;
+  const o = orientScan(imp.raw, $('impUp').value, $('impUnit').value, $('impFlip').checked);
+  imp.pts = o.pts; imp.start = o.start; imp.heading = 0;
+  applyImport();
+}
+function rotateImport(deg) { if (!imp) return; imp.heading += deg * PI / 180; applyImport(); }
+function clickImportMap(e) {
+  if (!imp || scanTab !== 'import' || !drawLive.view) return;
+  const cv = $('scanMap'), rect = cv.getBoundingClientRect();
+  const px = (e.clientX - rect.left) * cv.width / rect.width, py = (e.clientY - rect.top) * cv.height / rect.height;
+  const { c, s } = drawLive.view;
+  const rx = (c - py) / s / 100, ry = (c - px) / s / 100;      // meters in the current robot frame
+  const ch = Math.cos(imp.heading), sh = Math.sin(imp.heading);
+  imp.start = [imp.start[0] + ch * rx - sh * ry, imp.start[1] + sh * rx + ch * ry];
+  applyImport();
+}
+
+function showScanTab(tab) {
+  scanTab = tab;
+  try { localStorage.setItem('urdf-studio-scantab', tab); } catch (e) {}
+  $('tabImport').setAttribute('aria-selected', tab === 'import');
+  $('tabPhone').setAttribute('aria-selected', tab === 'phone');
+  $('paneImport').hidden = tab !== 'import';
+  $('panePhone').hidden = tab !== 'phone';
+  live = { v: [], keys: new Set(), pose: null, done: false };
+  $('scanUse').disabled = true;
+  if (tab === 'phone') { imp = null; $('impOpts').hidden = true; if (!scanPeer) startPairing(); }
+  else {
+    if (scanPeer) { scanPeer.destroy(); scanPeer = scanConn = null; }
+    scanStatus('Choose a scan file exported from your phone.', '');
+  }
+  drawLive();
+}
+
 function saveScan() {
   try { localStorage.setItem('urdf-studio-scan', state.scan ? JSON.stringify(state.scan) : ''); } catch (e) {}
 }
@@ -2086,7 +2286,8 @@ function hl(path, line) {
   const e = esc(line);
   if (/\.(urdf|xml|sdf)$/.test(path)) {
     if (/^\s*&lt;!--/.test(e) || /^\s{5}Generated/.test(line)) return `<span class="cm">${e}</span>`;
-    return e.replace(/(&lt;\/?)([\w:?-]+)/g, '$1<span class="t">$2</span>').replace(/ ([\w:-]+)="([^"]*)"/g, ' <span class="a">$1</span>="<span class="s">$2</span>"');
+    // attributes first, so the tag pass never sees the markup it would add
+    return e.replace(/ ([\w:-]+)="([^"]*)"/g, ' <span class="a">$1</span>="<span class="s">$2</span>"').replace(/(&lt;\/?)([\w:?-]+)/g, '$1<span class="t">$2</span>');
   }
   if (/\.py$/.test(path)) {
     if (/^\s*#/.test(line)) return `<span class="cm">${e}</span>`;
@@ -2222,6 +2423,18 @@ $('rescan').addEventListener('click', openScanner);
 $('scanClose').addEventListener('click', closeScanner);
 $('scanCancel').addEventListener('click', closeScanner);
 $('scanUse').addEventListener('click', useScan);
+$('tabImport').addEventListener('click', () => showScanTab('import'));
+$('tabPhone').addEventListener('click', () => showScanTab('phone'));
+$('scanFile').addEventListener('change', e => { onScanFile(e.target.files[0]); e.target.value = ''; });
+['impUp', 'impUnit', 'impFlip'].forEach(id => $(id).addEventListener('change', reorient));
+$('rotL').addEventListener('click', () => rotateImport(-15));
+$('rotR').addEventListener('click', () => rotateImport(15));
+$('rot90').addEventListener('click', () => rotateImport(90));
+$('scanMap').addEventListener('click', clickImportMap);
+const dropZone = $('dropZone');
+['dragenter', 'dragover'].forEach(t => dropZone.addEventListener(t, e => { e.preventDefault(); dropZone.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => dropZone.addEventListener(t, e => { e.preventDefault(); dropZone.classList.remove('over'); }));
+dropZone.addEventListener('drop', e => onScanFile(e.dataTransfer.files[0]));
 $('scanDlg').addEventListener('cancel', e => { e.preventDefault(); closeScanner(); });
 $('distro').addEventListener('change', e => { state.distro = e.target.value; rebuild(); });
 $('moveit').addEventListener('change', e => { state.moveit = e.target.checked; rebuild(); });

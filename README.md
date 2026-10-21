@@ -40,7 +40,11 @@ Worlds are built from simple shapes, so they load offline with no model download
 
 ### Custom map from your phone
 
-Pick **Custom map** in Step 3 to scan a real room:
+Pick **Custom map** in Step 3. There are two ways to get a map:
+
+**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Send the file to your computer, choose it in the dialog, click the map where the robot starts and rotate until its forward direction points up. Up axis, units and upside-down are detected automatically and can be corrected.
+
+**Scan live with an Android phone:**
 
 1. A QR code appears. Scan it with your phone (same Wi-Fi as the computer).
 2. On the phone, stand where the robot should start, face its forward direction and tap **Start scan**.
@@ -52,7 +56,7 @@ The package then also contains `worlds/custom.sdf` (every obstacle the phone saw
 How it works and what it needs:
 
 - **Same Wi-Fi only.** Phone and computer connect peer-to-peer over WebRTC with no STUN/TURN servers, so the connection only succeeds on the same local network. A public PeerJS server is used for a few seconds to pair the devices; the scan data never passes through it. Guest networks with client isolation block the connection.
-- **Phone:** Chrome on Android with ARCore (Google Play Services for AR). The scan uses WebXR depth sensing, or detected surfaces on phones without a depth API. iPhones are not supported because Safari has no WebXR.
+- **Phone:** Chrome on Android with ARCore (Google Play Services for AR). The scan uses WebXR depth sensing, or detected surfaces on phones without a depth API. iPhones cannot live-scan because Safari has no WebXR; use Import instead.
 - **People and animals are left out.** Each sampled camera frame runs through an on-device DeepLab v3 segmenter (MediaPipe); depth points on a person, cat, dog, bird, horse, cow or sheep (plus a small margin) are dropped before they reach the map. If a phone cannot give the browser camera frames during AR, the scan stops and offers to continue without the filter.
 - **Privacy:** only 3D points leave the phone, never camera images.
 - **HTTPS:** the phone page must come from an HTTPS site (GitHub Pages), because browsers only allow the camera on secure pages. Scanning does not work inside the Claude artifact viewer.
