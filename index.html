@@ -1710,7 +1710,7 @@ function analyzeScan(scan) {
   for (let i = 0; i < N; i++) { const z = V[i * 3 + 2]; if (z >= -200 && z <= 60) hist.set(z, (hist.get(z) || 0) + 1); }
   let floorZ = 0, best = -1;
   hist.forEach((c, z) => { if (c > best) { best = c; floorZ = z; } });
-  const lo = floorZ + 8, hi = floorZ + 220, R = 5;
+  const lo = floorZ + 10, hi = floorZ + 220, R = 5;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (let i = 0; i < N; i++) {
     const x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
@@ -1728,6 +1728,30 @@ function analyzeScan(scan) {
     const k = gy * nx + gx;
     if (z >= lo && z <= hi) { occ[k] = 2; top[k] = Math.max(top[k], z - floorZ); }
     else if (Math.abs(z - floorZ) < 8 && occ[k] !== 2) occ[k] = 1;
+  }
+  // tidy the grid: drop obstacle specks under 8 cells (0.02 m²), then close 1-cell gaps in walls
+  {
+    const lab = new Int32Array(nx * ny).fill(-1), stack = [];
+    for (let k0 = 0; k0 < nx * ny; k0++) {
+      if (occ[k0] !== 2 || lab[k0] >= 0) continue;
+      const comp = []; lab[k0] = k0; stack.push(k0);
+      while (stack.length) {
+        const k = stack.pop(); comp.push(k);
+        const gx = k % nx, gy = (k / nx) | 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = gx + dx, yy = gy + dy; if (xx < 0 || yy < 0 || xx >= nx || yy >= ny) continue;
+          const kk = yy * nx + xx; if (occ[kk] === 2 && lab[kk] < 0) { lab[kk] = k0; stack.push(kk); }
+        }
+      }
+      if (comp.length < 8) comp.forEach(k => { occ[k] = 1; top[k] = 0; });
+    }
+    const add = [];
+    for (let gy = 1; gy < ny - 1; gy++) for (let gx = 1; gx < nx - 1; gx++) {
+      const k = gy * nx + gx; if (occ[k] === 2) continue;
+      const h = occ[k - 1] === 2 && occ[k + 1] === 2, v = occ[k - nx] === 2 && occ[k + nx] === 2;
+      if (h || v) add.push([k, h ? Math.min(top[k - 1], top[k + 1]) : Math.min(top[k - nx], top[k + nx])]);
+    }
+    add.forEach(([k, t]) => { occ[k] = 2; top[k] = t; });
   }
   // 10 cm columns, merged into runs along x, then stacked runs along y
   const B = 2, bx = Math.ceil(nx / B), by = Math.ceil(ny / B), Hc = new Int16Array(bx * by);
@@ -1912,12 +1936,27 @@ function drawLive() {
   const n3 = V.length / 3;
   $('scanStats').textContent = n3 ? `${n3.toLocaleString()} points · ${((x1 - x0) / 100).toFixed(1)} × ${((y1 - y0) / 100).toFixed(1)} m · green arrow = robot start and heading${scanTab === 'phone' ? ', ring = phone' : ''}` : 'No points yet';
 }
-function useScan() {
+async function useScan() {
   if (!live || live.v.length < 300) return;
   state.scan = { id: Date.now(), v: live.v.slice() };
+  let note = '';
   if (imp && scanTab === 'import' && imp.files) {
-    state.scan.mesh = { ext: imp.ext, matrix: meshMatrix(imp), name: imp.name };
-    meshFiles = { id: state.scan.id, files: imp.files, main: imp.main };
+    const cleanable = imp.ext === 'obj' || imp.ext === 'stl' || (imp.ext === 'ply' && !!imp.files[imp.main] && /element face [1-9]/.test(new TextDecoder().decode(imp.files[imp.main].slice(0, 4096))));
+    let clean = null;
+    if (cleanable) {
+      $('scanUse').disabled = true; scanStatus('Levelling the floor and removing loose scraps…', 'wait');
+      await new Promise(r => setTimeout(r, 30));
+      try { clean = await cleanScanMesh(imp); } catch (e) { clean = null; }
+    }
+    if (clean) {
+      state.scan.v = clean.pts;
+      state.scan.mesh = { ext: 'obj', matrix: new THREE.Matrix4().toArray(), name: imp.name, clean: true };
+      meshFiles = { id: state.scan.id, files: clean.files, main: 'scan_model.obj' };
+      note = ` Floor levelled${imp.tilt > 0.3 ? ` (${imp.tilt.toFixed(1)}° tilt corrected)` : ''}, ${clean.dropped.toLocaleString()} loose triangles removed.`;
+    } else {
+      state.scan.mesh = { ext: imp.ext, matrix: meshMatrix(imp), name: imp.name };
+      meshFiles = { id: state.scan.id, files: imp.files, main: imp.main };
+    }
     idbPut(meshFiles);
   } else meshFiles = null;
   state.world = 'custom';
@@ -1925,7 +1964,7 @@ function useScan() {
   closeScanner();
   rebuild(); overview();
   const a = analyzeScan(state.scan);
-  toast(`Custom map ready: ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.${a.blocked ? ' Something was detected at the robot start; clear that spot or rescan from an open area.' : ''}`, a.blocked);
+  toast(`Custom map ready: ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.${note}${a.blocked ? ' Something was detected at the robot start; clear that spot or rescan from an open area.' : ''}`, a.blocked);
 }
 /* ---------- Import a 3D scan file (Scaniverse, Polycam, …) ----------
    Mesh triangles are sampled into points, turned z-up with the floor at 0, then the
@@ -2019,24 +2058,54 @@ function orientScan(raw, up, unit, flipOpt) {
   }
   const slab = sign => {   // densest 5 cm slab within 1 m of the low (sign 1) or high (sign -1) end
     let ext = Infinity; for (let i = 2; i < P.length; i += 3) ext = Math.min(ext, sign * P[i]);
-    const h = new Map(); let best = 0, at = ext;
-    for (let i = 2; i < P.length; i += 3) { const d = sign * P[i] - ext; if (d <= 1) { const b = Math.floor(d / 0.05); const c = (h.get(b) || 0) + 1; h.set(b, c); if (c > best) { best = c; at = ext + (b + 0.5) * 0.05; } } }
-    return { best, at: sign * at };
+    const h = new Map(); let best = 0;
+    for (let i = 2; i < P.length; i += 3) { const d = sign * P[i] - ext; if (d <= 1) { const b = Math.floor(d / 0.05); const c = (h.get(b) || 0) + 1; h.set(b, c); if (c > best) best = c; } }
+    return best;
   };
-  const low = slab(1), high = slab(-1);
-  let flip = high.best > low.best * 1.3;           // floor usually has more points than the ceiling
+  let flip = slab(-1) > slab(1) * 1.3;               // floor usually has more points than the ceiling
   if (flipOpt) flip = !flip;
-  const floor = flip ? high.at : low.at, fs = flip ? -1 : 1;
+  if (flip) for (let i = 0; i < N; i++) { P[i * 3 + 1] = -P[i * 3 + 1]; P[i * 3 + 2] = -P[i * 3 + 2]; }
+  // floor plane: RANSAC on the lowest 60 cm (above the 1st percentile, so stray points below the floor don't count)
+  const zs = []; for (let i = 2; i < P.length; i += 3 * Math.max(1, Math.floor(N / 50000))) zs.push(P[i]);
+  zs.sort((a, b) => a - b);
+  const base = zs[Math.floor(zs.length * 0.01)] || 0, low = [];
+  for (let i = 0; i < N; i++) if (P[i * 3 + 2] <= base + 0.6) low.push(i);
+  const sample = low.length > 20000 ? Array.from({ length: 20000 }, (_, k) => low[Math.floor(k * low.length / 20000)]) : low;
+  const r = rng(9), at = k => [P[k * 3], P[k * 3 + 1], P[k * 3 + 2]];
+  let best = null, bestN = 0;
+  for (let it = 0; it < 300 && sample.length >= 3; it++) {
+    const a = at(sample[Math.floor(r() * sample.length)]), b = at(sample[Math.floor(r() * sample.length)]), c = at(sample[Math.floor(r() * sample.length)]);
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let nrm = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const len = Math.hypot(...nrm); if (len < 1e-9) continue;
+    nrm = nrm.map(q => q / len); if (nrm[2] < 0) nrm = nrm.map(q => -q);
+    if (nrm[2] < 0.95) continue;                                    // floor tilts less than ~18°
+    const d = -(nrm[0] * a[0] + nrm[1] * a[1] + nrm[2] * a[2]);
+    let cnt = 0; for (const k of sample) { const p = at(k); if (Math.abs(nrm[0] * p[0] + nrm[1] * p[1] + nrm[2] * p[2] + d) < 0.03) cnt++; }
+    if (cnt > bestN) { bestN = cnt; best = nrm; }
+  }
+  // rotation taking the floor normal to +z
+  const n0 = best || [0, 0, 1], q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(...n0), new THREE.Vector3(0, 0, 1));
+  const L = new THREE.Matrix4().makeRotationFromQuaternion(q), e = L.elements, v3t = new THREE.Vector3();
+  for (let i = 0; i < N; i++) { v3t.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).applyMatrix4(L); P[i * 3] = v3t.x; P[i * 3 + 1] = v3t.y; P[i * 3 + 2] = v3t.z; }
+  // floor height: 80th percentile of points within 4 cm of the levelled floor, so wheels sit on top of the bumps
+  const lz = []; for (const k of sample) lz.push(P[k * 3 + 2]);
+  lz.sort((a, b) => a - b);
+  let mode = lz[Math.floor(lz.length * 0.05)] || 0, bestC = 0;
+  for (let j = 0; j < lz.length; j += Math.max(1, Math.floor(lz.length / 400))) { let c = 0; for (const z of lz) if (Math.abs(z - lz[j]) < 0.03) c++; if (c > bestC) { bestC = c; mode = lz[j]; } }
+  const near = lz.filter(z => Math.abs(z - mode) < 0.04);
+  const floor = near.length ? near[Math.floor(near.length * 0.8)] : mode;
   const seen = new Set(), pts = [];
   let fx = 0, fy = 0, fn = 0;
   for (let i = 0; i < N; i++) {
-    const x = P[i * 3], y = P[i * 3 + 1] * fs, z = (P[i * 3 + 2] - floor) * fs;
+    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2] - floor;
     const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20);
     if (seen.has(k)) continue; seen.add(k);
     pts.push(Math.round(x * 20) / 20, Math.round(y * 20) / 20, Math.round(z * 20) / 20);
     if (Math.abs(z) < 0.06) { fx += x; fy += y; fn++; }
   }
-  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip, floor, scale: s };
+  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip, floor, scale: s, level: Array.from(e),
+    tilt: Math.acos(Math.min(1, n0[2])) * 180 / PI };
 }
 
 // Robot frame: origin at the chosen start, x along the chosen heading
@@ -2076,7 +2145,7 @@ function reorient() {
   if (!imp) return;
   const o = orientScan(imp.raw, $('impUp').value, $('impUnit').value, $('impFlip').checked);
   imp.pts = o.pts; imp.start = o.start; imp.heading = 0;
-  Object.assign(imp, { up: $('impUp').value, scale: o.scale, floor: o.floor, flipped: o.flipped });
+  Object.assign(imp, { up: $('impUp').value, scale: o.scale, floor: o.floor, flipped: o.flipped, level: o.level, tilt: o.tilt });
   applyImport();
 }
 function rotateImport(deg) { if (!imp) return; imp.heading += deg * PI / 180; applyImport(); }
@@ -2149,44 +2218,17 @@ function meshMatrix(i) {
   const M = new THREE.Matrix4(), t = new THREE.Matrix4();
   M.makeRotationZ(-i.heading);
   M.multiply(t.makeTranslation(-i.start[0], -i.start[1], 0));
-  if (i.flipped) M.multiply(t.makeRotationX(PI));
   M.multiply(t.makeTranslation(0, 0, -i.floor));
+  if (i.level) M.multiply(t.fromArray(i.level));
+  if (i.flipped) M.multiply(t.makeRotationX(PI));
   if (i.up === 'y') M.multiply(t.makeRotationX(H));
   M.multiply(t.makeScale(i.scale, i.scale, i.scale));
   return M.toArray();
 }
 
 async function buildScanMesh(mf, mesh) {
-  const files = mf.files, buf = files[mf.main], dec = b => new TextDecoder().decode(b);
-  const clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), CEILING_CUT)];   // three.js world is y-up
-  const urls = [], mgr = new THREE.LoadingManager();
-  mgr.setURLModifier(u => {
-    const k = decodeURIComponent(u.split(/[\\/]/).pop());
-    if (!files[k]) return u;
-    const url = URL.createObjectURL(new Blob([files[k]])); urls.push(url); return url;
-  });
-  let obj;
-  if (mesh.ext === 'obj') {
-    const text = dec(buf), loader = new THREE.OBJLoader(mgr), lib = text.match(/^mtllib\s+(.+?)\s*$/m);
-    const mtlKey = lib && Object.keys(files).find(k => k === lib[1].split(/[\\/]/).pop());
-    if (mtlKey && THREE.MTLLoader) {
-      const mats = new THREE.MTLLoader(mgr).setResourcePath('').parse(dec(files[mtlKey]), '');
-      mats.preload(); loader.setMaterials(mats);
-    }
-    obj = loader.parse(text);
-  } else if (mesh.ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf), new THREE.MeshStandardMaterial({ color: 0xb8bcbf }));
-  else if (mesh.ext === 'ply') {
-    const g = new THREE.PLYLoader().parse(buf), vc = !!g.attributes.color;
-    obj = /element face [1-9]/.test(dec(buf.slice(0, 4096)))
-      ? new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: vc ? 0xffffff : 0xb8bcbf, vertexColors: vc }))
-      : new THREE.Points(g, new THREE.PointsMaterial({ size: 0.025, color: vc ? 0xffffff : 0x8796a3, vertexColors: vc }));
-  } else {
-    obj = await new Promise((res, rej) => {
-      const l = new THREE.GLTFLoader(mgr);
-      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
-      l.parse(buf, '', g => res(g.scene), rej);
-    });
-  }
+  const obj = await loadScanObject(mf.files, mf.main, mesh.ext);
+  const clip = mesh.clean ? [] : [new THREE.Plane(new THREE.Vector3(0, -1, 0), CEILING_CUT)];   // three.js world is y-up
   obj.traverse(o => {
     if (!o.material) return;
     (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
@@ -2198,8 +2240,152 @@ async function buildScanMesh(mf, mesh) {
   });
   obj.matrixAutoUpdate = false;
   obj.matrix.fromArray(mesh.matrix);
-  setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 20000);
+  setTimeout(() => (obj.userData.urls || []).forEach(u => URL.revokeObjectURL(u)), 20000);
   return obj;
+}
+
+/* ---------- Clean a scanned mesh once, at "Use this map" ----------
+   Bakes the scan -> robot transform into the vertices, drops ceiling triangles and
+   small detached scraps, and writes a tidy OBJ that both the preview and Gazebo use.
+   The map points are re-sampled from the same cleaned surfaces. */
+async function loadScanObject(files, main, ext) {
+  const buf = files[main], dec = b => new TextDecoder().decode(b);
+  const urls = [], mgr = new THREE.LoadingManager();
+  mgr.setURLModifier(u => {
+    const k = decodeURIComponent(u.split(/[\\/]/).pop());
+    if (!files[k]) return u;
+    const url = URL.createObjectURL(new Blob([files[k]])); urls.push(url); return url;
+  });
+  let obj;
+  if (ext === 'obj') {
+    const text = typeof buf === 'string' ? buf : dec(buf), loader = new THREE.OBJLoader(mgr), lib = text.match(/^mtllib\s+(.+?)\s*$/m);
+    const mtlKey = lib && Object.keys(files).find(k => k === lib[1].split(/[\\/]/).pop());
+    if (mtlKey && THREE.MTLLoader) {
+      const mtl = typeof files[mtlKey] === 'string' ? files[mtlKey] : dec(files[mtlKey]);
+      const mats = new THREE.MTLLoader(mgr).setResourcePath('').parse(mtl, '');
+      mats.preload(); loader.setMaterials(mats);
+    }
+    obj = loader.parse(text);
+  } else if (ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf), new THREE.MeshStandardMaterial({ color: 0xb8bcbf }));
+  else if (ext === 'ply') {
+    const g = new THREE.PLYLoader().parse(buf), vc = !!g.attributes.color;
+    obj = /element face [1-9]/.test(dec(buf.slice(0, 4096)))
+      ? new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: vc ? 0xffffff : 0xb8bcbf, vertexColors: vc }))
+      : new THREE.Points(g, new THREE.PointsMaterial({ size: 0.025, color: vc ? 0xffffff : 0x8796a3, vertexColors: vc }));
+  } else {
+    obj = await new Promise((res, rej) => {
+      const l = new THREE.GLTFLoader(mgr);
+      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
+      l.parse(buf, '', g => res(g.scene), rej);
+    });
+  }
+  obj.userData.urls = urls;
+  return obj;
+}
+
+async function cleanScanMesh(i) {
+  const obj = await loadScanObject(i.files, i.main, i.ext);
+  obj.updateMatrixWorld(true);
+  const M = new THREE.Matrix4().fromArray(meshMatrix(i));
+  // gather triangles in the robot frame, grouped by material
+  const parts = [];
+  obj.traverse(o => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+    const W = new THREE.Matrix4().multiplyMatrices(M, o.matrixWorld);
+    const pos = g.attributes.position.clone().applyMatrix4(W).array, uv = g.attributes.uv ? g.attributes.uv.array : null;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const groups = g.groups && g.groups.length ? g.groups : [{ start: 0, count: pos.length / 3, materialIndex: 0 }];
+    groups.forEach(gr => parts.push({ pos, uv, start: gr.start, count: gr.count, mat: (mats[gr.materialIndex] || mats[0] || {}).name || '' }));
+  });
+  if (!parts.length) return null;
+  // connected pieces: weld vertices at 1 cm, union triangles that share one
+  const ids = new Map(), parent = [], find = x => { while (parent[x] !== x) x = parent[x] = parent[parent[x]]; return x; };
+  const tris = [];
+  parts.forEach((p, pi) => {
+    for (let t = p.start; t < p.start + p.count; t += 3) {
+      const a = p.pos, z = Math.min(a[t * 3 + 2], a[t * 3 + 5], a[t * 3 + 8]);
+      if (z > CEILING_CUT) continue;                          // ceiling
+      const v = [0, 1, 2].map(k => {
+        const key = Math.round(a[(t + k) * 3] * 100) + ',' + Math.round(a[(t + k) * 3 + 1] * 100) + ',' + Math.round(a[(t + k) * 3 + 2] * 100);
+        let id = ids.get(key); if (id === undefined) { id = parent.length; parent.push(id); ids.set(key, id); }
+        return id;
+      });
+      const r = find(v[0]); parent[find(v[1])] = r; parent[find(v[2])] = r;
+      tris.push(pi, t, v[0]);
+    }
+  });
+  // per piece: triangle count and centre; the biggest piece is the room itself
+  const size = new Map(), cx = new Map(), cy = new Map();
+  for (let k = 0; k < tris.length; k += 3) {
+    const r = find(tris[k + 2]), p = parts[tris[k]].pos, t = tris[k + 1];
+    size.set(r, (size.get(r) || 0) + 1);
+    cx.set(r, (cx.get(r) || 0) + p[t * 3]); cy.set(r, (cy.get(r) || 0) + p[t * 3 + 1]);
+  }
+  let main = null; size.forEach((n, r) => { if (main === null || n > size.get(main)) main = r; });
+  let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+  for (let k = 0; k < tris.length; k += 3) {
+    if (find(tris[k + 2]) !== main) continue;
+    const p = parts[tris[k]].pos, t = tris[k + 1];
+    for (let c = 0; c < 3; c++) { const x = p[(t + c) * 3], y = p[(t + c) * 3 + 1]; bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x); by0 = Math.min(by0, y); by1 = Math.max(by1, y); }
+  }
+  // drop a piece only if it is tiny or sits outside the room's footprint (scraps seen through windows, stray bits)
+  const total = tris.length / 3, tiny = Math.max(20, total * 0.002), keep = new Map();
+  size.forEach((n, r) => {
+    const mx = cx.get(r) / n, my = cy.get(r) / n;
+    const inside = mx > bx0 - 0.3 && mx < bx1 + 0.3 && my > by0 - 0.3 && my < by1 + 0.3;
+    keep.set(r, r === main || (n >= tiny && inside));
+  });
+  // write the cleaned OBJ (welded per material) and re-sample points for the map
+  const out = ['# Scanned room cleaned by Robot URDF Studio: meters, z up, robot start at the origin.'];
+  const mtlName = i.ext === 'obj' && Object.keys(i.files).some(k => /\.mtl$/i.test(k)) ? 'scan_model.mtl' : null;
+  if (mtlName) out.push('mtllib ' + mtlName);
+  let vBase = 1, tBase = 1, kept = 0;
+  const pts = [], seen = new Set(), r = rng(5);
+  const addPt = (x, y, z) => { const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20); if (!seen.has(k)) { seen.add(k); pts.push(Math.round(x * 20) * 5, Math.round(y * 20) * 5, Math.round(z * 20) * 5); } };
+  parts.forEach((p, pi) => {
+    const vmap = new Map(), vl = [], tl = [], fl = [];
+    for (let k = 0; k < tris.length; k += 3) {
+      if (tris[k] !== pi || !keep.get(find(tris[k + 2]))) continue;
+      const t = tris[k + 1], a = p.pos, face = [];
+      for (let c = 0; c < 3; c++) {
+        const q = (t + c) * 3, u = p.uv ? p.uv[(t + c) * 2] : 0, w = p.uv ? p.uv[(t + c) * 2 + 1] : 0;
+        const key = a[q].toFixed(4) + ' ' + a[q + 1].toFixed(4) + ' ' + a[q + 2].toFixed(4) + (p.uv ? '|' + u.toFixed(5) + ' ' + w.toFixed(5) : '');
+        let id = vmap.get(key);
+        if (id === undefined) { id = vl.length; vmap.set(key, id); vl.push(`v ${a[q].toFixed(4)} ${a[q + 1].toFixed(4)} ${a[q + 2].toFixed(4)}`); if (p.uv) tl.push(`vt ${u.toFixed(5)} ${w.toFixed(5)}`); }
+        face.push(id);
+      }
+      fl.push(face); kept++;
+      // map points: about one per 3 cm × 3 cm of surface
+      const A = [a[t * 3], a[t * 3 + 1], a[t * 3 + 2]], B = [a[t * 3 + 3], a[t * 3 + 4], a[t * 3 + 5]], C = [a[t * 3 + 6], a[t * 3 + 7], a[t * 3 + 8]];
+      const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+      const area = Math.hypot(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]) / 2;
+      addPt(A[0], A[1], A[2]);
+      for (let s = 0, ns = Math.min(5000, Math.floor(area / 9e-4)); s < ns; s++) {
+        let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        addPt(A[0] + e1[0] * u + e2[0] * v, A[1] + e1[1] * u + e2[1] * v, A[2] + e1[2] * u + e2[2] * v);
+      }
+    }
+    if (!fl.length) return;
+    if (mtlName && p.mat) out.push('usemtl ' + p.mat);
+    out.push(...vl); if (p.uv) out.push(...tl);
+    fl.forEach(f => out.push(p.uv ? `f ${f.map(x => `${x + vBase}/${x + tBase}`).join(' ')}` : `f ${f.map(x => x + vBase).join(' ')}`));
+    vBase += vl.length; if (p.uv) tBase += tl.length;
+  });
+  (obj.userData.urls || []).forEach(u => URL.revokeObjectURL(u));
+  if (!kept) return null;
+  // material file and textures under safe names
+  const files = { 'scan_model.obj': out.join('\n') + '\n' }, rename = {};
+  Object.keys(i.files).forEach(k => { if (k !== i.main) rename[k] = /\.mtl$/i.test(k) ? 'scan_model.mtl' : safeName(k); });
+  Object.entries(i.files).forEach(([k, buf]) => {
+    if (k === i.main) return;
+    if (/\.mtl$/i.test(k)) {
+      let t = new TextDecoder().decode(buf);
+      Object.keys(rename).forEach(o => { if (o !== rename[o] && !/\.mtl$/i.test(o)) t = t.split(o).join(rename[o]); });
+      files['scan_model.mtl'] = t;
+    } else files[rename[k]] = buf;
+  });
+  return { files, pts, dropped: total - kept, total };
 }
 
 // Package copies of the scan: safe file names, ceiling faces removed from OBJ
@@ -2208,6 +2394,10 @@ function gazeboMeshOK(ext) { return ext === 'obj' || ext === 'stl' || (ext === '
 function scanPackageFiles() {
   if (!hasMesh() || !gazeboMeshOK(state.scan.mesh.ext)) return {};
   const mf = meshFiles, mesh = state.scan.mesh, out = {}, m = mesh.matrix, dec = b => new TextDecoder().decode(b);
+  if (mesh.clean) {
+    Object.entries(mf.files).forEach(([k, c]) => { out[`worlds/custom_scan/${k}`] = typeof c === 'string' ? c : { bin: c }; });
+    return out;
+  }
   const mainName = 'scan_model.' + mesh.ext, rename = {};
   Object.keys(mf.files).forEach(k => { rename[k] = k === mf.main ? mainName : safeName(k); });
   Object.entries(mf.files).forEach(([k, buf]) => {

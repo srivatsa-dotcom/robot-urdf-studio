@@ -58,7 +58,9 @@ Click the map where the robot starts and rotate until its forward direction poin
 
 The package then also contains `worlds/custom.sdf` and `maps/custom_map.pgm/.yaml` (a 5 cm Nav2 occupancy map). The scan start point is the map origin and the robot spawn point.
 
-For imported scans in OBJ or STL (and GLB on Jazzy), the Gazebo world shows the **real scanned mesh with its textures** (`worlds/custom_scan/`), so simulated cameras and lidar see your actual room; the ceiling is cut off above 2.3 m. Collisions use simplified invisible blocks so physics stays fast. Live Android scans and PLY point clouds use visible blocks instead.
+For imported scans in OBJ or STL (and GLB on Jazzy), the Gazebo world shows the **real scanned mesh with its textures** (`worlds/custom_scan/`), so simulated cameras and lidar see your actual room; the ceiling is cut off above 2.3 m. Collisions use simplified invisible blocks so physics stays fast.
+
+Imported meshes are cleaned when you click **Use this map**: the floor plane is found and the scan is levelled (tilt corrected), the floor height is set so wheels sit on top of small bumps, the ceiling is cut, and loose scraps (tiny pieces or pieces outside the room's footprint) are removed. The Nav2 map drops obstacle specks smaller than 0.02 m², closes one-cell gaps in walls, and ignores anything lower than 10 cm above the floor. Live Android scans and PLY point clouds use visible blocks instead.
 
 How it works and what it needs:
 
