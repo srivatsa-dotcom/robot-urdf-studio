@@ -634,9 +634,10 @@ function gzNames() {
   };
 }
 
+const matColors = () => ({ body: state.colors.body, accent: state.colors.accent, dark: '#2B3033', joint: '#8A9490', sensor: '#1E2326' });
+
 function toURDF(M, withGazebo) {
-  const c = state.colors;
-  const mats = { body: c.body, accent: c.accent, dark: '#2B3033', joint: '#8A9490', sensor: '#1E2326' };
+  const mats = matColors();
   const o = [];
   o.push('<?xml version="1.0"?>');
   o.push(`<!-- ${TYPES[M.type].label}: ${M.name}`);
@@ -648,7 +649,7 @@ function toURDF(M, withGazebo) {
     if (!l.parts.length && !l.inertial) { o.push(`  <link name="${l.name}"/>`, ''); continue; }
     o.push(`  <link name="${l.name}">`);
     for (const p of l.parts.filter(p => p.vis)) {
-      o.push('    <visual>', `      <origin xyz="${v3(p.xyz)}" rpy="${v3(p.rpy)}"/>`, `      <geometry>${geomXml(p.g)}</geometry>`, `      <material name="${p.mat}"/>`, '    </visual>');
+      o.push('    <visual>', `      <origin xyz="${v3(p.xyz)}" rpy="${v3(p.rpy)}"/>`, `      <geometry>${geomXml(p.g)}</geometry>`, `      <material name="${p.mat}"><color rgba="${hexRgba(mats[p.mat])}"/></material>`, '    </visual>');
     }
     for (const p of l.parts.filter(p => p.col)) {
       o.push('    <collision>', `      <origin xyz="${v3(p.xyz)}" rpy="${v3(p.rpy)}"/>`, `      <geometry>${geomXml(p.g)}</geometry>`, '    </collision>');
@@ -677,6 +678,15 @@ function toURDF(M, withGazebo) {
 
 function gazeboXml(M) {
   const g = gzNames(), o = ['  <!-- ===== Gazebo (' + g.sim + ') ===== -->'];
+  // Exact colors for links drawn in one material; mixed links use the URDF colors above
+  const mats = matColors();
+  for (const l of M.links) {
+    const used = [...new Set(l.parts.filter(p => p.vis).map(p => p.mat))];
+    if (used.length !== 1) continue;
+    const c = hexRgba(mats[used[0]]);
+    o.push(`  <gazebo reference="${l.name}"><visual><material><ambient>${c}</ambient><diffuse>${c}</diffuse><specular>0.2 0.2 0.2 1</specular></material></visual></gazebo>`);
+  }
+  o.push('');
   for (const l of M.links) {
     if (l.friction === 'wheel') o.push(`  <gazebo reference="${l.name}"><mu1>1.0</mu1><mu2>1.0</mu2><kp>1e6</kp><kd>100</kd></gazebo>`);
     if (l.friction === 'caster') o.push(`  <gazebo reference="${l.name}"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>`);
@@ -728,6 +738,7 @@ function worldSdf(M) {
   const g = gzNames(), S = M.sensors;
   const sys = [['physics', 'Physics'], ['user-commands', 'UserCommands'], ['scene-broadcaster', 'SceneBroadcaster']];
   const L = ['<?xml version="1.0"?>', '<sdf version="1.8">', '  <world name="empty">',
+    '    <scene>', '      <ambient>0.45 0.45 0.45 1</ambient>', '      <background>0.75 0.8 0.82 1</background>', '      <shadows>true</shadows>', '    </scene>',
     '    <physics name="1ms" type="ignored">', '      <max_step_size>0.001</max_step_size>', '      <real_time_factor>1.0</real_time_factor>', '    </physics>'];
   sys.forEach(([a, b]) => L.push(`    <plugin filename="${g.lib(a)}" name="${g.cls(b)}"/>`));
   if (S.lidar || S.camera) L.push(`    <plugin filename="${g.lib('sensors')}" name="${g.cls('Sensors')}">`, '      <render_engine>ogre2</render_engine>', '    </plugin>');
@@ -1061,7 +1072,7 @@ function applyTheme() {
   scene.add(grid);
 }
 function matFor(key) {
-  const c = { body: state.colors.body, accent: state.colors.accent, dark: '#2B3033', joint: '#8A9490', sensor: '#1E2326' }[key];
+  const c = matColors()[key];
   return new THREE.MeshStandardMaterial({ color: lin(c), roughness: key === 'dark' || key === 'sensor' ? 0.75 : 0.5, metalness: key === 'joint' ? 0.4 : 0.05 });
 }
 function meshFor(p, mats) {

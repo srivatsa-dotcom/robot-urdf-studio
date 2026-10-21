@@ -1,5 +1,9 @@
 # Robot URDF Studio
 
+### ▶ [Open the app](https://srivatsa-dotcom.github.io/robot-urdf-studio/)
+
+No install needed. Click the link, design your robot, and download the ROS 2 package.
+
 A single-page web app that generates URDF models and ready-to-build ROS 2 packages for:
 
 - 2-wheel drive (differential drive + caster)
@@ -18,7 +22,7 @@ Enter the robot's dimensions and masses, check it in the live 3D preview (with j
 
 Supports ROS 2 Jazzy (Gazebo Harmonic) and Humble (Gazebo Fortress).
 
-## Run
+## Run locally (optional)
 
 Open `index.html` in a browser, or serve the folder:
 
@@ -39,3 +43,7 @@ source install/setup.bash
 ros2 launch <package> display.launch.py   # RViz
 ros2 launch <package> gazebo.launch.py    # Gazebo
 ```
+
+## Colors
+
+The colors you pick in the app are written into every `<visual>` of the URDF, so RViz and Gazebo show the same colors as the preview. If a part shows up plain white in RViz, RViz has no transform for that link yet: check that the joint states are being published (the joint slider window for RViz, or the Gazebo bridge for simulation).
