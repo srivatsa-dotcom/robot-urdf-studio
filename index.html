@@ -145,7 +145,9 @@ input[type="color"] { width: 36px; height: 26px; padding: 0; border: 1px solid v
 .muted { color: var(--muted); }
 
 /* Launch */
-.launch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.launch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.cmdwrap { position: relative; }
+.cmdwrap .btn { position: absolute; top: 8px; right: 8px; }
 .targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .target { position: relative; }
 .target input { position: absolute; opacity: 0; pointer-events: none; }
@@ -265,7 +267,9 @@ pre.cmd .c { color: var(--muted); }
             <option value="humble">Humble Hawksbill · Gazebo Fortress</option>
           </select>
         </div>
-        <pre class="cmd" id="runCmd"></pre>
+        <label class="check" id="moveitRow"><input type="checkbox" id="moveit">Add a MoveIt 2 config package <small>motion planning, IK, ros2_control</small></label>
+        <p class="muted" id="moveitNote" hidden>MoveIt is for arms and humanoids; rovers don't need it.</p>
+        <div class="cmdwrap"><pre class="cmd" id="runCmd"></pre><button class="btn" type="button" id="copyCmd">Copy</button></div>
       </div>
     </div>
   </section>
@@ -365,7 +369,7 @@ const state = {
   params: {}, sensors: {}, names: {},
   pkgAuto: {}, pkg: {},
   colors: { body: '#C8CEC9', accent: '#E0601A' },
-  distro: 'jazzy', target: 'both',
+  distro: 'jazzy', target: 'both', moveit: true,
   q: {},
 };
 for (const [t, d] of Object.entries(TYPES)) {
@@ -691,7 +695,7 @@ function gazeboXml(M) {
     if (l.friction === 'wheel') o.push(`  <gazebo reference="${l.name}"><mu1>1.0</mu1><mu2>1.0</mu2><kp>1e6</kp><kd>100</kd></gazebo>`);
     if (l.friction === 'caster') o.push(`  <gazebo reference="${l.name}"><mu1>0.001</mu1><mu2>0.001</mu2></gazebo>`);
   }
-  o.push('', '  <gazebo>', `    <plugin filename="${g.lib('joint-state-publisher')}" name="${g.cls('JointStatePublisher')}"/>`, '  </gazebo>');
+  if (!M.moveit) o.push('', '  <gazebo>', `    <plugin filename="${g.lib('joint-state-publisher')}" name="${g.cls('JointStatePublisher')}"/>`, '  </gazebo>');
   if (M.wheels) {
     const w = M.wheels;
     o.push('', '  <gazebo>', `    <plugin filename="${g.lib('diff-drive')}" name="${g.cls('DiffDrive')}">`);
@@ -702,7 +706,7 @@ function gazeboXml(M) {
       '      <tf_topic>/tf</tf_topic>', '      <frame_id>odom</frame_id>', '      <child_frame_id>base_footprint</child_frame_id>',
       '    </plugin>', '  </gazebo>');
   }
-  if (M.ctrl.length) {
+  if (M.ctrl.length && !M.moveit) {
     o.push('', '  <!-- Position control: publish std_msgs/Float64 to /' + M.name + '/<joint>/cmd_pos -->', '  <gazebo>');
     M.ctrl.forEach(j => {
       const pr = M.joints.find(x => x.name === j).type === 'prismatic';
@@ -756,12 +760,12 @@ function worldSdf(M) {
 function bridgeArgs(M) {
   const g = gzNames(), a = [];
   a.push(`/clock@rosgraph_msgs/msg/Clock[${g.msg('Clock')}`);
-  a.push(`/world/empty/model/${M.name}/joint_state@sensor_msgs/msg/JointState[${g.msg('Model')}`);
+  if (!M.moveit) a.push(`/world/empty/model/${M.name}/joint_state@sensor_msgs/msg/JointState[${g.msg('Model')}`);
   if (M.wheels) a.push(`/cmd_vel@geometry_msgs/msg/Twist]${g.msg('Twist')}`, `/odom@nav_msgs/msg/Odometry[${g.msg('Odometry')}`, `/tf@tf2_msgs/msg/TFMessage[${g.msg('Pose_V')}`);
   if (M.sensors.lidar) a.push(`/scan@sensor_msgs/msg/LaserScan[${g.msg('LaserScan')}`);
   if (M.sensors.camera) a.push(`/camera/image_raw@sensor_msgs/msg/Image[${g.msg('Image')}`, `/camera/camera_info@sensor_msgs/msg/CameraInfo[${g.msg('CameraInfo')}`);
   if (M.sensors.imu) a.push(`/imu@sensor_msgs/msg/Imu[${g.msg('IMU')}`);
-  M.ctrl.forEach(j => a.push(`/${M.name}/${j}/cmd_pos@std_msgs/msg/Float64]${g.msg('Double')}`));
+  if (!M.moveit) M.ctrl.forEach(j => a.push(`/${M.name}/${j}/cmd_pos@std_msgs/msg/Float64]${g.msg('Double')}`));
   return a;
 }
 
@@ -941,43 +945,72 @@ ament_package()
 `;
 }
 
+const zipName = M => M.moveit ? `${M.name}_ros2.zip` : `${state.pkg[state.type]}.zip`;
+
 function runCommands(pkg, M, forReadme) {
-  const d = state.distro, gz = state.target !== 'rviz';
+  const d = state.distro, gz = state.target !== 'rviz', mi = M.moveit;
   const apt = [`ros-${d}-robot-state-publisher`, `ros-${d}-joint-state-publisher-gui`, `ros-${d}-rviz2`];
   if (gz) apt.push(`ros-${d}-ros-gz`);
+  if (mi) apt.push(`ros-${d}-moveit`, `ros-${d}-ros2-control`, `ros-${d}-ros2-controllers`, `ros-${d}-xacro`);
+  if (mi && gz) apt.push(d === 'humble' ? 'ros-humble-ign-ros2-control' : `ros-${d}-gz-ros2-control`);
   if (gz && M.wheels) apt.push(`ros-${d}-teleop-twist-keyboard`);
   const L = [
     '# 1. Install dependencies (once)',
     `sudo apt install ${apt.join(' ')}`,
     '',
-    '# 2. Put the package in a workspace and build it',
+    `# 2. Put the package${mi ? 's' : ''} in a workspace and build`,
     'mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src',
-    `unzip ~/Downloads/${pkg}.zip`,
-    `cd ~/ros2_ws && colcon build --packages-select ${pkg}`,
+    `unzip ~/Downloads/${zipName(M)}`,
+    `cd ~/ros2_ws && colcon build --packages-select ${pkg}${mi ? ' ' + mi.pkg : ''}`,
     `source /opt/ros/${d}/setup.bash && source install/setup.bash`,
     '',
     '# 3. Launch',
   ];
-  if (state.target === 'rviz') L.push(`ros2 launch ${pkg} display.launch.py`);
+  let step = 4;
+  if (mi) {
+    if (gz) L.push(`ros2 launch ${mi.pkg} gazebo.launch.py        # Gazebo + MoveIt + RViz`);
+    L.push(`ros2 launch ${mi.pkg} demo.launch.py           # MoveIt in RViz, no physics`);
+    L.push(`ros2 launch ${pkg} display.launch.py      # model only, joint sliders`);
+    L.push('', `# ${step++}. In RViz: drag the marker at the ${M.type === 'arm6' ? 'gripper' : 'hand'}, then Plan & Execute`);
+  } else if (state.target === 'rviz') L.push(`ros2 launch ${pkg} display.launch.py`);
   else L.push(`ros2 launch ${pkg} gazebo.launch.py${state.target === 'both' ? '' : '            # add rviz:=true for RViz'}`);
-  if (gz && M.wheels) L.push('', '# 4. Drive it (new terminal)', 'ros2 run teleop_twist_keyboard teleop_twist_keyboard');
-  if (gz && M.ctrl.length) {
+  if (gz && M.wheels) L.push('', `# ${step++}. Drive it (new terminal)`, 'ros2 run teleop_twist_keyboard teleop_twist_keyboard');
+  if (gz && !mi && M.ctrl.length) {
     const j = M.ctrl.find(x => /elbow|joint2|shoulder_pitch|lift/.test(x)) || M.ctrl[0];
     const val = /lift/.test(j) ? 0.1 : -0.8;
-    L.push('', `# ${M.wheels ? '5' : '4'}. Move a joint (new terminal)`, `ros2 topic pub --once /${M.name}/${j}/cmd_pos std_msgs/msg/Float64 "{data: ${val}}"`);
+    L.push('', `# ${step++}. Move a joint (new terminal)`, `ros2 topic pub --once /${M.name}/${j}/cmd_pos std_msgs/msg/Float64 "{data: ${val}}"`);
   }
   if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
   return L.join('\n');
 }
 
 function readme(pkg, M, bbox, stats) {
-  const gz = state.target !== 'rviz';
-  const p = M.p;
+  const gz = state.target !== 'rviz', p = M.p, mi = M.moveit;
   const rows = [];
   TYPES[M.type].groups.forEach(([g, fs]) => fs.forEach(f => rows.push(`| ${g} | ${f.label} | ${f.bool ? (p[f.k] ? 'yes' : 'no') : n(p[f.k]) + ' ' + f.unit} |`)));
-  return `# ${pkg}
+  const fileRows = [
+    [`${pkg}/urdf/${M.name}.urdf`, `Robot model: links, joints, colors, inertia${gz ? ', Gazebo plugins and sensors' : ''}`],
+    [`${pkg}/launch/display.launch.py`, 'robot_state_publisher + joint sliders + RViz'],
+  ];
+  if (gz && !mi) fileRows.push([`${pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`)`]);
+  if (gz) fileRows.push([`${pkg}/worlds/empty.sdf`, 'Ground plane, sun and the simulator systems the sensors need']);
+  fileRows.push([`${pkg}/rviz/*.rviz`, 'Saved RViz layouts'], [`${pkg}/robot_spec.json`, 'The inputs used to generate this package. Import it back into the studio to edit.']);
+  if (mi) {
+    fileRows.push(
+      [`${mi.pkg}/config/${M.name}.srdf`, 'Planning groups, named poses, collision pairs MoveIt skips'],
+      [`${mi.pkg}/config/${M.name}.urdf.xacro`, 'Description URDF + ros2_control (`sim:=true` for Gazebo hardware)'],
+      [`${mi.pkg}/config/kinematics.yaml`, 'KDL inverse kinematics per group'],
+      [`${mi.pkg}/config/joint_limits.yaml`, 'Velocity / acceleration limits for trajectories'],
+      [`${mi.pkg}/config/ros2_controllers.yaml`, 'joint_state_broadcaster + one trajectory controller per group'],
+      [`${mi.pkg}/config/moveit_controllers.yaml`, 'Which controllers MoveIt sends trajectories to'],
+      [`${mi.pkg}/launch/demo.launch.py`, 'MoveIt with mock hardware in RViz'],
+    );
+    if (gz) fileRows.push([`${mi.pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + gz_ros2_control + MoveIt + RViz`]);
+  }
+  const ws = mi ? `# ${M.name} — ROS 2 packages` : `# ${pkg}`;
+  return `${ws}
 
-${TYPES[M.type].label} robot \`${M.name}\`, generated by Robot URDF Studio for ROS 2 ${state.distro[0].toUpperCase() + state.distro.slice(1)}${gz ? ' and ' + gzNames().sim : ''}.
+${TYPES[M.type].label} robot \`${M.name}\`, generated by Robot URDF Studio for ROS 2 ${state.distro[0].toUpperCase() + state.distro.slice(1)}${gz ? ' and ' + gzNames().sim : ''}${mi ? ', with a MoveIt 2 configuration' : ''}.
 
 - Links: ${M.links.length}
 - Movable joints: ${stats.dof}
@@ -994,20 +1027,27 @@ ${runCommands(pkg, M, true)}
 
 | Path | Purpose |
 |---|---|
-| \`urdf/${M.name}.urdf\` | Robot model: links, joints, inertia${gz ? ', Gazebo plugins and sensors' : ''} |
-| \`launch/display.launch.py\` | robot_state_publisher + joint sliders + RViz |
-${gz ? `| \`launch/gazebo.launch.py\` | ${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`) |
-| \`worlds/empty.sdf\` | Ground plane, sun and the simulator systems the sensors need |
-` : ''}| \`rviz/*.rviz\` | Saved RViz layouts |
-| \`robot_spec.json\` | The inputs used to generate this package. Import it back into the studio to edit. |
-${gz ? `
+${fileRows.map(([a, b]) => `| \`${a}\` | ${b} |`).join('\n')}
+${mi ? `
+## MoveIt planning groups
+
+| Group | Joints | Inverse kinematics | Named poses |
+|---|---|---|---|
+${mi.groups.map(g => `| \`${g.name}\` | ${g.joints.length} | ${g.kin ? (g.posOnly ? 'KDL, position only' : 'KDL, full pose') : 'none (joint goals)'} | ${groupStates(M, g).map(s => s.name).join(', ')} |`).join('\n')}
+
+Pick a group in the MotionPlanning panel, drag the interactive marker (or choose a named pose as the goal), then click **Plan & Execute**.${M.type !== 'arm6' ? ' The arms have 4 joints, so IK solves hand position only, not orientation.' : ''}${M.type === 'humanoid' ? ' MoveIt plans each limb; it does not balance or walk.' : ''}
+` : ''}${gz ? `
 ## Topics in Gazebo
 
 ${bridgeArgs(M).map(a => '- `' + a.split('@')[0] + '`').join('\n')}
-${M.ctrl.length ? `
+${mi ? '- `/joint_states` (from joint_state_broadcaster)' : ''}${!mi && M.ctrl.length ? `
 Each controlled joint takes a \`std_msgs/msg/Float64\` target position on \`/${M.name}/<joint>/cmd_pos\`. Gains are in the URDF \`JointPositionController\` blocks; tune them if a joint oscillates or sags.` : ''}
 ${M.type === 'humanoid' && !p.fixBase ? `
 The humanoid spawns free-standing with no balance controller, so it will fall over. Turn on "Pin pelvis to the world" in the studio to hang it from a fixed point instead.` : ''}` : ''}
+## Colors
+
+The colors picked in the studio are written into every \`<visual>\` of the URDF. If a part shows up plain white in RViz, RViz has no transform for that link yet: check that joint states are being published.
+
 ## Specification
 
 | Group | Parameter | Value |
@@ -1016,11 +1056,356 @@ ${rows.join('\n')}
 `;
 }
 
+/* ---------- MoveIt 2 config package ---------- */
+const MOVEIT_TYPES = ['arm6', 'humanoid', 'semi'];
+const useMoveit = () => state.moveit && MOVEIT_TYPES.includes(state.type);
+const yf = x => { const s = n(x); return /[.e]/.test(s) ? s : s + '.0'; };   // ROS 2 params want explicit doubles
+
+function chainJoints(M, base, tip) {
+  const byChild = Object.fromEntries(M.joints.map(j => [j.child, j]));
+  const out = [];
+  for (let l = tip; l !== base;) {
+    const j = byChild[l];
+    if (!j) return [];
+    if (j.type !== 'fixed') out.unshift(j.name);
+    l = j.parent;
+  }
+  return out;
+}
+
+function moveitGroups(M) {
+  const p = M.p, G = [];
+  const chain = (name, base, tip, posOnly) => G.push({ name, chain: [base, tip], joints: chainJoints(M, base, tip), kin: true, posOnly });
+  const list = (name, joints) => G.push({ name, joints, kin: false });
+  if (M.type === 'arm6') {
+    chain('arm', 'base_link', 'tool0', false);
+    if (p.gripper) list('gripper', ['left_finger_joint', 'right_finger_joint']);
+  } else {
+    chain('left_arm', 'torso_link', 'left_hand_link', true);
+    chain('right_arm', 'torso_link', 'right_hand_link', true);
+    list('head', ['neck_yaw_joint', 'neck_pitch_joint']);
+    if (M.type === 'humanoid') {
+      list('torso', ['torso_yaw_joint']);
+      chain('left_leg', 'pelvis_link', 'left_foot_link', false);
+      chain('right_leg', 'pelvis_link', 'right_foot_link', false);
+    } else if (p.lift > 0) list('torso', ['torso_lift_joint']);
+  }
+  return G;
+}
+
+function groupStates(M, g) {
+  const clamp = (name, v) => { const j = M.joints.find(x => x.name === name); return Math.min(j.lim.hi, Math.max(j.lim.lo, v)); };
+  const pose = vals => Object.fromEntries(g.joints.map(j => [j, clamp(j, vals(j))]));
+  if (g.name === 'gripper') return [{ name: 'open', values: pose(() => M.p.stroke / 2) }, { name: 'close', values: pose(() => 0) }];
+  const st = [{ name: 'home', values: pose(() => 0) }];
+  if (g.name === 'arm') st.push({ name: 'ready', values: pose(j => ({ joint2: 0.5, joint3: 1.2, joint5: 1.0 })[j] || 0) });
+  if (/_arm$/.test(g.name)) st.push({ name: 'raised', values: pose(j => /shoulder_pitch/.test(j) ? -1.5 : /elbow/.test(j) ? -0.6 : 0) });
+  if (g.name === 'torso' && M.type === 'semi') st.push({ name: 'up', values: pose(() => M.p.lift) });
+  return st;
+}
+
+// Allowed-collision matrix: links joined by fixed joints or one movable joint
+// (skipping links without collision geometry), plus pairs touching at the zero pose
+function computeACM(M) {
+  const tf = (xyz, rpy) => {
+    const [r, p, y] = rpy, cr = Math.cos(r), sr = Math.sin(r), cp = Math.cos(p), sp = Math.sin(p), cy = Math.cos(y), sy = Math.sin(y);
+    return [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr, xyz[0], sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr, xyz[1], -sp, cp * sr, cp * cr, xyz[2], 0, 0, 0, 1];
+  };
+  const mul = (a, b) => { const o = []; for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) { let s = 0; for (let m = 0; m < 4; m++) s += a[i * 4 + m] * b[m * 4 + k]; o.push(s); } return o; };
+  const ap = (m, v) => [0, 1, 2].map(i => m[i * 4] * v[0] + m[i * 4 + 1] * v[1] + m[i * 4 + 2] * v[2] + m[i * 4 + 3]);
+  const T = {}, kids = {};
+  M.joints.forEach(j => (kids[j.parent] = kids[j.parent] || []).push(j));
+  const walk = (name, m) => { T[name] = m; (kids[name] || []).forEach(j => walk(j.child, mul(m, tf(j.xyz, j.rpy)))); };
+  M.links.filter(l => !M.joints.some(j => j.child === l.name)).forEach(l => walk(l.name, tf([0, 0, 0], [0, 0, 0])));
+  const geo = M.links.filter(l => l.parts.some(p => p.col)).map(l => l.name);
+  const box = {};
+  geo.forEach(name => {
+    const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    M.linkByName(name).parts.filter(p => p.col).forEach(p => {
+      const g = p.g, h = g[0] === 'box' ? [g[1] / 2, g[2] / 2, g[3] / 2] : g[0] === 'cyl' ? [g[1], g[1], g[2] / 2] : [g[1], g[1], g[1]];
+      const m = mul(T[name], tf(p.xyz, p.rpy));
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+        const c = ap(m, [sx * h[0], sy * h[1], sz * h[2]]);
+        c.forEach((v, i) => { lo[i] = Math.min(lo[i], v); hi[i] = Math.max(hi[i], v); });
+      }
+    });
+    box[name] = [lo, hi];
+  });
+  // bodies = links welded by fixed joints
+  const root = {}, find = x => root[x] === x ? x : (root[x] = find(root[x]));
+  M.links.forEach(l => root[l.name] = l.name);
+  M.joints.filter(j => j.type === 'fixed').forEach(j => root[find(j.child)] = find(j.parent));
+  const hasGeo = new Set(geo.map(find));
+  const nbr = {};
+  M.joints.filter(j => j.type !== 'fixed').forEach(j => {
+    const a = find(j.parent), b = find(j.child);
+    (nbr[a] = nbr[a] || []).push(b); (nbr[b] = nbr[b] || []).push(a);
+  });
+  const adjacent = body => {   // geometry bodies reachable without passing through another geometry body
+    const seen = new Set([body]), out = new Set(), stack = [...(nbr[body] || [])];
+    while (stack.length) {
+      const b = stack.pop(); if (seen.has(b)) continue; seen.add(b);
+      if (hasGeo.has(b)) out.add(b); else stack.push(...(nbr[b] || []));
+    }
+    return out;
+  };
+  const adj = {};
+  [...hasGeo].forEach(b => adj[b] = adjacent(b));
+  const pairs = [];
+  for (let i = 0; i < geo.length; i++) for (let k = i + 1; k < geo.length; k++) {
+    const a = geo[i], b = geo[k], ba = find(a), bb = find(b);
+    if (ba === bb || adj[ba].has(bb)) { pairs.push([a, b, 'Adjacent']); continue; }
+    const [la, ha] = box[a], [lb, hb] = box[b];
+    if ([0, 1, 2].every(x => Math.min(ha[x], hb[x]) - Math.max(la[x], lb[x]) > 0.002)) pairs.push([a, b, 'Default']);
+  }
+  return pairs;
+}
+
+function moveitFiles(M, D) {
+  const P = M.moveit.pkg, G = moveitGroups(M), gz = state.target !== 'rviz', isH = state.distro === 'humble';
+  const root = M.links.find(l => !M.joints.some(j => j.child === l.name)).name;
+  const ctrlJoints = G.flatMap(g => g.joints);
+  const wheels = M.joints.filter(j => j.type === 'continuous').map(j => j.name);
+  const F = {};
+  const L = (...a) => a.join('\n') + '\n';
+
+  F['config/' + M.name + '.urdf.xacro'] = L('<?xml version="1.0"?>',
+    `<!-- MoveIt view of ${M.name}: the description URDF plus ros2_control. sim:=true switches to Gazebo hardware. -->`,
+    `<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="${M.name}">`,
+    '  <xacro:arg name="sim" default="false"/>', '',
+    `  <xacro:include filename="$(find ${D})/urdf/${M.name}.urdf"/>`,
+    `  <xacro:include filename="${M.name}.ros2_control.xacro"/>`, '</robot>');
+
+  const rc = ['<?xml version="1.0"?>', '<robot xmlns:xacro="http://www.ros.org/wiki/xacro">', `  <ros2_control name="${M.name}_system" type="system">`, '    <hardware>',
+    '      <xacro:if value="$(arg sim)">', `        <plugin>${isH ? 'ign_ros2_control/IgnitionSystem' : 'gz_ros2_control/GazeboSimSystem'}</plugin>`, '      </xacro:if>',
+    '      <xacro:unless value="$(arg sim)">', '        <plugin>mock_components/GenericSystem</plugin>', '      </xacro:unless>', '    </hardware>'];
+  ctrlJoints.forEach(j => {
+    const J = M.joints.find(x => x.name === j), q0 = Math.min(J.lim.hi, Math.max(J.lim.lo, 0));
+    rc.push(`    <joint name="${j}">`, '      <command_interface name="position">', `        <param name="min">${n(J.lim.lo)}</param>`, `        <param name="max">${n(J.lim.hi)}</param>`, '      </command_interface>',
+      '      <state_interface name="position">', `        <param name="initial_value">${yf(q0)}</param>`, '      </state_interface>', '      <state_interface name="velocity"/>', '    </joint>');
+  });
+  wheels.forEach(j => rc.push(`    <!-- driven by the diff-drive plugin in Gazebo; read-only here -->`, `    <joint name="${j}">`, '      <state_interface name="position"/>', '      <state_interface name="velocity"/>', '    </joint>'));
+  rc.push('  </ros2_control>', '', '  <xacro:if value="$(arg sim)">', '    <gazebo>',
+    isH ? '      <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">' : '      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">',
+    `        <parameters>$(find ${P})/config/ros2_controllers.yaml</parameters>`, '      </plugin>', '    </gazebo>', '  </xacro:if>', '</robot>');
+  F['config/' + M.name + '.ros2_control.xacro'] = rc.join('\n') + '\n';
+
+  const S = ['<?xml version="1.0"?>', `<!-- Semantic description for MoveIt: planning groups, named poses, collision pairs to skip -->`, `<robot name="${M.name}">`];
+  G.forEach(g => {
+    S.push(`  <group name="${g.name}">`);
+    if (g.chain) S.push(`    <chain base_link="${g.chain[0]}" tip_link="${g.chain[1]}"/>`);
+    else g.joints.forEach(j => S.push(`    <joint name="${j}"/>`));
+    S.push('  </group>');
+  });
+  S.push('');
+  G.forEach(g => groupStates(M, g).forEach(s => {
+    S.push(`  <group_state name="${s.name}" group="${g.name}">`);
+    Object.entries(s.values).forEach(([j, v]) => S.push(`    <joint name="${j}" value="${n(v)}"/>`));
+    S.push('  </group_state>');
+  }));
+  if (G.some(g => g.name === 'gripper')) S.push('', '  <end_effector name="gripper" parent_link="tool0" group="gripper" parent_group="arm"/>');
+  S.push('');
+  computeACM(M).forEach(([a, b, r]) => S.push(`  <disable_collisions link1="${a}" link2="${b}" reason="${r}"/>`));
+  S.push('</robot>', '');
+  F['config/' + M.name + '.srdf'] = S.join('\n');
+
+  const K = [];
+  G.filter(g => g.kin).forEach(g => K.push(`${g.name}:`, '  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin', '  kinematics_solver_search_resolution: 0.005', '  kinematics_solver_timeout: 0.05', ...(g.posOnly ? ['  position_only_ik: true'] : [])));
+  F['config/kinematics.yaml'] = K.join('\n') + '\n';
+
+  const JL = ['# Limits MoveIt uses for time parameterization. Raise the scaling factors for faster motion.', 'default_velocity_scaling_factor: 0.3', 'default_acceleration_scaling_factor: 0.3', 'joint_limits:'];
+  ctrlJoints.forEach(j => { const J = M.joints.find(x => x.name === j); JL.push(`  ${j}:`, '    has_velocity_limits: true', `    max_velocity: ${yf(J.lim.vel)}`, '    has_acceleration_limits: true', `    max_acceleration: ${yf(J.lim.vel * 2)}`); });
+  F['config/joint_limits.yaml'] = JL.join('\n') + '\n';
+
+  const MC = ['moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager', '', 'moveit_simple_controller_manager:', '  controller_names:'];
+  G.forEach(g => MC.push(`    - ${g.name}_controller`));
+  G.forEach(g => { MC.push(`  ${g.name}_controller:`, '    type: FollowJointTrajectory', '    action_ns: follow_joint_trajectory', '    default: true', '    joints:'); g.joints.forEach(j => MC.push(`      - ${j}`)); });
+  F['config/moveit_controllers.yaml'] = MC.join('\n') + '\n';
+
+  const RC = ['controller_manager:', '  ros__parameters:', '    update_rate: 100', '', '    joint_state_broadcaster:', '      type: joint_state_broadcaster/JointStateBroadcaster', ''];
+  G.forEach(g => RC.push(`    ${g.name}_controller:`, '      type: joint_trajectory_controller/JointTrajectoryController', ''));
+  G.forEach(g => {
+    RC.push(`${g.name}_controller:`, '  ros__parameters:', '    joints:'); g.joints.forEach(j => RC.push(`      - ${j}`));
+    RC.push('    command_interfaces:', '      - position', '    state_interfaces:', '      - position', '      - velocity', '    allow_nonzero_velocity_at_trajectory_end: true', '');
+  });
+  F['config/ros2_controllers.yaml'] = RC.join('\n');
+
+  const bb = M.bbox, size = Math.max(bb.x, bb.y, bb.z, 0.3);
+  F['config/moveit.rviz'] = L('Panels:', '  - Class: rviz_common/Displays', '    Name: Displays', '  - Class: rviz_common/Views', '    Name: Views',
+    'Visualization Manager:', '  Class: ""', '  Displays:',
+    '    - Class: rviz_default_plugins/Grid', '      Name: Grid', '      Enabled: true', '      Cell Size: 0.1', '      Plane Cell Count: 40', '      Reference Frame: <Fixed Frame>', '      Value: true',
+    '    - Class: moveit_rviz_plugin/MotionPlanning', '      Name: MotionPlanning', '      Enabled: true', '      Move Group Namespace: ""', '      Robot Description: robot_description', '      Planning Scene Topic: /monitored_planning_scene',
+    '      Planning Request:', `        Planning Group: ${G[0].name}`, '        Interactive Marker Size: 0', '        Query Start State: false', '        Query Goal State: true',
+    '      Planned Path:', '        Loop Animation: false', '        Show Robot Visual: true', '        State Display Time: 0.05 s', '        Trajectory Topic: /display_planned_path',
+    '      Scene Robot:', '        Show Robot Visual: true', '        Show Robot Collision: false', '        Robot Alpha: 1', '      Value: true',
+    ...(gz && M.sensors.lidar ? ['    - Class: rviz_default_plugins/LaserScan', '      Name: LaserScan', '      Enabled: true', '      Topic:', '        Value: /scan', '        Reliability Policy: Best Effort', '      Size (m): 0.03', '      Value: true'] : []),
+    '  Enabled: true', '  Global Options:', '    Background Color: 48; 52; 54', `    Fixed Frame: ${root}`, '    Frame Rate: 30',
+    '  Tools:', '    - Class: rviz_default_plugins/Interact', '    - Class: rviz_default_plugins/MoveCamera', '  Value: true',
+    '  Views:', '    Current:', '      Class: rviz_default_plugins/Orbit', `      Distance: ${n(size * 2.4 + 0.4)}`, '      Focal Point:', '        X: 0', '        Y: 0', `        Z: ${n(bb.cz)}`,
+    '      Name: Current View', '      Pitch: 0.45', '      Yaw: 0.8', '      Target Frame: <Fixed Frame>', '      Value: Orbit (rviz)', '    Saved: ~', 'Window Geometry:', '  Height: 950', '  Width: 1600');
+
+  const builder = (extra = '') => `    moveit_config = (
+        MoveItConfigsBuilder('${M.name}', package_name='${P}')${extra}
+        .planning_pipelines(pipelines=['ompl'])
+        .to_moveit_configs()
+    )`;
+  const simple = (fn, doc) => `"""${doc}"""
+from moveit_configs_utils import MoveItConfigsBuilder
+from moveit_configs_utils.launches import ${fn}
+
+
+def generate_launch_description():
+${builder()}
+    return ${fn}(moveit_config)
+`;
+  F['launch/demo.launch.py'] = simple('generate_demo_launch', 'MoveIt with simulated (mock) hardware: plan and execute in RViz, no physics.');
+  F['launch/rsp.launch.py'] = simple('generate_rsp_launch', 'robot_state_publisher for the MoveIt robot description.');
+  F['launch/move_group.launch.py'] = simple('generate_move_group_launch', 'The MoveIt move_group node.');
+  F['launch/moveit_rviz.launch.py'] = simple('generate_moveit_rviz_launch', 'RViz with the MotionPlanning panel.');
+  F['launch/spawn_controllers.launch.py'] = simple('generate_spawn_controllers_launch', 'Spawns joint_state_broadcaster and the trajectory controllers.');
+  F['launch/warehouse_db.launch.py'] = simple('generate_warehouse_db_launch', 'Optional MongoDB warehouse for saved scenes and states.');
+
+  if (gz) {
+    const controllers = ['joint_state_broadcaster', ...G.map(g => g.name + '_controller')].map(c => `'${c}'`).join(', ');
+    F['launch/gazebo.launch.py'] = `"""${gzNames().sim} + ros2_control + MoveIt + RViz."""
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from moveit_configs_utils import MoveItConfigsBuilder
+
+
+def generate_launch_description():
+${builder(`
+        .robot_description(mappings={'sim': 'true'})`)}
+    world_file = os.path.join(get_package_share_directory('${D}'), 'worlds', 'empty.sdf')
+    rviz_file = os.path.join(get_package_share_directory('${P}'), 'config', 'moveit.rviz')
+    sim_time = {'use_sim_time': True}
+
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
+        launch_arguments={'gz_args': f'-r {world_file}'}.items())
+
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[moveit_config.robot_description, sim_time],
+        output='screen')
+
+    spawn = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}'],
+        output='screen')
+
+    bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+${bridgeArgs(M).map(a => `            '${a}',`).join('\n')}
+        ],
+        parameters=[sim_time],
+        output='screen')
+
+    # Controllers live inside Gazebo's controller_manager; start them once the robot exists
+    controllers = [
+        Node(
+            package='controller_manager',
+            executable='spawner',
+            arguments=[name, '--controller-manager', '/controller_manager'],
+            parameters=[sim_time],
+            output='screen')
+        for name in [${controllers}]
+    ]
+
+    move_group = Node(
+        package='moveit_ros_move_group',
+        executable='move_group',
+        parameters=[moveit_config.to_dict(), sim_time],
+        condition=IfCondition(LaunchConfiguration('moveit')),
+        output='screen')
+
+    rviz = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_file],
+        parameters=[
+            moveit_config.robot_description,
+            moveit_config.robot_description_semantic,
+            moveit_config.robot_description_kinematics,
+            moveit_config.planning_pipelines,
+            moveit_config.joint_limits,
+            sim_time,
+        ],
+        condition=IfCondition(LaunchConfiguration('rviz')),
+        output='screen')
+
+    return LaunchDescription([
+        DeclareLaunchArgument('moveit', default_value='true', description='Start MoveIt move_group'),
+        DeclareLaunchArgument('rviz', default_value='true', description='Open RViz with the MotionPlanning panel'),
+        gazebo,
+        robot_state_publisher,
+        spawn,
+        bridge,
+        RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=controllers)),
+        move_group,
+        rviz,
+    ])
+`;
+  }
+
+  const deps = [D, 'moveit_ros_move_group', 'moveit_kinematics', 'moveit_planners_ompl', 'moveit_ros_visualization', 'moveit_ros_warehouse', 'moveit_configs_utils',
+    'moveit_simple_controller_manager', 'controller_manager', 'joint_state_broadcaster', 'joint_trajectory_controller', 'robot_state_publisher', 'rviz2', 'xacro'];
+  if (gz) deps.push('ros_gz_sim', 'ros_gz_bridge', isH ? 'ign_ros2_control' : 'gz_ros2_control');
+  F['package.xml'] = `<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>${P}</name>
+  <version>0.1.0</version>
+  <description>MoveIt 2 configuration for ${M.name} (${TYPES[M.type].label}).</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+${deps.map(d => `  <exec_depend>${d}</exec_depend>`).join('\n')}
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+`;
+  F['CMakeLists.txt'] = `cmake_minimum_required(VERSION 3.8)
+project(${P})
+
+find_package(ament_cmake REQUIRED)
+
+install(
+  DIRECTORY config launch
+  DESTINATION share/\${PROJECT_NAME}
+)
+
+ament_package()
+`;
+  // Lets MoveIt Setup Assistant open this package to refine it (e.g. compute "Never" collision pairs)
+  F['.setup_assistant'] = L('moveit_setup_assistant_config:', '  urdf:', `    package: ${D}`, `    relative_path: urdf/${M.name}.urdf`, '  srdf:', `    relative_path: config/${M.name}.srdf`,
+    '  package_settings:', '    author_name: Your Name', '    author_email: you@example.com', `    generated_timestamp: ${Math.floor(Date.now() / 1000)}`);
+  M.moveit.groups = G;
+  return F;
+}
+
 function specJson() {
   const t = state.type;
   return JSON.stringify({
     generator: 'Robot URDF Studio', version: 1, type: t, robot_name: state.names[t], package_name: state.pkg[t],
-    distro: state.distro, target: state.target, colors: state.colors, sensors: state.sensors[t], params: cleanParams(),
+    distro: state.distro, target: state.target, moveit: useMoveit(), colors: state.colors, sensors: state.sensors[t], params: cleanParams(),
   }, null, 2) + '\n';
 }
 
@@ -1241,7 +1626,7 @@ function showFile(path) {
 }
 function renderTree(pkg) {
   const order = Object.keys(files);
-  $('tree').innerHTML = `<div class="root">${esc(pkg)}/</div>` + order.map(f => {
+  $('tree').innerHTML = `<div class="root">ros2_ws/src/</div>` + order.map(f => {
     const parts = f.split('/'), name = parts.pop();
     return `<button type="button" data-f="${f}" aria-current="${f === curFile}">${parts.length ? `<span>${parts.join('/')}/</span>` : ''}${name}</button>`;
   }).join('');
@@ -1268,25 +1653,34 @@ function rebuild() {
   $('checks').innerHTML = checks(M, bb, stats).map(([lv, t]) => `<li><span class="pill ${lv}">${lv === 'ok' ? 'ok' : lv === 'warn' ? 'check' : 'note'}</span><span>${esc(t)}</span></li>`).join('');
 
   const pkg = state.pkg[state.type], gz = state.target !== 'rviz';
-  files = {};
-  files[`urdf/${M.name}.urdf`] = toURDF(M, gz);
-  files['launch/display.launch.py'] = displayLaunch(pkg, M);
-  if (gz) files['launch/gazebo.launch.py'] = gazeboLaunch(pkg, M);
-  files['rviz/display.rviz'] = rvizCfg(M, M.fixedFrame, false, bb);
+  M.moveit = useMoveit() ? { pkg: `${M.name}_moveit_config` } : null;
+  M.bbox = bb;
+  const d = {};
+  d[`urdf/${M.name}.urdf`] = toURDF(M, gz);
+  d['launch/display.launch.py'] = displayLaunch(pkg, M);
+  if (gz && !M.moveit) d['launch/gazebo.launch.py'] = gazeboLaunch(pkg, M);
+  d['rviz/display.rviz'] = rvizCfg(M, M.fixedFrame, false, bb);
   if (gz) {
-    files['rviz/gazebo.rviz'] = rvizCfg(M, M.gzFixedFrame, true, bb);
-    files['worlds/empty.sdf'] = worldSdf(M);
+    if (!M.moveit) d['rviz/gazebo.rviz'] = rvizCfg(M, M.gzFixedFrame, true, bb);
+    d['worlds/empty.sdf'] = worldSdf(M);
   }
-  files['package.xml'] = packageXml(pkg, gz);
-  files['CMakeLists.txt'] = cmakeLists(pkg, gz);
-  files['README.md'] = readme(pkg, M, bb, stats);
-  files['robot_spec.json'] = specJson();
-  if (!files[curFile]) curFile = `urdf/${M.name}.urdf`;
+  d['package.xml'] = packageXml(pkg, gz && !M.moveit);
+  d['CMakeLists.txt'] = cmakeLists(pkg, gz);
+  const mf = M.moveit ? moveitFiles(M, pkg) : {};
+  d['README.md'] = readme(pkg, M, bb, stats);
+  d['robot_spec.json'] = specJson();
+  files = {};
+  Object.entries(d).forEach(([k, v]) => files[`${pkg}/${k}`] = v);
+  Object.entries(mf).forEach(([k, v]) => files[`${M.moveit.pkg}/${k}`] = v);
+  if (M.moveit) files[`${M.moveit.pkg}/README.md`] = `# ${M.moveit.pkg}\n\nMoveIt 2 configuration for \`${M.name}\`. See ../${pkg}/README.md for build and launch steps.\n`;
+  if (!files[curFile]) curFile = `${pkg}/urdf/${M.name}.urdf`;
   renderTree(pkg);
   showFile(curFile);
   $('runCmd').innerHTML = runCommands(pkg, M, false).split('\n').map(l => l.startsWith('#') ? `<span class="c">${esc(l)}</span>` : esc(l)).join('\n');
-  $('zipBtn').textContent = `Download ${pkg}.zip`;
-  try { localStorage.setItem('urdf-studio-v1', JSON.stringify({ type: state.type, params: state.params, sensors: state.sensors, names: state.names, pkg: state.pkg, pkgAuto: state.pkgAuto, colors: state.colors, distro: state.distro, target: state.target })); } catch (e) {}
+  $('zipBtn').textContent = `Download ${zipName(M)}`;
+  $('moveitRow').hidden = !MOVEIT_TYPES.includes(state.type);
+  $('moveitNote').hidden = MOVEIT_TYPES.includes(state.type);
+  try { localStorage.setItem('urdf-studio-v1', JSON.stringify({ moveit: state.moveit, type: state.type, params: state.params, sensors: state.sensors, names: state.names, pkg: state.pkg, pkgAuto: state.pkgAuto, colors: state.colors, distro: state.distro, target: state.target })); } catch (e) {}
 }
 
 /* ---------- Events ---------- */
@@ -1338,9 +1732,17 @@ $('zeroBtn').addEventListener('click', () => {
 $('fitBtn').addEventListener('click', () => robotRoot && fitView(measure()));
 document.querySelectorAll('input[name=target]').forEach(r => r.addEventListener('change', () => { state.target = r.value; rebuild(); }));
 $('distro').addEventListener('change', e => { state.distro = e.target.value; rebuild(); });
+$('moveit').addEventListener('change', e => { state.moveit = e.target.checked; rebuild(); });
 $('tree').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showFile(b.dataset.f); });
 
 function toast(msg, err) { const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); }
+$('copyCmd').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('runCmd').textContent); toast('Copied the commands'); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('runCmd')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast('Copy was blocked here. The commands are selected; press Ctrl+C or ⌘C.', true);
+  }
+});
 $('copyBtn').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(files[curFile]); toast(`Copied ${curFile}`); }
   catch (e) {
@@ -1369,10 +1771,10 @@ async function save(filename, data) {
 }
 $('zipBtn').addEventListener('click', async () => {
   if (typeof JSZip === 'undefined') { toast('The zip library did not load. Use Copy file for each file instead.', true); return; }
-  const pkg = state.pkg[state.type], zip = new JSZip(), dir = zip.folder(pkg);
-  for (const [p, c] of Object.entries(files)) dir.file(p, c);
+  const zip = new JSZip();
+  for (const [p, c] of Object.entries(files)) zip.file(p, c);
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-  save(`${pkg}.zip`, blob);
+  save(zipName(lastModel), blob);
 });
 $('exportSpecBtn').addEventListener('click', () => save(`${state.names[state.type]}_spec.json`, specJson()));
 $('importBtn').addEventListener('click', () => $('importFile').click());
@@ -1390,6 +1792,7 @@ $('importFile').addEventListener('change', async e => {
     if (s.colors) Object.assign(state.colors, s.colors);
     if (s.distro === 'jazzy' || s.distro === 'humble') state.distro = s.distro;
     if (['rviz', 'gazebo', 'both'].includes(s.target)) state.target = s.target;
+    if (typeof s.moveit === 'boolean') state.moveit = s.moveit;
     syncControls(); renderTypes(); renderForm(); lastType = null; rebuild();
     toast(`Loaded ${f.name}`);
   } catch (err) { toast('That file is not a Robot URDF Studio spec. Choose a robot_spec.json saved from this page.', true); }
@@ -1397,6 +1800,7 @@ $('importFile').addEventListener('change', async e => {
 });
 function syncControls() {
   $('distro').value = state.distro;
+  $('moveit').checked = state.moveit;
   document.querySelectorAll('input[name=target]').forEach(r => r.checked = r.value === state.target);
 }
 
@@ -1419,6 +1823,7 @@ try {
     if (saved.colors) Object.assign(state.colors, saved.colors);
     if (saved.distro) state.distro = saved.distro;
     if (saved.target) state.target = saved.target;
+    if (typeof saved.moveit === 'boolean') state.moveit = saved.moveit;
   }
 } catch (e) {}
 syncControls();

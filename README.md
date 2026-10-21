@@ -20,6 +20,13 @@ Enter the robot's dimensions and masses, check it in the live 3D preview (with j
 - `worlds/empty.sdf`, `rviz/*.rviz`, `package.xml`, `CMakeLists.txt`, `README.md`
 - `robot_spec.json` to re-import and edit later
 
+For the 6-DOF arm, humanoid and semi-humanoid it can also generate a `<robot>_moveit_config` package:
+
+- SRDF with planning groups (arm/gripper, left/right arm, head, torso, legs), named poses and a collision matrix
+- KDL kinematics, joint limits, ros2_control with mock hardware (RViz demo) or `gz_ros2_control` (Gazebo)
+- One `JointTrajectoryController` per group, wired to MoveIt
+- `demo.launch.py` (MoveIt + RViz, no physics) and `gazebo.launch.py` (Gazebo + MoveIt + RViz)
+
 Supports ROS 2 Jazzy (Gazebo Harmonic) and Humble (Gazebo Fortress).
 
 ## Run locally (optional)
