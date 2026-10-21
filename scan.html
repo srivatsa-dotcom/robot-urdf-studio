@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Room Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Phone side of Robot URDF Studio's custom map: one column, big touch targets */
+:root {
+  --bg: #111716; --panel: #182020; --ink: #E3EAE6; --muted: #91A09B; --line: #2B3634;
+  --accent: #FF7C3F; --on-accent: #1A0D06; --ok: #6BCB8E; --warn: #E5A84A;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+main { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+h1 { font-family: var(--font-display); font-size: 26px; line-height: 1.1; margin: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.status { display: flex; gap: 10px; align-items: center; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.wait { background: var(--accent); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .dot.wait { animation: none; } }
+ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--ink); }
+ol li::marker { color: var(--accent); font-family: var(--font-mono); }
+.btn { width: 100%; padding: 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 17px var(--font-body); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn[disabled] { opacity: .45; }
+.note { color: var(--muted); font-size: 13px; }
+.warnbox { border: 1px solid var(--warn); color: var(--warn); border-radius: 8px; padding: 12px 14px; }
+/* AR overlay */
+#overlay { position: fixed; inset: 0; display: none; flex-direction: column; justify-content: space-between; pointer-events: none;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+#overlay.on { display: flex; }
+.hud { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.chip { background: rgba(10, 14, 13, .72); border-radius: 6px; padding: 6px 10px; font: 500 13px var(--font-mono); color: #E3EAE6; }
+#mini { width: 132px; height: 132px; border-radius: 8px; background: rgba(10, 14, 13, .72); }
+.hint { align-self: center; text-align: center; background: rgba(10, 14, 13, .72); color: #E3EAE6; border-radius: 8px; padding: 8px 12px; font-size: 14px; max-width: 90%; }
+.reticle { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid #FF7C3F; border-radius: 50%; }
+#finish { pointer-events: auto; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <div class="eyebrow">Robot URDF Studio · custom map</div>
+    <h1>Scan your space</h1>
+  </div>
+  <div class="status"><span class="dot wait" id="dot"></span><span id="status">Connecting to your computer…</span></div>
+  <div id="unsupported" class="warnbox" hidden></div>
+  <ol id="steps">
+    <li>Stand where the robot should start and face the direction it should drive forward.</li>
+    <li>Tap <b>Start scan</b>, allow the camera, and keep the phone at chest height.</li>
+    <li>Walk slowly and sweep the phone across walls, furniture, people and pets. Everything the camera sees becomes part of the map.</li>
+    <li>Tap <b>Finish</b>. The map appears on your computer.</li>
+  </ol>
+  <button class="btn primary" id="start" disabled>Start scan</button>
+  <p class="note" id="mode"></p>
+  <p class="note">Your camera picture stays on this phone. Only 3D points (no images) go to your computer, directly over your Wi-Fi.</p>
+</main>
+
+<div id="overlay">
+  <div class="hud">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span class="chip" id="pts">0 points</span>
+      <span class="chip" id="area">0.0 m²</span>
+    </div>
+    <canvas id="mini" width="264" height="264"></canvas>
+  </div>
+  <div class="reticle"></div>
+  <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+    <div class="hint" id="hint">Move slowly. Point at the floor first so the phone finds it.</div>
+    <button class="btn primary" id="finish">Finish</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const hostId = params.get('id');
+const VOX = 5;                     // cm
+const MAX_VOXELS = 250000;
+
+function setStatus(text, kind) { $('status').textContent = text; $('dot').className = 'dot ' + (kind || ''); }
+function showProblem(html) { $('unsupported').innerHTML = html; $('unsupported').hidden = false; }
+
+/* ---------- Connection: WebRTC with no STUN/TURN, so it only works on the same network ---------- */
+let conn = null, connected = false;
+if (!hostId) {
+  setStatus('No computer to connect to.', 'warn');
+  showProblem('Open this page by scanning the QR code shown in Robot URDF Studio on your computer.');
+} else if (typeof Peer === 'undefined' || typeof RTCPeerConnection === 'undefined') {
+  setStatus('This browser cannot make a direct connection.', 'warn');
+  showProblem('Use Chrome on Android.');
+} else {
+  const opts = { config: { iceServers: [] }, debug: 0 };
+  if (params.get('peerhost')) { const [h, p] = params.get('peerhost').split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
+  const peer = new Peer(undefined, opts);
+  const failTimer = setTimeout(() => {
+    if (connected) return;
+    setStatus('Could not reach your computer.', 'warn');
+    showProblem('Make sure this phone and your computer are on the <b>same Wi-Fi network</b>, then scan the QR code again. Guest networks and some office networks block devices from seeing each other.');
+  }, 20000);
+  peer.on('open', () => {
+    conn = peer.connect(hostId, { reliable: true, serialization: 'json' });
+    conn.on('open', () => {
+      connected = true; clearTimeout(failTimer);
+      setStatus('Connected to your computer over Wi-Fi.', 'ok');
+      send({ t: 'hello', ua: navigator.userAgent });
+      checkXR();
+    });
+    conn.on('data', m => { if (m && m.t === 'stop' && session) session.end(); });
+    conn.on('close', () => { connected = false; setStatus('Your computer closed the connection.', 'warn'); if (session) session.end(); });
+  });
+  peer.on('error', e => {
+    if (e.type === 'peer-unavailable') { setStatus('That QR code has expired.', 'warn'); showProblem('Close the scan window on your computer, open it again and scan the new QR code.'); }
+    else if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') { setStatus('No internet connection for setup.', 'warn'); showProblem('The phone needs internet for a few seconds to find your computer. The scan itself stays on your Wi-Fi.'); }
+  });
+}
+function send(m) { if (conn && connected) try { conn.send(m); } catch (e) {} }
+
+/* ---------- AR support ---------- */
+let useDepth = false;
+async function checkXR() {
+  const ok = navigator.xr && await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  if (!ok) {
+    send({ t: 'status', level: 'warn', msg: 'Phone browser has no AR support' });
+    showProblem('This phone\'s browser can\'t do AR mapping. Use <b>Chrome on an Android phone</b> that supports Google Play Services for AR. iPhones are not supported yet because Safari has no WebXR.');
+    return;
+  }
+  $('start').disabled = false;
+  $('mode').textContent = 'Ready. The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
+}
+
+/* ---------- Scan ---------- */
+let session = null, refSpace = null, gl = null, hitSources = [];
+const counts = new Map();          // voxel key -> hits
+let outbox = [], total = 0, lastSend = 0, lastPose = 0, frameNo = 0;
+const mini = $('mini').getContext('2d');
+const cells = new Set();
+
+function addPoint(x, y, z, need) {
+  // WebXR (x right, y up, -z forward) -> ROS (x forward, y left, z up), in cm
+  const rx = Math.round(-z * 100 / VOX) * VOX, ry = Math.round(-x * 100 / VOX) * VOX, rz = Math.round(y * 100 / VOX) * VOX;
+  const k = rx + ',' + ry + ',' + rz;
+  const c = (counts.get(k) || 0) + 1;
+  counts.set(k, c);
+  if (c === need && total < MAX_VOXELS) {
+    outbox.push(rx, ry, rz); total++;
+    const ck = Math.round(rx / 20) + ',' + Math.round(ry / 20);
+    if (!cells.has(ck)) { cells.add(ck); drawCell(rx, ry, rz); }
+  }
+}
+function drawCell(x, y, z) {
+  const s = 264 / 1200;            // 12 m across
+  const px = 132 - y * s, py = 132 - x * s;
+  mini.fillStyle = z > 15 ? '#FF7C3F' : '#6BCB8E';
+  mini.fillRect(px - 2, py - 2, 4, 4);
+}
+
+function inv4(m) {
+  const a = m, o = new Float32Array(16);
+  const b00 = a[0] * a[5] - a[1] * a[4], b01 = a[0] * a[6] - a[2] * a[4], b02 = a[0] * a[7] - a[3] * a[4], b03 = a[1] * a[6] - a[2] * a[5];
+  const b04 = a[1] * a[7] - a[3] * a[5], b05 = a[2] * a[7] - a[3] * a[6], b06 = a[8] * a[13] - a[9] * a[12], b07 = a[8] * a[14] - a[10] * a[12];
+  const b08 = a[8] * a[15] - a[11] * a[12], b09 = a[9] * a[14] - a[10] * a[13], b10 = a[9] * a[15] - a[11] * a[13], b11 = a[10] * a[15] - a[11] * a[14];
+  const det = 1 / (b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06);
+  o[0] = (a[5] * b11 - a[6] * b10 + a[7] * b09) * det; o[1] = (a[2] * b10 - a[1] * b11 - a[3] * b09) * det;
+  o[2] = (a[13] * b05 - a[14] * b04 + a[15] * b03) * det; o[3] = (a[10] * b04 - a[9] * b05 - a[11] * b03) * det;
+  o[4] = (a[6] * b08 - a[4] * b11 - a[7] * b07) * det; o[5] = (a[0] * b11 - a[2] * b08 + a[3] * b07) * det;
+  o[6] = (a[14] * b02 - a[12] * b05 - a[15] * b01) * det; o[7] = (a[8] * b05 - a[10] * b02 + a[11] * b01) * det;
+  o[8] = (a[4] * b10 - a[5] * b08 + a[7] * b06) * det; o[9] = (a[1] * b08 - a[0] * b10 - a[3] * b06) * det;
+  o[10] = (a[12] * b04 - a[13] * b02 + a[15] * b00) * det; o[11] = (a[9] * b02 - a[8] * b04 - a[11] * b00) * det;
+  o[12] = (a[5] * b07 - a[4] * b09 - a[6] * b06) * det; o[13] = (a[0] * b09 - a[1] * b07 + a[2] * b06) * det;
+  o[14] = (a[13] * b01 - a[12] * b03 - a[14] * b00) * det; o[15] = (a[8] * b03 - a[9] * b01 + a[10] * b00) * det;
+  return o;
+}
+const xf = (m, x, y, z) => [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14], m[3] * x + m[7] * y + m[11] * z + m[15]];
+
+function sampleDepth(frame, view) {
+  const depth = frame.getDepthInformation(view);
+  if (!depth) return false;
+  const ip = inv4(view.projectionMatrix), M = view.transform.matrix;
+  const GX = 48, GY = 64;
+  for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
+    const u = (gx + 0.5) / GX, v = (gy + 0.5) / GY;
+    const d = depth.getDepthInMeters(u, v);
+    if (!(d > 0.25 && d < 4.5)) continue;
+    const p = xf(ip, u * 2 - 1, (1 - v) * 2 - 1, -1);
+    const vx = p[0] / p[3], vy = p[1] / p[3], vz = p[2] / p[3];
+    const s = d / -vz;
+    const w = xf(M, vx * s, vy * s, -d);
+    addPoint(w[0], w[1], w[2], 3);
+  }
+  return true;
+}
+
+async function start() {
+  try {
+    session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['local-floor'],
+      optionalFeatures: ['depth-sensing', 'hit-test', 'dom-overlay'],
+      depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] },
+      domOverlay: { root: $('overlay') },
+    });
+  } catch (e) {
+    showProblem('Could not start AR: ' + (e.message || e) + '. Allow camera access and try again.');
+    return;
+  }
+  $('overlay').classList.add('on');
+  useDepth = session.enabledFeatures ? session.enabledFeatures.includes('depth-sensing') : !!session.depthUsage;
+  send({ t: 'status', level: 'ok', msg: useDepth ? 'Scanning with depth sensing' : 'Scanning with surface detection (no depth sensor)' });
+  const canvas = document.createElement('canvas');
+  gl = canvas.getContext('webgl', { xrCompatible: true, alpha: true });
+  await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+  refSpace = await session.requestReferenceSpace('local-floor');
+  if (!useDepth && session.requestHitTestSource) {
+    const viewer = await session.requestReferenceSpace('viewer');
+    for (const ox of [-0.35, 0, 0.35]) for (const oy of [-0.5, -0.2, 0.1, 0.4]) {
+      try { hitSources.push(await session.requestHitTestSource({ space: viewer, offsetRay: new XRRay({ x: 0, y: 0, z: 0 }, { x: ox, y: oy, z: -1 }) })); } catch (e) {}
+    }
+  }
+  session.addEventListener('end', () => {
+    $('overlay').classList.remove('on'); flush(true); send({ t: 'done', total });
+    setStatus(connected ? `Sent ${total.toLocaleString()} points. Check your computer.` : 'Scan ended.', connected ? 'ok' : 'warn');
+    session = null; hitSources = [];
+  });
+  session.requestAnimationFrame(onFrame);
+}
+
+function onFrame(t, frame) {
+  if (!session) return;
+  session.requestAnimationFrame(onFrame);
+  const layer = session.renderState.baseLayer;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
+  gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  const pose = frame.getViewerPose(refSpace);
+  if (!pose) { $('hint').textContent = 'Tracking lost. Move the phone slowly over a textured area.'; return; }
+  frameNo++;
+  if (useDepth) {
+    if (frameNo % 3 === 0) for (const view of pose.views) sampleDepth(frame, view);
+  } else {
+    for (const src of hitSources) {
+      const hits = frame.getHitTestResults(src);
+      if (hits.length) { const p = hits[0].getPose(refSpace).transform.position; addPoint(p.x, p.y, p.z, 1); }
+    }
+  }
+  const m = pose.transform.matrix;
+  if (t - lastPose > 200) {
+    lastPose = t;
+    const fx = m[10], fz = m[8];  // viewer forward is -z: ROS heading from the camera's z column
+    send({ t: 'pose', x: Math.round(-m[14] * 100), y: Math.round(-m[12] * 100), yaw: Math.atan2(fz, fx) });
+  }
+  if (t - lastSend > 300) flush(false);
+  $('pts').textContent = total.toLocaleString() + ' points';
+  $('area').textContent = (cells.size * 0.04).toFixed(1) + ' m² seen';
+  $('hint').textContent = total < 300 ? 'Point at the floor and walls. Move slowly.' : 'Keep sweeping. Cover every wall and object you want in the map.';
+}
+
+function flush(final) {
+  lastSend = performance.now();
+  if (outbox.length) { send({ t: 'pts', v: outbox }); outbox = []; }
+}
+
+$('start').addEventListener('click', start);
+$('finish').addEventListener('click', () => session && session.end());
+})();
+</script>
+</body>
+</html>

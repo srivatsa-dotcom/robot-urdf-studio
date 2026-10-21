@@ -151,7 +151,7 @@ input[type="color"] { width: 36px; height: 26px; padding: 0; border: 1px solid v
 .targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .launchleft { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .worldpick { display: flex; flex-direction: column; gap: 8px; }
-.worlds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.worlds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .world { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
 .world:hover { border-color: var(--muted); }
 .world[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -160,6 +160,24 @@ input[type="color"] { width: 36px; height: 26px; padding: 0; border: 1px solid v
 .world b { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
 .world span { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 .world[disabled] { opacity: .45; cursor: not-allowed; }
+#rescan { align-self: start; }
+dialog#scanDlg { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+dialog#scanDlg::backdrop { background: rgba(10, 14, 13, .55); }
+.dlghead, .dlgfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; }
+.dlghead { border-bottom: 1px solid var(--line); } .dlgfoot { border-top: 1px solid var(--line); justify-content: flex-end; }
+.dlghead h3 { font-size: 17px; }
+.dlgbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 16px; overflow-y: auto; }
+.qrside, .liveside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.qr { background: #FFFFFF; border-radius: 6px; padding: 8px; width: min(100%, 260px); aspect-ratio: 1; display: grid; place-items: center; color: #172022; }
+.qr svg { width: 100%; height: 100%; }
+.qr p { color: #172022; text-align: center; font-size: 13px; }
+.scanurl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); word-break: break-all; }
+.scansteps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.small { font-size: 12px; }
+.status { display: flex; gap: 10px; align-items: center; font-size: 13px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.wait { background: var(--accent); }
+#scanMap { width: 100%; max-width: 440px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 6px; }
 .target { position: relative; }
 .target input { position: absolute; opacity: 0; pointer-events: none; }
 .target label {
@@ -212,6 +230,7 @@ pre.cmd .c { color: var(--muted); }
   .under { grid-template-columns: minmax(0, 1fr); }
   .targets { grid-template-columns: minmax(0, 1fr); }
   .worlds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dlgbody { grid-template-columns: minmax(0, 1fr); }
   .pkg { grid-template-columns: minmax(0, 1fr); }
   .tree { border-right: 0; border-bottom: 1px solid var(--line); max-height: 220px; overflow-y: auto; }
   h1 { font-size: 24px; }
@@ -277,6 +296,7 @@ pre.cmd .c { color: var(--muted); }
         <div class="eyebrow">Gazebo world</div>
         <div class="worlds" id="worlds" role="radiogroup" aria-label="Gazebo world"></div>
         <p class="muted" id="worldNote" hidden>Worlds are for Gazebo. Pick Gazebo or Gazebo + RViz to choose one.</p>
+        <button class="btn" type="button" id="rescan" hidden>Rescan custom map</button>
       </div>
       </div>
       <div class="distro">
@@ -311,7 +331,32 @@ pre.cmd .c { color: var(--muted); }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<dialog id="scanDlg" aria-labelledby="scanTitle">
+  <div class="dlghead"><h3 id="scanTitle">Scan a custom map</h3><button class="btn" type="button" id="scanClose" aria-label="Close">Close</button></div>
+  <div class="dlgbody">
+    <div class="qrside">
+      <div id="qr" class="qr"></div>
+      <code id="scanUrl" class="scanurl"></code>
+      <ol class="scansteps">
+        <li>Connect your phone to the <b>same Wi-Fi</b> as this computer.</li>
+        <li>Point the phone camera at the QR code and open the link.</li>
+        <li>Stand where the robot should start, face its forward direction, tap <b>Start scan</b>.</li>
+        <li>Walk slowly and sweep over walls, furniture, people and pets, then tap <b>Finish</b>.</li>
+      </ol>
+      <p class="muted small">Needs Chrome on an Android phone with ARCore. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+    </div>
+    <div class="liveside">
+      <div class="status"><span class="dot" id="scanDot"></span><span id="scanStatus"></span></div>
+      <canvas id="scanMap" width="440" height="440" aria-label="Live top-down map of the scan"></canvas>
+      <div class="muted small" id="scanStats"></div>
+    </div>
+  </div>
+  <div class="dlgfoot"><button class="btn" type="button" id="scanCancel">Cancel</button><button class="btn primary" type="button" id="scanUse" disabled>Use this map</button></div>
+</dialog>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 (() => {
 'use strict';
@@ -388,7 +433,7 @@ const state = {
   params: {}, sensors: {}, names: {},
   pkgAuto: {}, pkg: {},
   colors: { body: '#C8CEC9', accent: '#E0601A' },
-  distro: 'jazzy', target: 'both', moveit: true, world: 'warehouse',
+  distro: 'jazzy', target: 'both', moveit: true, world: 'warehouse', scan: null,
   q: {},
 };
 for (const [t, d] of Object.entries(TYPES)) {
@@ -764,8 +809,10 @@ const WORLDS = {
   factory: { label: 'Factory', sub: 'Conveyors, CNC machines and a marked robot cell.' },
   warehouse: { label: 'Warehouse', sub: 'Pallet racks, 2 m aisles and a loading dock.' },
   office: { label: 'Office', sub: 'Desk clusters, chairs and a meeting room.' },
+  custom: { label: 'Custom map', sub: 'Scan a real space with your phone.' },
 };
 const WORLD_GLYPHS = {
+  custom: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="22" y="3" width="16" height="26" rx="3"/><path class="hl" d="M6 10 V5 H11 M58 10 V5 H53 M6 22 V27 H11 M58 22 V27 H53"/></svg>',
   empty: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 26 L60 26"/><path d="M14 20 L50 20" stroke-width="1" opacity=".5"/></svg>',
   factory: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 28 V14 L16 8 V14 L28 8 V14 L40 8 V4 H48 V28 Z"/><path class="hl" d="M10 22 H34"/></svg>',
   warehouse: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 28 V12 L32 3 L60 12 V28"/><path class="hl" d="M12 28 V16 H26 V28 M12 22 H26 M38 28 V16 H52 V28 M38 22 H52"/></svg>',
@@ -888,6 +935,7 @@ function buildEnv(key) {
     [[-7.4, 5.4], [7.4, 1.4], [2.4, -5.4], [-7.4, -5.4], [0.9, 5.4]].forEach(([x, y], i) => o.push(plant(`plant_${i}`, x, y)));
     return { floor: '#B9A88E', W, D, objects: o };
   }
+  if (key === 'custom' && state.scan) return scanEnv();
   return { floor: '#B4B7B2', W: 0, D: 0, objects: [] };
 }
 
@@ -910,7 +958,7 @@ function worldSdf(M, key) {
   const fc = rgbaOf(env.floor), size = key === 'empty' ? '100 100' : `${env.W + 1} ${env.D + 1}`;
   L.push('', '    <light type="directional" name="sun">', '      <cast_shadows>true</cast_shadows>', '      <pose>0 0 10 0 0 0</pose>',
     '      <diffuse>0.8 0.8 0.8 1</diffuse>', '      <specular>0.2 0.2 0.2 1</specular>', '      <direction>-0.5 0.1 -0.9</direction>', '    </light>', '',
-    '    <model name="ground_plane">', '      <static>true</static>', '      <link name="link">',
+    '    <model name="ground_plane">', '      <static>true</static>', `      <pose>${n(env.cx || 0)} ${n(env.cy || 0)} 0 0 0 0</pose>`, '      <link name="link">',
     '        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>',
     '        <visual name="visual">', `          <geometry><plane><normal>0 0 1</normal><size>${size}</size></plane></geometry>`,
     `          <material><ambient>${fc}</ambient><diffuse>${fc}</diffuse></material>`, '        </visual>',
@@ -1071,7 +1119,7 @@ ${args}
             description='Open RViz next to Gazebo'),
         DeclareLaunchArgument(
             'world', default_value='${state.world}',
-            description='empty, factory, warehouse or office'),
+            description='${worldKeys().join(', ')}'),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -1111,7 +1159,7 @@ project(${pkg})
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY urdf launch rviz${gz ? ' worlds' : ''}
+  DIRECTORY urdf launch rviz${gz ? ' worlds' : ''}${state.scan ? ' maps' : ''}
   DESTINATION share/\${PROJECT_NAME}
 )
 
@@ -1154,7 +1202,8 @@ function runCommands(pkg, M, forReadme) {
     const val = /lift/.test(j) ? 0.1 : -0.8;
     L.push('', `# ${step++}. Move a joint (new terminal)`, `ros2 topic pub --once /${M.name}/${j}/cmd_pos std_msgs/msg/Float64 "{data: ${val}}"`);
   }
-  if (gz) L.push('', '# Other worlds: world:=empty | factory | warehouse | office');
+  if (gz) L.push('', `# Other worlds: world:=${worldKeys().join(' | ')}`);
+  if (state.scan) L.push('', '# Nav2 map of your scanned space', `ros2 run nav2_map_server map_server --ros-args -p yaml_filename:=$(ros2 pkg prefix ${pkg})/share/${pkg}/maps/custom_map.yaml`);
   if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
   return L.join('\n');
 }
@@ -1168,7 +1217,8 @@ function readme(pkg, M, bbox, stats) {
     [`${pkg}/launch/display.launch.py`, 'robot_state_publisher + joint sliders + RViz'],
   ];
   if (gz && !mi) fileRows.push([`${pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`)`]);
-  if (gz) fileRows.push([`${pkg}/worlds/*.sdf`, `Gazebo worlds: empty, factory, warehouse, office (default: ${state.world}). Switch with \`world:=<name>\``]);
+  if (gz) fileRows.push([`${pkg}/worlds/*.sdf`, `Gazebo worlds: ${worldKeys().join(', ')} (default: ${state.world}). Switch with \`world:=<name>\``]);
+  if (state.scan) fileRows.push([`${pkg}/maps/custom_map.pgm` + ' + .yaml', '2D occupancy map of your phone scan (5 cm cells) for Nav2 map_server; the robot start is the map origin']);
   fileRows.push([`${pkg}/rviz/*.rviz`, 'Saved RViz layouts'], [`${pkg}/robot_spec.json`, 'The inputs used to generate this package. Import it back into the studio to edit.']);
   if (mi) {
     fileRows.push(
@@ -1525,7 +1575,7 @@ ${bridgeArgs(M).map(a => `            '${a}',`).join('\n')}
     return LaunchDescription([
         DeclareLaunchArgument('moveit', default_value='true', description='Start MoveIt move_group'),
         DeclareLaunchArgument('rviz', default_value='true', description='Open RViz with the MotionPlanning panel'),
-        DeclareLaunchArgument('world', default_value='${state.world}', description='empty, factory, warehouse or office'),
+        DeclareLaunchArgument('world', default_value='${state.world}', description='${worldKeys().join(', ')}'),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -1583,6 +1633,203 @@ function specJson() {
     generator: 'Robot URDF Studio', version: 1, type: t, robot_name: state.names[t], package_name: state.pkg[t],
     distro: state.distro, target: state.target, world: state.world, moveit: useMoveit(), colors: state.colors, sensors: state.sensors[t], params: cleanParams(),
   }, null, 2) + '\n';
+}
+
+/* ---------- Custom map from a phone scan ---------- */
+const SCAN_PAGE = 'https://srivatsa-dotcom.github.io/robot-urdf-studio/scan.html';
+const worldKeys = () => Object.keys(WORLDS).filter(k => k !== 'custom' || state.scan);
+let scanCache = { id: null, r: null };
+
+// Voxels (cm, ROS frame) -> floor height, 5 cm occupancy grid, merged obstacle boxes
+function analyzeScan(scan) {
+  if (scanCache.id === scan.id) return scanCache.r;
+  const V = scan.v, N = V.length / 3, hist = new Map();
+  for (let i = 0; i < N; i++) { const z = V[i * 3 + 2]; if (z >= -60 && z <= 60) hist.set(z, (hist.get(z) || 0) + 1); }
+  let floorZ = 0, best = -1;
+  hist.forEach((c, z) => { if (c > best) { best = c; floorZ = z; } });
+  const lo = floorZ + 8, hi = floorZ + 220, R = 5;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < N; i++) {
+    const x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
+    if (z < floorZ - 8 || z > hi) continue;
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  if (!isFinite(minX)) { minX = maxX = minY = maxY = 0; }
+  minX = Math.min(minX, -50); minY = Math.min(minY, -50); maxX = Math.max(maxX, 50); maxY = Math.max(maxY, 50);
+  const nx = Math.round((maxX - minX) / R) + 1, ny = Math.round((maxY - minY) / R) + 1;
+  const occ = new Uint8Array(nx * ny), top = new Int16Array(nx * ny);
+  for (let i = 0; i < N; i++) {
+    const x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
+    const gx = Math.round((x - minX) / R), gy = Math.round((y - minY) / R);
+    if (gx < 0 || gy < 0 || gx >= nx || gy >= ny) continue;
+    const k = gy * nx + gx;
+    if (z >= lo && z <= hi) { occ[k] = 2; top[k] = Math.max(top[k], z - floorZ); }
+    else if (Math.abs(z - floorZ) < 8 && occ[k] !== 2) occ[k] = 1;
+  }
+  // 10 cm columns, merged into runs along x, then stacked runs along y
+  const B = 2, bx = Math.ceil(nx / B), by = Math.ceil(ny / B), Hc = new Int16Array(bx * by);
+  for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
+    const k = gy * nx + gx; if (occ[k] !== 2) continue;
+    const c = Math.floor(gy / B) * bx + Math.floor(gx / B); Hc[c] = Math.max(Hc[c], top[k] + 5);
+  }
+  const boxes = [], open = new Map();
+  for (let y = 0; y < by; y++) {
+    const runs = [];
+    for (let x = 0; x < bx; x++) {
+      const h = Hc[y * bx + x];
+      const last = runs[runs.length - 1];
+      if (h > 0 && last && last.x1 === x - 1 && Math.abs(last.h - h) <= 15) { last.x1 = x; last.h = Math.max(last.h, h); }
+      else if (h > 0) runs.push({ x0: x, x1: x, h });
+    }
+    const next = new Map();
+    runs.forEach(r => {
+      const key = r.x0 + ',' + r.x1, prev = open.get(key);
+      if (prev && Math.abs(prev.h - r.h) <= 15) { prev.y1 = y; prev.h = Math.max(prev.h, r.h); next.set(key, prev); open.delete(key); }
+      else { const b = { ...r, y0: y, y1: y }; boxes.push(b); next.set(key, b); }
+    });
+    open.clear(); next.forEach((v, k) => open.set(k, v));
+  }
+  const cell = R * B;
+  const out = boxes.map(b => ({
+    x: (minX + (b.x0 + b.x1 + 1) / 2 * cell - R / 2) / 100, y: (minY + (b.y0 + b.y1 + 1) / 2 * cell - R / 2) / 100,
+    w: (b.x1 - b.x0 + 1) * cell / 100, d: (b.y1 - b.y0 + 1) * cell / 100, h: Math.min(b.h, 220) / 100,
+  }));
+  let blocked = false;
+  for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
+    if (occ[gy * nx + gx] === 2 && Math.hypot(minX + gx * R, minY + gy * R) < 35) blocked = true;
+  }
+  const r = { floorZ, minX, minY, nx, ny, R, occ, boxes: out, blocked, W: (maxX - minX) / 100, D: (maxY - minY) / 100, cx: (minX + maxX) / 200, cy: (minY + maxY) / 200, points: N };
+  scanCache = { id: scan.id, r };
+  return r;
+}
+
+function scanEnv() {
+  const a = analyzeScan(state.scan);
+  const tone = h => h < 0.5 ? '#8796A3' : h < 1.2 ? '#62768A' : '#475A6E';
+  return { floor: '#9DA39E', W: a.W + 1, D: a.D + 1, cx: a.cx, cy: a.cy, objects: a.boxes.length ? [{ name: 'scanned_obstacles', x: 0, y: 0, yaw: 0, parts: a.boxes.map(b => EP(['box', b.w, b.d, b.h], [b.x, b.y, b.h / 2], tone(b.h))) }] : [] };
+}
+
+function mapFiles() {
+  const a = analyzeScan(state.scan), rows = [];
+  for (let gy = a.ny - 1; gy >= 0; gy--) {
+    const row = [];
+    for (let gx = 0; gx < a.nx; gx++) { const o = a.occ[gy * a.nx + gx]; row.push(o === 2 ? 0 : o === 1 ? 254 : 205); }
+    for (let i = 0; i < row.length; i += 32) rows.push(row.slice(i, i + 32).join(' '));
+  }
+  return {
+    'maps/custom_map.pgm': `P2\n# Occupancy grid from a phone scan (Robot URDF Studio). 0 occupied, 254 free, 205 unknown.\n${a.nx} ${a.ny}\n255\n${rows.join('\n')}\n`,
+    'maps/custom_map.yaml': `image: custom_map.pgm\nmode: trinary\nresolution: 0.05\norigin: [${n((a.minX - a.R / 2) / 100)}, ${n((a.minY - a.R / 2) / 100)}, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n`,
+  };
+}
+
+/* Scanner dialog: this page hosts a WebRTC peer with no STUN/TURN servers,
+   so the phone can only connect when both devices share a local network. */
+let scanPeer = null, scanConn = null, live = null;
+function scanStatus(text, kind) { $('scanStatus').textContent = text; $('scanDot').className = 'dot ' + (kind || ''); }
+function openScanner() {
+  const dlg = $('scanDlg');
+  live = { v: [], keys: new Set(), pose: null, done: false };
+  $('scanUse').disabled = true; $('scanStats').textContent = 'No points yet';
+  drawLive();
+  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  $('qr').innerHTML = ''; $('scanUrl').textContent = '';
+  if (window.claude || typeof Peer === 'undefined' || typeof RTCPeerConnection === 'undefined') {
+    scanStatus('Phone scanning can\'t run inside this viewer.', 'warn');
+    $('qr').innerHTML = `<p class="muted">Open the app from GitHub Pages to scan:<br><a href="https://srivatsa-dotcom.github.io/robot-urdf-studio/" target="_blank" rel="noopener">srivatsa-dotcom.github.io/robot-urdf-studio</a></p>`;
+    return;
+  }
+  const id = 'urdfstudio-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 14);
+  const opts = { config: { iceServers: [] }, debug: 0 };
+  const ph = new URLSearchParams(location.search).get('peerhost');
+  if (ph) { const [h, p] = ph.split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
+  scanStatus('Getting a QR code ready…', 'wait');
+  scanPeer = new Peer(id, opts);
+  scanPeer.on('open', () => {
+    const url = `${/github\.io$/.test(location.hostname) ? new URL('scan.html', location.href).href.split('?')[0] : SCAN_PAGE}?id=${id}${ph ? '&peerhost=' + ph : ''}`;
+    const q = qrcode(0, 'M'); q.addData(url); q.make();
+    $('qr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+    $('scanUrl').textContent = url;
+    scanStatus('Scan the QR code with your phone camera. Both devices must be on the same Wi-Fi.', 'wait');
+  });
+  scanPeer.on('connection', c => {
+    if (scanConn) { c.close(); return; }
+    scanConn = c;
+    c.on('open', () => scanStatus('Phone connected over Wi-Fi. Tap Start scan on the phone.', 'ok'));
+    c.on('data', onScanMsg);
+    c.on('close', () => { scanConn = null; if (!live.done) scanStatus('Phone disconnected.', live.v.length ? 'ok' : 'warn'); });
+  });
+  scanPeer.on('error', e => {
+    if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed') scanStatus('Can\'t reach the connection service. This computer needs internet for a few seconds to pair with the phone.', 'warn');
+    else if (e.type === 'unavailable-id') { scanPeer.destroy(); openScanner(); }
+    else scanStatus('Connection problem: ' + e.type, 'warn');
+  });
+}
+function closeScanner() {
+  try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {}
+  if (scanPeer) scanPeer.destroy();
+  scanPeer = scanConn = null;
+  const dlg = $('scanDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
+}
+let liveTimer = null;
+function onScanMsg(m) {
+  if (!m || typeof m !== 'object') return;
+  if (m.t === 'pts' && Array.isArray(m.v)) {
+    for (let i = 0; i + 2 < m.v.length; i += 3) {
+      const x = m.v[i] | 0, y = m.v[i + 1] | 0, z = m.v[i + 2] | 0, k = x + ',' + y + ',' + z;
+      if (live.keys.has(k) || live.keys.size >= 300000) continue;
+      live.keys.add(k); live.v.push(x, y, z);
+    }
+    $('scanUse').disabled = live.v.length < 300;
+    if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250);
+  } else if (m.t === 'pose') { live.pose = m; if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250); }
+  else if (m.t === 'status' && typeof m.msg === 'string') scanStatus('Phone: ' + m.msg.slice(0, 120), m.level === 'warn' ? 'warn' : 'ok');
+  else if (m.t === 'done') { live.done = true; drawLive(); scanStatus(live.v.length >= 300 ? 'Scan finished. Click "Use this map".' : 'Scan ended with too few points. Scan again and sweep more slowly.', live.v.length >= 300 ? 'ok' : 'warn'); }
+}
+function drawLive() {
+  const cv = $('scanMap'), ctx = cv.getContext('2d'), W = cv.width;
+  ctx.fillStyle = css('--code'); ctx.fillRect(0, 0, W, W);
+  const V = live ? live.v : [];
+  let ext = 200, x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+  for (let i = 0; i < V.length; i += 3) {
+    ext = Math.max(ext, Math.abs(V[i]) + 50, Math.abs(V[i + 1]) + 50);
+    x0 = Math.min(x0, V[i]); x1 = Math.max(x1, V[i]); y0 = Math.min(y0, V[i + 1]); y1 = Math.max(y1, V[i + 1]);
+  }
+  const s = W / 2 / ext, c = W / 2;
+  // ROS top-down: +x (forward) up the canvas, +y (left) to the left
+  ctx.strokeStyle = css('--line'); ctx.lineWidth = 1;
+  for (let m = -Math.floor(ext / 100) * 100; m <= ext; m += 100) {
+    ctx.beginPath(); ctx.moveTo(c - m * s, 0); ctx.lineTo(c - m * s, W); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, c - m * s); ctx.lineTo(W, c - m * s); ctx.stroke();
+  }
+  let fz = 0;
+  if (V.length) { const h = new Map(); for (let i = 2; i < V.length; i += 3) if (V[i] > -60 && V[i] < 60) h.set(V[i], (h.get(V[i]) || 0) + 1); let b = -1; h.forEach((n2, z) => { if (n2 > b) { b = n2; fz = z; } }); }
+  for (let i = 0; i < V.length; i += 3) {
+    const dz = V[i + 2] - fz;
+    if (dz > 220) continue;
+    ctx.fillStyle = dz > 8 ? css('--accent') : css('--muted');
+    ctx.fillRect(c - V[i + 1] * s - 1.5, c - V[i] * s - 1.5, 3, 3);
+  }
+  ctx.fillStyle = css('--ok'); ctx.beginPath(); ctx.arc(c, c, 5, 0, 2 * PI); ctx.fill();
+  if (live && live.pose) {
+    const p = live.pose, px = c - p.y * s, py = c - p.x * s;
+    ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 6, 0, 2 * PI); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - Math.sin(p.yaw) * 16, py - Math.cos(p.yaw) * 16); ctx.stroke();
+  }
+  const n3 = V.length / 3;
+  $('scanStats').textContent = n3 ? `${n3.toLocaleString()} points · ${((x1 - x0) / 100).toFixed(1)} × ${((y1 - y0) / 100).toFixed(1)} m · green dot = robot start, ring = phone` : 'No points yet';
+}
+function useScan() {
+  if (!live || live.v.length < 300) return;
+  state.scan = { id: Date.now(), v: live.v.slice() };
+  state.world = 'custom';
+  saveScan();
+  closeScanner();
+  rebuild(); overview();
+  const a = analyzeScan(state.scan);
+  toast(`Custom map ready: ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.${a.blocked ? ' Something was detected at the robot start; clear that spot or rescan from an open area.' : ''}`, a.blocked);
+}
+function saveScan() {
+  try { localStorage.setItem('urdf-studio-scan', state.scan ? JSON.stringify(state.scan) : ''); } catch (e) {}
 }
 
 /* ---------- 3D preview ---------- */
@@ -1691,21 +1938,32 @@ function fitView(bb) {
 }
 
 let envGroup = null, envKey = null;
-const activeWorld = () => state.target !== 'rviz' ? state.world : 'empty';
+const activeWorld = () => state.target !== 'rviz' && (state.world !== 'custom' || state.scan) ? state.world : 'empty';
 function updateEnvPreview() {
-  if (!world || activeWorld() === envKey) return;
+  const key = activeWorld() + (activeWorld() === 'custom' ? ':' + state.scan.id : '');
+  if (!world || key === envKey) return;
   if (envGroup) { world.remove(envGroup); disposeTree(envGroup); envGroup = null; }
-  envKey = activeWorld();
-  const env = buildEnv(envKey);
+  envKey = key;
+  const env = buildEnv(activeWorld());
   if (!env.objects.length) return;
   envGroup = new THREE.Group();
   const mats = {};
   const mat = c => mats[c] || (mats[c] = new THREE.MeshStandardMaterial({ color: lin(c), roughness: 0.85 }));
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(env.W, env.D), mat(env.floor));
-  floor.position.z = -0.003; floor.receiveShadow = true; envGroup.add(floor);
+  floor.position.set(env.cx || 0, env.cy || 0, -0.003); floor.receiveShadow = true; envGroup.add(floor);
   env.objects.forEach(ob => {
     const g = new THREE.Group(); g.position.set(ob.x, ob.y, 0); g.rotation.z = ob.yaw;
-    ob.parts.forEach(p => { const m = meshFor({ g: p.g, xyz: p.xyz, rpy: [0, 0, 0], mat: p.color }, { [p.color]: mat(p.color) }); m.castShadow = false; g.add(m); });
+    if (ob.parts.length > 200 && ob.parts.every(p => p.g[0] === 'box')) {
+      // scanned maps can hold thousands of blocks: one instanced mesh per color
+      const byColor = {};
+      ob.parts.forEach(p => (byColor[p.color] = byColor[p.color] || []).push(p));
+      const unit = new THREE.BoxGeometry(1, 1, 1), m4 = new THREE.Matrix4();
+      Object.entries(byColor).forEach(([c, ps]) => {
+        const im = new THREE.InstancedMesh(unit, mat(c), ps.length);
+        ps.forEach((p, i) => { m4.makeScale(p.g[1], p.g[2], p.g[3]); m4.setPosition(p.xyz[0], p.xyz[1], p.xyz[2]); im.setMatrixAt(i, m4); });
+        im.receiveShadow = true; g.add(im);
+      });
+    } else ob.parts.forEach(p => { const m = meshFor({ g: p.g, xyz: p.xyz, rpy: [0, 0, 0], mat: p.color }, { [p.color]: mat(p.color) }); m.castShadow = false; g.add(m); });
     envGroup.add(g);
   });
   world.add(envGroup);
@@ -1715,14 +1973,22 @@ function overview() {
   const env = buildEnv(activeWorld());
   if (!env.W) { if (robotRoot) fitView(measure()); return; }
   // three.js frame: x = ROS x, y = up, z = -ROS y
-  camera.position.set(env.W * 0.42, Math.max(env.W, env.D) * 0.5, env.D * 0.72);
-  controls.target.set(0, 0.6, 0); controls.update();
+  const cx = env.cx || 0, cy = env.cy || 0;
+  const up = activeWorld() === 'custom' ? 1.1 : 0.5;
+  camera.position.set(cx + env.W * 0.42, Math.max(env.W, env.D) * up + 1, -cy + env.D * 0.72);
+  controls.target.set(cx, 0.6, -cy); controls.update();
 }
 function renderWorlds() {
   const off = state.target === 'rviz';
+  const sub = k => {
+    if (k !== 'custom' || !state.scan) return WORLDS[k].sub;
+    const a = analyzeScan(state.scan);
+    return `Scanned ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.`;
+  };
   $('worlds').innerHTML = Object.entries(WORLDS).map(([k, w]) =>
-    `<button type="button" class="world" role="radio" data-world="${k}" aria-checked="${k === state.world}" ${off ? 'disabled' : ''}>${WORLD_GLYPHS[k]}<b>${w.label}</b><span>${w.sub}</span></button>`).join('');
+    `<button type="button" class="world" role="radio" data-world="${k}" aria-checked="${k === state.world && (k !== 'custom' || !!state.scan)}" ${off ? 'disabled' : ''}>${WORLD_GLYPHS[k]}<b>${w.label}</b><span>${sub(k)}</span></button>`).join('');
   $('worldNote').hidden = !off;
+  $('rescan').hidden = off || !state.scan;
 }
 
 /* ---------- Checks ---------- */
@@ -1875,7 +2141,10 @@ function rebuild() {
   d['rviz/display.rviz'] = rvizCfg(M, M.fixedFrame, false, bb);
   if (gz) {
     if (!M.moveit) d['rviz/gazebo.rviz'] = rvizCfg(M, M.gzFixedFrame, true, bb);
-    Object.keys(WORLDS).forEach(w => d[`worlds/${w}.sdf`] = worldSdf(M, w));
+    worldKeys().forEach(w => d[`worlds/${w}.sdf`] = worldSdf(M, w));
+  }
+  if (state.scan) {
+    Object.assign(d, mapFiles());
   }
   d['package.xml'] = packageXml(pkg, gz && !M.moveit);
   d['CMakeLists.txt'] = cmakeLists(pkg, gz);
@@ -1946,8 +2215,14 @@ $('fitBtn').addEventListener('click', () => robotRoot && fitView(measure()));
 document.querySelectorAll('input[name=target]').forEach(r => r.addEventListener('change', () => { state.target = r.value; rebuild(); }));
 $('worlds').addEventListener('click', e => {
   const b = e.target.closest('.world'); if (!b || b.disabled) return;
+  if (b.dataset.world === 'custom' && !state.scan) { openScanner(); return; }
   state.world = b.dataset.world; rebuild(); overview();
 });
+$('rescan').addEventListener('click', openScanner);
+$('scanClose').addEventListener('click', closeScanner);
+$('scanCancel').addEventListener('click', closeScanner);
+$('scanUse').addEventListener('click', useScan);
+$('scanDlg').addEventListener('cancel', e => { e.preventDefault(); closeScanner(); });
 $('distro').addEventListener('change', e => { state.distro = e.target.value; rebuild(); });
 $('moveit').addEventListener('change', e => { state.moveit = e.target.checked; rebuild(); });
 $('tree').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showFile(b.dataset.f); });
@@ -2045,6 +2320,8 @@ try {
     if (typeof saved.moveit === 'boolean') state.moveit = saved.moveit;
   }
 } catch (e) {}
+try { const sc = localStorage.getItem('urdf-studio-scan'); if (sc) { const o = JSON.parse(sc); if (o && Array.isArray(o.v)) state.scan = o; } } catch (e) {}
+if (state.world === 'custom' && !state.scan) state.world = 'empty';
 syncControls();
 renderTypes();
 renderForm();
