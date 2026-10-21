@@ -188,6 +188,12 @@ dialog#scanDlg::backdrop { background: rgba(10, 14, 13, .55); }
 .impopts { display: flex; flex-direction: column; gap: 8px; }
 .impopts .text { grid-template-columns: 80px minmax(0, 1fr); }
 #scanMap { cursor: crosshair; }
+.devpick { display: inline-flex; align-self: start; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.devpick button { border: 0; background: var(--panel); padding: 6px 16px; font-weight: 500; color: var(--muted); }
+.devpick button + button { border-left: 1px solid var(--line); }
+.devpick button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+.qrblock { display: flex; flex-direction: column; gap: 6px; }
+#panePhone[data-device="android"] #stepsIphone, #panePhone[data-device="iphone"] #stepsAndroid, #panePhone[data-device="iphone"] #androidNote { display: none; }
 #scanMap { width: 100%; max-width: 440px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 6px; }
 .target { position: relative; }
 .target input { position: absolute; opacity: 0; pointer-events: none; }
@@ -367,17 +373,28 @@ pre.cmd .c { color: var(--muted); }
           <li>Choose the file here. Polycam's free <b>GLB</b> export works too.</li>
         </ol>
       </div>
-      <div id="panePhone" class="pane" hidden>
-      <div id="qr" class="qr"></div>
-      <code id="scanUrl" class="scanurl"></code>
-      <ol class="scansteps">
-        <li>Connect your phone to the <b>same Wi-Fi</b> as this computer.</li>
-        <li>Point the phone camera at the QR code and open the link.</li>
-        <li><b>iPhone:</b> tap <b>Send scan file</b> and pick the scan you exported from Scaniverse. It opens here straight away.</li>
-        <li><b>Android:</b> send a file the same way, or tap <b>Start scan</b> to scan live. People and animals are left out of live scans automatically.</li>
+      <div id="panePhone" class="pane" data-device="android" hidden>
+      <div class="devpick" role="radiogroup" aria-label="Phone type">
+        <button type="button" role="radio" data-device="android" aria-checked="true">Android</button>
+        <button type="button" role="radio" data-device="iphone" aria-checked="false">iPhone</button>
+      </div>
+      <ol class="scansteps devsteps" id="stepsIphone">
+        <li>Install <b>Scaniverse</b> (free) from the App Store.</li>
+        <li>Open it and start a <b>new scan</b>. Pick a <b>mesh</b> scan for a room or large area, not a splat.</li>
+        <li>Start where the robot will start. Walk slowly around the room and point the phone at every wall and piece of furniture. Keep people and pets out of view.</li>
+        <li>Stop the scan and let Scaniverse finish processing it.</li>
+        <li>Tap the share or export button, choose <b>OBJ</b> (or PLY), then <b>Save to Files</b>.</li>
+        <li>Connect the iPhone to the <b>same Wi-Fi</b> as this computer and scan the QR code below with the Camera app.</li>
+        <li>On the page that opens, tap <b>Send scan file</b> and pick the file you saved. It appears on this screen.</li>
+        <li>Click the map where the robot starts, rotate it to face forward, then click <b>Use this map</b>.</li>
       </ol>
+      <div class="qrblock">
+        <div id="qr" class="qr"></div>
+        <code id="scanUrl" class="scanurl"></code>
+      </div>
+      <p class="devsteps" id="stepsAndroid">Connect the phone to the <b>same Wi-Fi</b> as this computer and scan the QR code. Tap <b>Start scan</b> on the phone and the map builds here live.</p>
       <p class="muted small" id="localHint" hidden>This page is open as <b>localhost</b>, which your phone can't reach. If the link doesn't open on the phone, start the app with <code>python3 serve.py</code> and open the address it prints.</p>
-      <p class="muted small">Live scanning needs Chrome on an Android phone with ARCore. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+      <p class="muted small" id="androidNote">Needs Chrome on an Android phone with ARCore. People and animals are recognised on the phone and left out of the map. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
       </div>
     </div>
     <div class="liveside">
@@ -1793,7 +1810,7 @@ function startPairing() {
     const q = qrcode(0, 'M'); q.addData(url); q.make();
     $('qr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
     $('scanUrl').textContent = url;
-    scanStatus('Scan the QR code with your phone camera. Both devices must be on the same Wi-Fi.', 'wait');
+    scanStatus(waitingText(), 'wait');
   });
   scanPeer.on('connection', c => {
     if (scanConn) { c.close(); return; }
@@ -2041,6 +2058,16 @@ function clickImportMap(e) {
   applyImport();
 }
 
+let phoneDevice = 'android';
+try { phoneDevice = localStorage.getItem('urdf-studio-device') || 'android'; } catch (e) {}
+function showDevice(d) {
+  phoneDevice = d;
+  try { localStorage.setItem('urdf-studio-device', d); } catch (e) {}
+  $('panePhone').dataset.device = d;
+  document.querySelectorAll('.devpick button').forEach(b => b.setAttribute('aria-checked', b.dataset.device === d));
+  if (scanPeer && !scanConn && $('scanUrl').textContent) scanStatus(waitingText(), 'wait');
+}
+const waitingText = () => phoneDevice === 'iphone' ? 'Waiting for the iPhone. Follow the steps, then scan the QR code to send the file.' : 'Scan the QR code with your Android phone. Both devices must be on the same Wi-Fi.';
 function showScanTab(tab, keepPeer) {
   scanTab = tab;
   try { localStorage.setItem('urdf-studio-scantab', tab); } catch (e) {}
@@ -2050,7 +2077,7 @@ function showScanTab(tab, keepPeer) {
   $('panePhone').hidden = tab !== 'phone';
   live = { v: [], keys: new Set(), pose: null, done: false };
   $('scanUse').disabled = true;
-  if (tab === 'phone') { imp = null; $('impOpts').hidden = true; if (!scanPeer) startPairing(); }
+  if (tab === 'phone') { imp = null; $('impOpts').hidden = true; showDevice(phoneDevice); if (!scanPeer) startPairing(); }
   else {
     if (scanPeer && !keepPeer) { scanPeer.destroy(); scanPeer = scanConn = null; $('scanStop').hidden = true; }
     if (!keepPeer) scanStatus('Choose a scan file, or use the QR tab to send one straight from your phone.', '');
@@ -2456,6 +2483,7 @@ $('scanUse').addEventListener('click', useScan);
 $('scanStop').addEventListener('click', () => { try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {} });
 $('tabImport').addEventListener('click', () => showScanTab('import'));
 $('tabPhone').addEventListener('click', () => showScanTab('phone'));
+document.querySelectorAll('.devpick button').forEach(b => b.addEventListener('click', () => showDevice(b.dataset.device)));
 $('scanFile').addEventListener('change', e => { onScanFile(e.target.files[0]); e.target.value = ''; });
 ['impUp', 'impUnit', 'impFlip'].forEach(id => $(id).addEventListener('change', reorient));
 $('rotL').addEventListener('click', () => rotateImport(-15));

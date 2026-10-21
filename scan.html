@@ -89,17 +89,6 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
   <p class="note">Your camera picture stays on this phone. Only 3D points (no images) go to your computer, directly over your Wi-Fi.</p>
   </section>
   <p class="note" id="liveNote" hidden>Live scanning needs Chrome on an Android phone with AR support. This phone can send a scan file instead.</p>
-  <section class="card" id="iosBox" hidden>
-    <h2>Scan live on iPhone</h2>
-    <p class="note" style="color:var(--ink)">Safari and Chrome on iPhone can't run AR scans, but the free <b>WebXR Viewer</b> app from Mozilla can. It is old and unsupported, so it may crash on newer iOS versions.</p>
-    <ol>
-      <li>Install <b>WebXR Viewer</b> from the App Store.</li>
-      <li>Tap <b>Copy link</b>, open WebXR Viewer and paste the link into its address bar.</li>
-      <li>Keep people and pets out of view: WebXR Viewer can't filter them out.</li>
-    </ol>
-    <button class="btn" id="copyLink">Copy link</button>
-    <p class="note" id="copyNote"></p>
-  </section>
 </main>
 
 <div id="overlay">
@@ -174,7 +163,7 @@ async function checkXR() {
   const ok = navigator.xr && await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!ok) {
     send({ t: 'status', level: 'ok', msg: 'Phone connected. Waiting for a scan file' });
-    if (IOS) $('iosBox').hidden = false; else $('liveNote').hidden = false;
+    if (!IOS) $('liveNote').hidden = false;
     return;
   }
   xrOK = true;
@@ -503,10 +492,6 @@ async function sendFile(file) {
   $('sendFile').disabled = false; $('sendFile').value = '';
 }
 $('sendFile').addEventListener('change', e => sendFile(e.target.files[0]));
-$('copyLink').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(location.href); $('copyNote').textContent = 'Link copied. Paste it into WebXR Viewer.'; }
-  catch (e) { $('copyNote').textContent = location.href; }
-});
 
 let stopReason = '';
 $('start').addEventListener('click', start);
