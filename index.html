@@ -341,9 +341,9 @@ pre.cmd .c { color: var(--muted); }
         <li>Connect your phone to the <b>same Wi-Fi</b> as this computer.</li>
         <li>Point the phone camera at the QR code and open the link.</li>
         <li>Stand where the robot should start, face its forward direction, tap <b>Start scan</b>.</li>
-        <li>Walk slowly and sweep over walls, furniture, people and pets, then tap <b>Finish</b>.</li>
+        <li>Walk slowly and sweep over walls and furniture, then tap <b>Finish</b>. People and animals are left out automatically.</li>
       </ol>
-      <p class="muted small">Needs Chrome on an Android phone with ARCore. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
+      <p class="muted small">Needs Chrome on an Android phone with ARCore. The phone recognises people and animals in each camera frame and drops those points before sending. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
     </div>
     <div class="liveside">
       <div class="status"><span class="dot" id="scanDot"></span><span id="scanStatus"></span></div>

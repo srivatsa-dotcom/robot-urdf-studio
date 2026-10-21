@@ -60,11 +60,13 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
   <ol id="steps">
     <li>Stand where the robot should start and face the direction it should drive forward.</li>
     <li>Tap <b>Start scan</b>, allow the camera, and keep the phone at chest height.</li>
-    <li>Walk slowly and sweep the phone across walls, furniture, people and pets. Everything the camera sees becomes part of the map.</li>
+    <li>Walk slowly and sweep the phone across walls and furniture. People and animals in view are recognised and left out of the map.</li>
     <li>Tap <b>Finish</b>. The map appears on your computer.</li>
   </ol>
   <button class="btn primary" id="start" disabled>Start scan</button>
+  <button class="btn" id="startAnyway" hidden>Scan without the people filter</button>
   <p class="note" id="mode"></p>
+  <p class="note" id="filterNote">Loading the people and animal filter…</p>
   <p class="note">Your camera picture stays on this phone. Only 3D points (no images) go to your computer, directly over your Wi-Fi.</p>
 </main>
 
@@ -73,6 +75,7 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="chip" id="pts">0 points</span>
       <span class="chip" id="area">0.0 m²</span>
+      <span class="chip" id="living" hidden>Skipping people / animals</span>
     </div>
     <canvas id="mini" width="264" height="264"></canvas>
   </div>
@@ -140,12 +143,107 @@ async function checkXR() {
     showProblem('This phone\'s browser can\'t do AR mapping. Use <b>Chrome on an Android phone</b> that supports Google Play Services for AR. iPhones are not supported yet because Safari has no WebXR.');
     return;
   }
-  $('start').disabled = false;
-  $('mode').textContent = 'Ready. The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
+  xrOK = true;
+  $('mode').textContent = 'The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
+  updateStart();
+}
+let xrOK = false;
+function updateStart() {
+  $('start').disabled = !(xrOK && filterState !== 'loading');
+  $('startAnyway').hidden = !(xrOK && filterState === 'failed');
+  if (filterState === 'failed') $('start').disabled = true;
+}
+
+/* ---------- People and animal filter ----------
+   DeepLab v3 (Pascal VOC classes) labels every camera pixel; depth samples that land on a
+   person or animal (dilated a little) are dropped before they become map points. */
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite';
+const LIVING = new Set([3, 8, 10, 12, 13, 15, 17]);   // bird, cat, cow, dog, horse, person, sheep
+let segmenter = null, filterState = 'loading', allowUnfiltered = false;
+const NO_MASK = { m: null, frac: 0 };
+
+async function loadFilter() {
+  try {
+    const v = await import(MP + '/vision_bundle.mjs');
+    const files = await v.FilesetResolver.forVisionTasks(MP + '/wasm');
+    const opts = delegate => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: 'IMAGE', outputCategoryMask: true, outputConfidenceMasks: false });
+    try { segmenter = await v.ImageSegmenter.createFromOptions(files, opts('GPU')); }
+    catch (e) { segmenter = await v.ImageSegmenter.createFromOptions(files, opts('CPU')); }
+    filterState = 'ready';
+    $('filterNote').textContent = 'People and animal filter ready.';
+  } catch (e) {
+    filterState = 'failed';
+    $('filterNote').textContent = 'The people and animal filter could not load on this phone (' + (e.message || e) + ').';
+  }
+  updateStart();
+}
+
+function dilate(a, w, h, r) {
+  const t = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!a[y * w + x]) continue;
+    for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) t[y * w + k] = 1;
+  }
+  a.fill(0);
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+    if (!t[y * w + x]) continue;
+    for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) a[k * w + x] = 1;
+  }
+}
+function livingMask(image) {
+  const res = segmenter.segment(image), cm = res.categoryMask;
+  const w = cm.width, h = cm.height, cat = cm.getAsUint8Array(), a = new Uint8Array(w * h);
+  let hit = 0;
+  for (let i = 0; i < cat.length; i++) if (LIVING.has(cat[i])) { a[i] = 1; hit++; }
+  if (res.close) res.close();
+  if (!hit) return { m: null, frac: 0, w, h };
+  dilate(a, w, h, Math.max(2, Math.round(w * 0.03)));
+  return { m: a, frac: hit / (w * h), w, h };
+}
+const isLiving = (k, u, v) => !!k.m && k.m[Math.min(k.h - 1, (v * k.h) | 0) * k.w + Math.min(k.w - 1, (u * k.w) | 0)] === 1;
+window.__filter = { livingMask, isLiving, ready: () => filterState };   // used by tests
+
+// Copy the AR camera frame (a GL texture) into a small image for the segmenter
+let binding = null, blit = null;
+const SEG_W = 192;
+function setupBlit() {
+  const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); return o; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p; varying vec2 uv; void main() { uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }'));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, 'precision mediump float; varying vec2 uv; uniform sampler2D t; void main() { gl_FragColor = texture2D(t, uv); }'));
+  gl.linkProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  blit = { prog, buf, ap: gl.getAttribLocation(prog, 'p'), loc: gl.getUniformLocation(prog, 't'), fbo: gl.createFramebuffer(), tex: gl.createTexture(), w: 0, h: 0 };
+}
+function grabCamera(view) {
+  if (!view.camera || !binding) return null;
+  const tex = binding.getCameraImage(view.camera);
+  if (!tex) return null;
+  const W = SEG_W, Hh = Math.max(1, Math.round(SEG_W * view.camera.height / view.camera.width));
+  if (blit.w !== W || blit.h !== Hh) {
+    gl.bindTexture(gl.TEXTURE_2D, blit.tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, Hh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, blit.fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, blit.tex, 0);
+    blit.w = W; blit.h = Hh;
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, blit.fbo);
+  gl.viewport(0, 0, W, Hh);
+  gl.useProgram(blit.prog);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(blit.loc, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, blit.buf); gl.enableVertexAttribArray(blit.ap); gl.vertexAttribPointer(blit.ap, 2, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  const px = new Uint8Array(W * Hh * 4);
+  gl.readPixels(0, 0, W, Hh, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const img = new ImageData(W, Hh);   // GL rows run bottom-up; flip so row 0 is the top of the view
+  for (let y = 0; y < Hh; y++) img.data.set(px.subarray((Hh - 1 - y) * W * 4, (Hh - y) * W * 4), y * W * 4);
+  return img;
 }
 
 /* ---------- Scan ---------- */
-let session = null, refSpace = null, gl = null, hitSources = [];
+let session = null, refSpace = null, gl = null, hitSources = [], hitUV = [], filtering = false, checkedCam = false, skipped = 0, lastSkipMsg = 0;
 const counts = new Map();          // voxel key -> hits
 let outbox = [], total = 0, lastSend = 0, lastPose = 0, frameNo = 0;
 const mini = $('mini').getContext('2d');
@@ -188,7 +286,7 @@ function inv4(m) {
 }
 const xf = (m, x, y, z) => [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14], m[3] * x + m[7] * y + m[11] * z + m[15]];
 
-function sampleDepth(frame, view) {
+function sampleDepth(frame, view, mask) {
   const depth = frame.getDepthInformation(view);
   if (!depth) return false;
   const ip = inv4(view.projectionMatrix), M = view.transform.matrix;
@@ -197,11 +295,12 @@ function sampleDepth(frame, view) {
     const u = (gx + 0.5) / GX, v = (gy + 0.5) / GY;
     const d = depth.getDepthInMeters(u, v);
     if (!(d > 0.25 && d < 4.5)) continue;
+    if (isLiving(mask, u, v)) { skipped++; continue; }
     const p = xf(ip, u * 2 - 1, (1 - v) * 2 - 1, -1);
     const vx = p[0] / p[3], vy = p[1] / p[3], vz = p[2] / p[3];
     const s = d / -vz;
     const w = xf(M, vx * s, vy * s, -d);
-    addPoint(w[0], w[1], w[2], 3);
+    addPoint(w[0], w[1], w[2], 2);
   }
   return true;
 }
@@ -210,7 +309,7 @@ async function start() {
   try {
     session = await navigator.xr.requestSession('immersive-ar', {
       requiredFeatures: ['local-floor'],
-      optionalFeatures: ['depth-sensing', 'hit-test', 'dom-overlay'],
+      optionalFeatures: ['depth-sensing', 'hit-test', 'dom-overlay', 'camera-access'],
       depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] },
       domOverlay: { root: $('overlay') },
     });
@@ -224,17 +323,20 @@ async function start() {
   const canvas = document.createElement('canvas');
   gl = canvas.getContext('webgl', { xrCompatible: true, alpha: true });
   await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+  checkedCam = false; filtering = false; skipped = 0;
+  try { binding = new XRWebGLBinding(session, gl); setupBlit(); } catch (e) { binding = null; }
   refSpace = await session.requestReferenceSpace('local-floor');
   if (!useDepth && session.requestHitTestSource) {
     const viewer = await session.requestReferenceSpace('viewer');
     for (const ox of [-0.35, 0, 0.35]) for (const oy of [-0.5, -0.2, 0.1, 0.4]) {
-      try { hitSources.push(await session.requestHitTestSource({ space: viewer, offsetRay: new XRRay({ x: 0, y: 0, z: 0 }, { x: ox, y: oy, z: -1 }) })); } catch (e) {}
+      try { hitSources.push(await session.requestHitTestSource({ space: viewer, offsetRay: new XRRay({ x: 0, y: 0, z: 0 }, { x: ox, y: oy, z: -1 }) })); hitUV.push([ox, oy]); } catch (e) {}
     }
   }
   session.addEventListener('end', () => {
     $('overlay').classList.remove('on'); flush(true); send({ t: 'done', total });
+    if (stopReason) { showProblem(stopReason); stopReason = ''; $('startAnyway').hidden = false; return; }
     setStatus(connected ? `Sent ${total.toLocaleString()} points. Check your computer.` : 'Scan ended.', connected ? 'ok' : 'warn');
-    session = null; hitSources = [];
+    session = null; hitSources = []; hitUV = [];
   });
   session.requestAnimationFrame(onFrame);
 }
@@ -243,19 +345,38 @@ function onFrame(t, frame) {
   if (!session) return;
   session.requestAnimationFrame(onFrame);
   const layer = session.renderState.baseLayer;
+  const pose = frame.getViewerPose(refSpace);
+  if (pose && !checkedCam) {
+    checkedCam = true;
+    filtering = !!pose.views[0].camera && !!binding && filterState === 'ready';
+    if (!filtering && !allowUnfiltered) {
+      stopReason = 'This phone does not let the browser read the camera during AR, so people and animals cannot be filtered out. Tap "Scan without the people filter" and keep people and pets out of view.';
+      session.end(); return;
+    }
+    send({ t: 'status', level: filtering ? 'ok' : 'warn', msg: filtering ? 'Filtering out people and animals' : 'People filter is off on this phone' });
+  }
+  frameNo++;
+  // Sample on every 4th frame: segment that exact camera frame, then read depth with the mask
+  let mask = NO_MASK, sampleNow = !!pose && frameNo % 4 === 0;
+  if (sampleNow && filtering) {
+    const img = grabCamera(pose.views[0]);
+    if (img) { mask = livingMask(img); $('living').hidden = !mask.m; } else sampleNow = false;
+  }
   gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer);
   gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  const pose = frame.getViewerPose(refSpace);
   if (!pose) { $('hint').textContent = 'Tracking lost. Move the phone slowly over a textured area.'; return; }
-  frameNo++;
-  if (useDepth) {
-    if (frameNo % 3 === 0) for (const view of pose.views) sampleDepth(frame, view);
-  } else {
-    for (const src of hitSources) {
+  if (sampleNow) {
+    if (useDepth) sampleDepth(frame, pose.views[0], mask);
+    else hitSources.forEach((src, i) => {
       const hits = frame.getHitTestResults(src);
-      if (hits.length) { const p = hits[0].getPose(refSpace).transform.position; addPoint(p.x, p.y, p.z, 1); }
-    }
+      if (!hits.length) return;
+      const pr = pose.views[0].projectionMatrix, [ox, oy] = hitUV[i];
+      const c = xf(pr, ox, oy, -1), u = (c[0] / c[3] + 1) / 2, v = 1 - (c[1] / c[3] + 1) / 2;
+      if (isLiving(mask, u, v)) { skipped++; return; }
+      const p = hits[0].getPose(refSpace).transform.position; addPoint(p.x, p.y, p.z, 1);
+    });
   }
+  if (filtering && skipped && t - lastSkipMsg > 3000) { lastSkipMsg = t; send({ t: 'status', level: 'ok', msg: `Filtering out people and animals (${skipped.toLocaleString()} samples skipped)` }); }
   const m = pose.transform.matrix;
   if (t - lastPose > 200) {
     lastPose = t;
@@ -273,7 +394,10 @@ function flush(final) {
   if (outbox.length) { send({ t: 'pts', v: outbox }); outbox = []; }
 }
 
+let stopReason = '';
 $('start').addEventListener('click', start);
+$('startAnyway').addEventListener('click', () => { allowUnfiltered = true; $('unsupported').hidden = true; start(); });
+loadFilter();
 $('finish').addEventListener('click', () => session && session.end());
 })();
 </script>
