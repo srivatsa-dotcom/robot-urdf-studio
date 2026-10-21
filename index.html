@@ -162,6 +162,20 @@ input[type="color"] { width: 36px; height: 26px; padding: 0; border: 1px solid v
 .world span { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 .world[disabled] { opacity: .45; cursor: not-allowed; }
 #rescan { align-self: start; }
+#customActs { gap: 8px; }
+.foot { display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--line); }
+.linkbtn { background: none; border: 0; padding: 4px 0; color: var(--muted); font-size: 12px; text-decoration: underline; }
+.linkbtn:hover { color: var(--ink); }
+dialog#shareDlg, dialog#ownerDlg { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+dialog#shareDlg::backdrop, dialog#ownerDlg::backdrop { background: rgba(10, 14, 13, .55); }
+.dlgbody.one { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.dlgbody.one p { margin: 0; }
+.dlgbody .text { grid-template-columns: 90px minmax(0, 1fr); }
+.tablewrap { overflow-x: auto; }
+.owntable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.owntable th { text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.owntable td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.ownact { white-space: nowrap; display: flex; gap: 6px; }
 dialog#scanDlg { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
 dialog#scanDlg::backdrop { background: rgba(10, 14, 13, .55); }
 .dlghead, .dlgfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; }
@@ -313,7 +327,7 @@ pre.cmd .c { color: var(--muted); }
         <div class="eyebrow">Gazebo world</div>
         <div class="worlds" id="worlds" role="radiogroup" aria-label="Gazebo world"></div>
         <p class="muted" id="worldNote" hidden>Worlds are for Gazebo. Pick Gazebo or Gazebo + RViz to choose one.</p>
-        <button class="btn" type="button" id="rescan" hidden>Rescan custom map</button>
+        <div class="actions" id="customActs"><button class="btn" type="button" id="rescan" hidden>Rescan custom map</button><button class="btn" type="button" id="shareScan" hidden>Share this map with the app owner</button></div>
       </div>
       </div>
       <div class="distro">
@@ -344,7 +358,30 @@ pre.cmd .c { color: var(--muted); }
       </div>
     </div>
   </section>
+  <footer class="foot"><button class="linkbtn" type="button" id="ownerBtn">Owner: shared scans</button></footer>
 </div>
+
+<dialog id="shareDlg" aria-labelledby="shareTitle">
+  <div class="dlghead"><h3 id="shareTitle">Share this map with the app owner</h3><button class="btn" type="button" id="shareClose">Close</button></div>
+  <div class="dlgbody one">
+    <p>The app owner will receive your scanned room: its 3D shape, its textures (photos of the surfaces) and the map. Nothing else from this page is sent.</p>
+    <div class="text"><label for="shareName">Your name</label><input id="shareName" placeholder="Optional" maxlength="80"></div>
+    <div class="text"><label for="shareNote">Note</label><input id="shareNote" placeholder="Optional, e.g. what the room is" maxlength="300"></div>
+    <label class="check"><input type="checkbox" id="shareConsent">I agree to share this scan with the app owner, and it shows no one who hasn't agreed.</label>
+    <p class="muted small">You can delete what you shared from this browser at any time with the button below.</p>
+    <div class="status small" id="shareStatus" role="status"></div>
+  </div>
+  <div class="dlgfoot"><button class="btn" type="button" id="shareMine" hidden>Delete my shared scans</button><button class="btn primary" type="button" id="shareSend" disabled>Share</button></div>
+</dialog>
+
+<dialog id="ownerDlg" aria-labelledby="ownerTitle">
+  <div class="dlghead"><h3 id="ownerTitle">Shared scans</h3><button class="btn" type="button" id="ownerClose">Close</button></div>
+  <div class="dlgbody one">
+    <div class="status small" id="ownerStatus" role="status"></div>
+    <button class="btn primary" type="button" id="ownerSignIn" hidden>Sign in with Google</button>
+    <div class="tablewrap"><table class="owntable"><thead><tr><th>Shared</th><th>From</th><th>Size</th><th>Robot</th><th>File</th><th></th></tr></thead><tbody id="ownerList"></tbody></table></div>
+  </div>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -415,6 +452,10 @@ pre.cmd .c { color: var(--muted); }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 (() => {
 'use strict';
@@ -2433,6 +2474,146 @@ function scanMeshSdf() {
     '        </visual>', '      </link>', '    </model>'];
 }
 
+/* ---------- Share scans with the app owner (Firebase on the owner's Google Cloud) ----------
+   Customers sign in anonymously and upload one zip (scan points + cleaned mesh) to
+   scans/<their id>/. Storage rules let only the owner's Google account list and read
+   everyone's folder. Nothing is shared without the consent box being ticked. */
+const FB_SDK = typeof firebase !== 'undefined' && firebase.storage && firebase.auth;
+const fbConfigured = () => !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
+const sharingAvailable = () => FB_SDK && fbConfigured() && !window.claude;
+let fbApp = null;
+function fb() {
+  if (!fbApp) {
+    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
+    fbApp = { auth: app.auth(), storage: app.storage() };
+    // ?fbemu=1 on localhost talks to the local Firebase emulators (testing only)
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get('fbemu') === '1') {
+      fbApp.auth.useEmulator('http://127.0.0.1:9099'); fbApp.storage.useEmulator('127.0.0.1', 9199);
+    }
+  }
+  return fbApp;
+}
+const fmtMB = b => (b / 1048576).toFixed(1) + ' MB';
+
+async function buildShareZip() {
+  const zip = new JSZip(), a = analyzeScan(state.scan);
+  zip.file('scan.json', JSON.stringify({ version: 1, v: state.scan.v, mesh: state.scan.mesh || null, meshMain: hasMesh() ? meshFiles.main : null }));
+  if (hasMesh()) Object.entries(meshFiles.files).forEach(([k, c]) => zip.file('mesh/' + k, c));
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  return { blob, a };
+}
+
+function openShare() {
+  $('shareStatus').textContent = ''; $('shareConsent').checked = false; $('shareSend').disabled = true;
+  $('shareMine').hidden = true;
+  const dlg = $('shareDlg'); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  if (!sharingAvailable()) {
+    $('shareStatus').textContent = window.claude ? 'Sharing works on the GitHub Pages version of the app, not inside this viewer.' : 'Sharing is not set up yet: the app owner needs to add a Firebase project (see README).';
+    $('shareConsent').disabled = true; return;
+  }
+  $('shareConsent').disabled = false;
+  const u = fb().auth.currentUser; $('shareMine').hidden = !(u && u.isAnonymous);
+}
+async function sendShare() {
+  if (!$('shareConsent').checked || !state.scan) return;
+  $('shareSend').disabled = true;
+  try {
+    const { auth, storage } = fb();
+    if (!auth.currentUser || !auth.currentUser.isAnonymous) await auth.signInAnonymously();
+    $('shareStatus').textContent = 'Packing the scan…';
+    const { blob, a } = await buildShareZip();
+    if (blob.size > 60 * 1048576) throw new Error(`This scan is ${fmtMB(blob.size)}; the limit is 60 MB. Export a lower-detail scan and import it again.`);
+    const uid = auth.currentUser.uid, id = 'scan_' + Date.now();
+    const meta = { customMetadata: {
+      name: ($('shareName').value || '').slice(0, 80), note: ($('shareNote').value || '').slice(0, 300),
+      size: `${a.W.toFixed(1)} x ${a.D.toFixed(1)} m`, robot: TYPES[state.type].label, mesh: hasMesh() ? 'yes' : 'no',
+    }, contentType: 'application/zip' };
+    const task = storage.ref(`scans/${uid}/${id}.zip`).put(blob, meta);
+    task.on('state_changed', s => { $('shareStatus').textContent = `Uploading ${fmtMB(s.bytesTransferred)} of ${fmtMB(s.totalBytes)}…`; });
+    await task;
+    $('shareStatus').textContent = 'Shared. The app owner can now open this map.'; $('shareMine').hidden = false;
+  } catch (e) {
+    $('shareStatus').textContent = e.code === 'auth/operation-not-allowed' ? 'Sharing is switched off on the server (anonymous sign-in is disabled).'
+      : e.code === 'storage/unauthorized' ? 'The server refused the upload. The scan may be too large, or sharing is not set up yet.' : (e.message || 'Upload failed.');
+  }
+  $('shareSend').disabled = !$('shareConsent').checked;
+}
+async function deleteMine() {
+  try {
+    const { auth, storage } = fb();
+    if (!auth.currentUser || !auth.currentUser.isAnonymous) { $('shareStatus').textContent = 'No scans shared from this browser.'; return; }
+    const list = await storage.ref(`scans/${auth.currentUser.uid}`).listAll();
+    await Promise.all(list.items.map(r => r.delete()));
+    $('shareStatus').textContent = list.items.length ? `Deleted ${list.items.length} shared scan${list.items.length > 1 ? 's' : ''}.` : 'No scans shared from this browser.';
+  } catch (e) { $('shareStatus').textContent = 'Could not delete: ' + (e.message || e.code); }
+}
+
+/* Owner page */
+function openOwner() {
+  const dlg = $('ownerDlg'); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  $('ownerList').innerHTML = '';
+  if (!sharingAvailable()) { $('ownerStatus').textContent = window.claude ? 'Open the GitHub Pages version of the app to see shared scans.' : 'Sharing is not set up yet (see README: Shared scans).'; $('ownerSignIn').hidden = true; return; }
+  const u = fb().auth.currentUser;
+  if (u && !u.isAnonymous) loadOwnerList(); else { $('ownerSignIn').hidden = false; $('ownerStatus').textContent = 'Sign in with the Google account named in your storage rules.'; }
+}
+async function ownerSignIn() {
+  try {
+    await fb().auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    $('ownerSignIn').hidden = true; loadOwnerList();
+  } catch (e) { $('ownerStatus').textContent = e.code === 'auth/unauthorized-domain' ? 'Add this site to Authentication > Settings > Authorized domains in Firebase.' : 'Sign-in failed: ' + (e.message || e.code); }
+}
+async function loadOwnerList() {
+  const { auth, storage } = fb();
+  $('ownerStatus').textContent = `Signed in as ${auth.currentUser.email || 'owner'}. Loading shared scans…`;
+  try {
+    const top = await storage.ref('scans').listAll(), rows = [];
+    for (const p of top.prefixes) {
+      const l = await p.listAll();
+      for (const r of l.items) { const m = await r.getMetadata(); rows.push({ r, m }); }
+    }
+    rows.sort((a, b) => b.m.timeCreated.localeCompare(a.m.timeCreated));
+    $('ownerStatus').textContent = rows.length ? `${rows.length} shared scan${rows.length > 1 ? 's' : ''}.` : 'No scans shared yet.';
+    $('ownerList').innerHTML = rows.map((x, i) => {
+      const c = x.m.customMetadata || {};
+      return `<tr><td>${esc(new Date(x.m.timeCreated).toLocaleString())}</td><td>${esc(c.name || '—')}<div class="muted small">${esc(c.note || '')}</div></td><td>${esc(c.size || '')}</td><td>${esc(c.robot || '')}</td><td>${fmtMB(x.m.size)}</td>
+        <td class="ownact"><button class="btn" type="button" data-open="${i}">Open</button><button class="btn" type="button" data-del="${i}">Delete</button></td></tr>`;
+    }).join('');
+    loadOwnerList.rows = rows;
+  } catch (e) {
+    $('ownerStatus').textContent = e.code === 'storage/unauthorized' ? `${auth.currentUser.email} is not the owner account in your storage rules.` : 'Could not load: ' + (e.message || e.code);
+  }
+}
+async function ownerOpen(i) {
+  const x = loadOwnerList.rows[i];
+  $('ownerStatus').textContent = 'Downloading…';
+  try {
+    const url = await x.r.getDownloadURL(), res = await fetch(url);
+    if (!res.ok) throw new Error('download failed (' + res.status + ')');
+    const zip = await JSZip.loadAsync(await res.blob()), data = JSON.parse(await zip.file('scan.json').async('string'));
+    const files = {};
+    for (const f of Object.values(zip.files)) {
+      if (f.dir || !f.name.startsWith('mesh/')) continue;
+      const k = f.name.slice(5);
+      files[k] = /\.(obj|mtl)$/i.test(k) ? await f.async('string') : await f.async('arraybuffer');
+    }
+    state.scan = { id: Date.now(), v: data.v };
+    if (data.mesh && data.meshMain && files[data.meshMain]) { state.scan.mesh = data.mesh; meshFiles = { id: state.scan.id, files, main: data.meshMain }; idbPut(meshFiles); }
+    else meshFiles = null;
+    state.world = 'custom'; if (state.target === 'rviz') state.target = 'both';
+    saveScan(); syncControls();
+    const dlg = $('ownerDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
+    envKey = null; rebuild(); overview();
+    toast(`Opened the scan shared ${new Date(x.m.timeCreated).toLocaleString()}. It is now your custom map.`);
+  } catch (e) {
+    $('ownerStatus').textContent = /Failed to fetch|NetworkError/.test(e.message || '') ? 'Download blocked: run the CORS command from the README on your bucket.' : 'Could not open: ' + (e.message || e.code);
+  }
+}
+async function ownerDelete(i) {
+  const x = loadOwnerList.rows[i], btn = document.querySelector(`[data-del="${i}"]`);
+  if (btn.dataset.confirm !== '1') { btn.dataset.confirm = '1'; btn.textContent = 'Confirm delete'; return; }
+  try { await x.r.delete(); loadOwnerList(); } catch (e) { $('ownerStatus').textContent = 'Could not delete: ' + (e.message || e.code); }
+}
+
 /* ---------- 3D preview ---------- */
 let renderer, scene, camera, controls, world, grid, ground, sun, robotRoot = null, jointObjs = {}, lastType = null;
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -2599,6 +2780,7 @@ function renderWorlds() {
     `<button type="button" class="world" role="radio" data-world="${k}" aria-checked="${k === state.world && (k !== 'custom' || !!state.scan)}" ${off ? 'disabled' : ''}>${WORLD_GLYPHS[k]}<b>${w.label}</b><span>${sub(k)}</span></button>`).join('');
   $('worldNote').hidden = !off;
   $('rescan').hidden = off || !state.scan;
+  $('shareScan').hidden = off || !state.scan;
 }
 
 /* ---------- Checks ---------- */
@@ -2833,6 +3015,14 @@ $('worlds').addEventListener('click', e => {
   state.world = b.dataset.world; rebuild(); overview();
 });
 $('rescan').addEventListener('click', openScanner);
+$('shareScan').addEventListener('click', openShare);
+$('shareConsent').addEventListener('change', e => { $('shareSend').disabled = !e.target.checked; });
+$('shareSend').addEventListener('click', sendShare);
+$('shareMine').addEventListener('click', deleteMine);
+$('ownerBtn').addEventListener('click', openOwner);
+$('ownerSignIn').addEventListener('click', ownerSignIn);
+$('ownerList').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.open) ownerOpen(+b.dataset.open); else if (b.dataset.del) ownerDelete(+b.dataset.del); });
+['shareDlg', 'ownerDlg'].forEach(id => $(id.replace('Dlg', 'Close')).addEventListener('click', () => { const d = $(id); if (d.close) d.close(); else d.removeAttribute('open'); }));
 $('scanClose').addEventListener('click', closeScanner);
 $('scanCancel').addEventListener('click', closeScanner);
 $('scanUse').addEventListener('click', useScan);

@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Robot URDF Studio: shared scans.
+// Replace OWNER_EMAIL below with the Google account you will sign in with on the
+// "Owner: shared scans" page, then paste this file into Firebase > Storage > Rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email == 'OWNER_EMAIL'
+        && request.auth.token.email_verified == true;
+    }
+    function isUser(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // The owner can browse every shared scan.
+    match /scans/{allPaths=**} {
+      allow list: if isOwner();
+    }
+
+    // Each visitor (anonymous ID) can list their own folder ...
+    match /scans/{uid}/{allPaths=**} {
+      allow list: if isUser(uid);
+    }
+
+    // ... upload one zip at a time (max 60 MB), and read or delete their own files.
+    match /scans/{uid}/{file} {
+      allow create: if isUser(uid)
+        && file.matches('scan_[0-9]+[.]zip')
+        && request.resource.size < 60 * 1024 * 1024
+        && request.resource.contentType == 'application/zip';
+      allow get, delete: if isUser(uid) || isOwner();
+    }
+  }
+}

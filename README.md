@@ -83,6 +83,25 @@ It prints an address like `http://192.168.1.23:8000/`. Open that on your compute
 
 It loads three.js and JSZip from public CDNs, so it needs internet access.
 
+## Shared scans (customers share custom maps with you)
+
+Customers can click **Share this map with the app owner** under the world picker. After ticking a consent box, their cleaned scan (3D shape, textures and map) is uploaded to your Firebase Storage. They need no account: their browser gets an anonymous ID, so they can delete what they shared. You open **Owner: shared scans** at the bottom of the page, sign in with Google, and can open any shared scan as your custom map or delete it. Only the Google account named in `storage.rules` can see other people's scans.
+
+Sharing works on the GitHub Pages site (and `serve.py`), not inside the Claude artifact viewer.
+
+### One-time setup (on your existing Google Cloud project)
+
+1. Go to <https://console.firebase.google.com>, click **Add project**, and pick your existing Google Cloud project.
+2. Switch the project to the **Blaze** (pay-as-you-go) plan. Firebase needs it for file storage on new projects; it bills your Google Cloud account, and small use stays within the free quota (about 5 GB stored). Set a budget alert in Google Cloud > Billing > Budgets so you're warned of any charges.
+3. **Build > Authentication > Get started > Sign-in method:** enable **Anonymous** and **Google**. Under **Settings > Authorized domains**, add `srivatsa-dotcom.github.io` (and your computer's IP if you use `serve.py`).
+4. **Build > Storage > Get started:** choose production mode and a location near you.
+5. **Storage > Rules:** paste [`storage.rules`](storage.rules), replace `OWNER_EMAIL` with your Google email, and click **Publish**. Customers can only upload `.zip` scans under 60 MB into their own folder.
+6. **Project settings > General > Your apps > Add app > Web:** register the app and copy the `firebaseConfig` values into [`firebase-config.js`](firebase-config.js). These values are public by design; the rules protect the data.
+7. Allow the owner page to download scans: open **Cloud Shell** in the Google Cloud console, create `cors.json` with the contents of [`cors.json`](cors.json), and run
+   ```bash
+   gcloud storage buckets update gs://YOUR_PROJECT_ID.firebasestorage.app --cors-file=cors.json
+   ```
+
 ## Build a generated package
 
 ```bash
