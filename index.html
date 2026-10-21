@@ -386,7 +386,7 @@ pre.cmd .c { color: var(--muted); }
       <div class="muted small" id="scanStats"></div>
     </div>
   </div>
-  <div class="dlgfoot"><button class="btn" type="button" id="scanCancel">Cancel</button><button class="btn primary" type="button" id="scanUse" disabled>Use this map</button></div>
+  <div class="dlgfoot"><button class="btn" type="button" id="scanStop" hidden>Finish phone scan</button><button class="btn" type="button" id="scanCancel">Cancel</button><button class="btn primary" type="button" id="scanUse" disabled>Use this map</button></div>
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -1684,7 +1684,8 @@ let scanCache = { id: null, r: null };
 function analyzeScan(scan) {
   if (scanCache.id === scan.id) return scanCache.r;
   const V = scan.v, N = V.length / 3, hist = new Map();
-  for (let i = 0; i < N; i++) { const z = V[i * 3 + 2]; if (z >= -60 && z <= 60) hist.set(z, (hist.get(z) || 0) + 1); }
+  // floor = densest level from 2 m below the start to 0.6 m above (scans without a floor reference start at hand height)
+  for (let i = 0; i < N; i++) { const z = V[i * 3 + 2]; if (z >= -200 && z <= 60) hist.set(z, (hist.get(z) || 0) + 1); }
   let floorZ = 0, best = -1;
   hist.forEach((c, z) => { if (c > best) { best = c; floorZ = z; } });
   const lo = floorZ + 8, hi = floorZ + 220, R = 5;
@@ -1797,9 +1798,9 @@ function startPairing() {
   scanPeer.on('connection', c => {
     if (scanConn) { c.close(); return; }
     scanConn = c;
-    c.on('open', () => scanStatus('Phone connected over Wi-Fi. Tap Start scan on the phone.', 'ok'));
+    c.on('open', () => { scanStatus('Phone connected over Wi-Fi. Send a scan file, or tap Start scan on the phone.', 'ok'); $('scanStop').hidden = false; });
     c.on('data', onScanMsg);
-    c.on('close', () => { scanConn = null; if (!live.done) scanStatus('Phone disconnected.', live.v.length ? 'ok' : 'warn'); });
+    c.on('close', () => { scanConn = null; $('scanStop').hidden = true; if (!live.done) scanStatus('Phone disconnected.', live.v.length ? 'ok' : 'warn'); });
   });
   scanPeer.on('error', e => {
     if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed') scanStatus('Can\'t reach the connection service. This computer needs internet for a few seconds to pair with the phone.', 'warn');
@@ -1810,7 +1811,7 @@ function startPairing() {
 function closeScanner() {
   try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {}
   if (scanPeer) scanPeer.destroy();
-  scanPeer = scanConn = null; imp = null;
+  scanPeer = scanConn = null; imp = null; $('scanStop').hidden = true;
   const dlg = $('scanDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
 }
 let liveTimer = null;
@@ -1870,7 +1871,7 @@ function drawLive() {
     ctx.beginPath(); ctx.moveTo(0, c - m * s); ctx.lineTo(W, c - m * s); ctx.stroke();
   }
   let fz = 0;
-  if (V.length) { const h = new Map(); for (let i = 2; i < V.length; i += 3) if (V[i] > -60 && V[i] < 60) h.set(V[i], (h.get(V[i]) || 0) + 1); let b = -1; h.forEach((n2, z) => { if (n2 > b) { b = n2; fz = z; } }); }
+  if (V.length) { const h = new Map(); for (let i = 2; i < V.length; i += 3) if (V[i] > -200 && V[i] < 60) h.set(V[i], (h.get(V[i]) || 0) + 1); let b = -1; h.forEach((n2, z) => { if (n2 > b) { b = n2; fz = z; } }); }
   for (let i = 0; i < V.length; i += 3) {
     const dz = V[i + 2] - fz;
     if (dz > 220) continue;
@@ -2051,7 +2052,7 @@ function showScanTab(tab, keepPeer) {
   $('scanUse').disabled = true;
   if (tab === 'phone') { imp = null; $('impOpts').hidden = true; if (!scanPeer) startPairing(); }
   else {
-    if (scanPeer && !keepPeer) { scanPeer.destroy(); scanPeer = scanConn = null; }
+    if (scanPeer && !keepPeer) { scanPeer.destroy(); scanPeer = scanConn = null; $('scanStop').hidden = true; }
     if (!keepPeer) scanStatus('Choose a scan file, or use the QR tab to send one straight from your phone.', '');
   }
   drawLive();
@@ -2452,6 +2453,7 @@ $('rescan').addEventListener('click', openScanner);
 $('scanClose').addEventListener('click', closeScanner);
 $('scanCancel').addEventListener('click', closeScanner);
 $('scanUse').addEventListener('click', useScan);
+$('scanStop').addEventListener('click', () => { try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {} });
 $('tabImport').addEventListener('click', () => showScanTab('import'));
 $('tabPhone').addEventListener('click', () => showScanTab('phone'));
 $('scanFile').addEventListener('change', e => { onScanFile(e.target.files[0]); e.target.value = ''; });

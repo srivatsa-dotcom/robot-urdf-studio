@@ -89,6 +89,17 @@ ol li::marker { color: var(--accent); font-family: var(--font-mono); }
   <p class="note">Your camera picture stays on this phone. Only 3D points (no images) go to your computer, directly over your Wi-Fi.</p>
   </section>
   <p class="note" id="liveNote" hidden>Live scanning needs Chrome on an Android phone with AR support. This phone can send a scan file instead.</p>
+  <section class="card" id="iosBox" hidden>
+    <h2>Scan live on iPhone</h2>
+    <p class="note" style="color:var(--ink)">Safari and Chrome on iPhone can't run AR scans, but the free <b>WebXR Viewer</b> app from Mozilla can. It is old and unsupported, so it may crash on newer iOS versions.</p>
+    <ol>
+      <li>Install <b>WebXR Viewer</b> from the App Store.</li>
+      <li>Tap <b>Copy link</b>, open WebXR Viewer and paste the link into its address bar.</li>
+      <li>Keep people and pets out of view: WebXR Viewer can't filter them out.</li>
+    </ol>
+    <button class="btn" id="copyLink">Copy link</button>
+    <p class="note" id="copyNote"></p>
+  </section>
 </main>
 
 <div id="overlay">
@@ -163,16 +174,25 @@ async function checkXR() {
   const ok = navigator.xr && await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!ok) {
     send({ t: 'status', level: 'ok', msg: 'Phone connected. Waiting for a scan file' });
-    $('liveNote').hidden = false;
+    if (IOS) $('iosBox').hidden = false; else $('liveNote').hidden = false;
     return;
   }
   xrOK = true;
   $('liveBox').hidden = false;
-  loadFilter();
-  $('mode').textContent = 'The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
+  if (WXRV) {
+    // WebXR Viewer (iPhone) gives pages no camera frames, so the filter can't run there
+    filterState = 'off'; allowUnfiltered = true;
+    $('filterNote').textContent = 'WebXR Viewer can\'t filter people and pets. Keep them out of view while you scan. If no Finish button appears, double-tap the screen to finish.';
+    $('mode').textContent = 'The scan uses surfaces your iPhone detects (floor, walls, tables).';
+  } else {
+    loadFilter();
+    $('mode').textContent = 'The scan uses your phone\'s depth sensing when available, otherwise detected surfaces.';
+  }
   updateStart();
 }
 let xrOK = false;
+const WXRV = /WebXRViewer/i.test(navigator.userAgent);
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function updateStart() {
   $('start').disabled = !(xrOK && filterState !== 'loading');
   $('startAnyway').hidden = !(xrOK && filterState === 'failed');
@@ -333,8 +353,7 @@ function sampleDepth(frame, view, mask) {
 async function start() {
   try {
     session = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['local-floor'],
-      optionalFeatures: ['depth-sensing', 'hit-test', 'dom-overlay', 'camera-access'],
+      optionalFeatures: ['local-floor', 'depth-sensing', 'hit-test', 'plane-detection', 'dom-overlay', 'camera-access'],
       depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['luminance-alpha', 'float32'] },
       domOverlay: { root: $('overlay') },
     });
@@ -350,7 +369,14 @@ async function start() {
   await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
   checkedCam = false; filtering = false; skipped = 0;
   try { binding = new XRWebGLBinding(session, gl); setupBlit(); } catch (e) { binding = null; }
-  refSpace = await session.requestReferenceSpace('local-floor');
+  // local-floor puts y = 0 on the floor; plain local (WebXR Viewer) starts at the phone, and the computer finds the floor
+  try { refSpace = await session.requestReferenceSpace('local-floor'); }
+  catch (e) { refSpace = await session.requestReferenceSpace('local'); }
+  if (!session.domOverlayState) {
+    let lastTap = 0;
+    session.addEventListener('select', () => { const now = performance.now(); if (now - lastTap < 500) session.end(); lastTap = now; });
+  }
+  planeSeen.clear();
   if (!useDepth && session.requestHitTestSource) {
     const viewer = await session.requestReferenceSpace('viewer');
     for (const ox of [-0.35, 0, 0.35]) for (const oy of [-0.5, -0.2, 0.1, 0.4]) {
@@ -391,6 +417,7 @@ function onFrame(t, frame) {
   gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
   if (!pose) { $('hint').textContent = 'Tracking lost. Move the phone slowly over a textured area.'; return; }
   if (sampleNow) {
+    samplePlanes(frame);
     if (useDepth) sampleDepth(frame, pose.views[0], mask);
     else hitSources.forEach((src, i) => {
       const hits = frame.getHitTestResults(src);
@@ -412,6 +439,37 @@ function onFrame(t, frame) {
   $('pts').textContent = total.toLocaleString() + ' points';
   $('area').textContent = (cells.size * 0.04).toFixed(1) + ' m² seen';
   $('hint').textContent = total < 300 ? 'Point at the floor and walls. Move slowly.' : 'Keep sweeping. Cover every wall and object you want in the map.';
+}
+
+/* Detected planes (floor, walls, table tops): fill each polygon at 10 cm spacing.
+   Planes come from the phone's AR tracking and rarely cover people or pets. */
+const planeSeen = new Map();
+function inPoly(poly, x, z) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.z > z) !== (b.z > z) && x < (b.x - a.x) * (z - a.z) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
+}
+function samplePlanes(frame) {
+  const planes = frame.detectedPlanes || (frame.worldInformation && frame.worldInformation.detectedPlanes);
+  if (!planes) return;
+  planes.forEach(plane => {
+    if (!plane.planeSpace || !plane.polygon || plane.polygon.length < 3) return;
+    if (planeSeen.get(plane) === plane.lastChangedTime) return;
+    const pp = frame.getPose(plane.planeSpace, refSpace);
+    if (!pp) return;
+    planeSeen.set(plane, plane.lastChangedTime);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    plane.polygon.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); });
+    if ((x1 - x0) * (z1 - z0) > 150) return;
+    const M = pp.transform.matrix;
+    for (let x = x0; x <= x1; x += 0.1) for (let z = z0; z <= z1; z += 0.1) {
+      if (!inPoly(plane.polygon, x, z)) continue;
+      const w = xf(M, x, 0, z); addPoint(w[0], w[1], w[2], 1);
+    }
+  });
 }
 
 function flush(final) {
@@ -445,6 +503,10 @@ async function sendFile(file) {
   $('sendFile').disabled = false; $('sendFile').value = '';
 }
 $('sendFile').addEventListener('change', e => sendFile(e.target.files[0]));
+$('copyLink').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(location.href); $('copyNote').textContent = 'Link copied. Paste it into WebXR Viewer.'; }
+  catch (e) { $('copyNote').textContent = location.href; }
+});
 
 let stopReason = '';
 $('start').addEventListener('click', start);
