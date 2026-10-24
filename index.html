@@ -1993,7 +1993,7 @@ async function useScan() {
       state.scan.v = clean.pts;
       state.scan.mesh = { ext: 'obj', matrix: new THREE.Matrix4().toArray(), name: imp.name, clean: true };
       meshFiles = { id: state.scan.id, files: clean.files, main: 'scan_model.obj' };
-      note = ` Floor levelled${imp.tilt > 0.3 ? ` (${imp.tilt.toFixed(1)}° tilt corrected)` : ''}, ${clean.dropped.toLocaleString()} loose triangles removed.`;
+      note = ` Floor levelled${imp.tilt > 0.3 ? ` (${imp.tilt.toFixed(1)}° tilt corrected)` : ''}, ${clean.dropped.toLocaleString()} loose triangles removed${clean.simplified ? `, simplified to about ${(clean.total - clean.dropped - clean.simplified).toLocaleString()} triangles for Gazebo` : ''}.`;
     } else {
       state.scan.mesh = { ext: imp.ext, matrix: meshMatrix(imp), name: imp.name };
       meshFiles = { id: state.scan.id, files: imp.files, main: imp.main };
@@ -2377,41 +2377,67 @@ async function cleanScanMesh(i) {
     const inside = mx > bx0 - 0.3 && mx < bx1 + 0.3 && my > by0 - 0.3 && my < by1 + 0.3;
     keep.set(r, r === main || (n >= tiny && inside));
   });
-  // write the cleaned OBJ (welded per material) and re-sample points for the map
+  // Write the cleaned OBJ in a form Gazebo's loader handles well: every vertex has a normal,
+  // every face has the same v/vt/vn layout, groups of at most 50k triangles, and very dense
+  // scans are simplified (vertex clustering) to about 400k triangles.
+  let keptTotal = 0;
+  for (let k = 0; k < tris.length; k += 3) if (keep.get(find(tris[k + 2]))) keptTotal++;
+  const TARGET = 400000, cell = keptTotal > TARGET ? 0.01 * Math.sqrt(keptTotal / TARGET) * 1.6 : 0;
+  const anyUV = parts.some(p => p.uv);
   const out = ['# Scanned room cleaned by Robot URDF Studio: meters, z up, robot start at the origin.'];
   const mtlName = i.ext === 'obj' && Object.keys(i.files).some(k => /\.mtl$/i.test(k)) ? 'scan_model.mtl' : null;
   if (mtlName) out.push('mtllib ' + mtlName);
-  let vBase = 1, tBase = 1, kept = 0;
+  let vBase = 1, kept = 0, chunkNo = 0;
   const pts = [], seen = new Set(), r = rng(5);
   const addPt = (x, y, z) => { const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20); if (!seen.has(k)) { seen.add(k); pts.push(Math.round(x * 20) * 5, Math.round(y * 20) * 5, Math.round(z * 20) * 5); } };
+  const flush = (p, ch) => {
+    if (!ch.faces.length) return;
+    const nv = ch.pos.length / 3, nrm = new Float64Array(nv * 3);
+    ch.faces.forEach(([a, b, c]) => {   // area-weighted vertex normals
+      const P = ch.pos, ux = P[b * 3] - P[a * 3], uy = P[b * 3 + 1] - P[a * 3 + 1], uz = P[b * 3 + 2] - P[a * 3 + 2];
+      const vx = P[c * 3] - P[a * 3], vy = P[c * 3 + 1] - P[a * 3 + 1], vz = P[c * 3 + 2] - P[a * 3 + 2];
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      [a, b, c].forEach(q => { nrm[q * 3] += nx; nrm[q * 3 + 1] += ny; nrm[q * 3 + 2] += nz; });
+    });
+    out.push(`g scan_${chunkNo++}`);
+    if (mtlName && p.mat) out.push('usemtl ' + p.mat);
+    for (let q = 0; q < nv; q++) out.push(`v ${ch.pos[q * 3].toFixed(4)} ${ch.pos[q * 3 + 1].toFixed(4)} ${ch.pos[q * 3 + 2].toFixed(4)}`);
+    if (anyUV) for (let q = 0; q < nv; q++) out.push(`vt ${ch.uv[q * 2].toFixed(5)} ${ch.uv[q * 2 + 1].toFixed(5)}`);
+    for (let q = 0; q < nv; q++) {
+      const x = nrm[q * 3], y = nrm[q * 3 + 1], z = nrm[q * 3 + 2], l = Math.hypot(x, y, z) || 1;
+      out.push(l === 1 && !x && !y && !z ? 'vn 0 0 1' : `vn ${(x / l).toFixed(4)} ${(y / l).toFixed(4)} ${(z / l).toFixed(4)}`);
+    }
+    ch.faces.forEach(f => out.push('f ' + f.map(x => anyUV ? `${x + vBase}/${x + vBase}/${x + vBase}` : `${x + vBase}//${x + vBase}`).join(' ')));
+    vBase += nv;
+  };
   parts.forEach((p, pi) => {
-    const vmap = new Map(), vl = [], tl = [], fl = [];
+    let ch = { map: new Map(), pos: [], uv: [], faces: [] };
     for (let k = 0; k < tris.length; k += 3) {
       if (tris[k] !== pi || !keep.get(find(tris[k + 2]))) continue;
       const t = tris[k + 1], a = p.pos, face = [];
       for (let c = 0; c < 3; c++) {
         const q = (t + c) * 3, u = p.uv ? p.uv[(t + c) * 2] : 0, w = p.uv ? p.uv[(t + c) * 2 + 1] : 0;
-        const key = a[q].toFixed(4) + ' ' + a[q + 1].toFixed(4) + ' ' + a[q + 2].toFixed(4) + (p.uv ? '|' + u.toFixed(5) + ' ' + w.toFixed(5) : '');
-        let id = vmap.get(key);
-        if (id === undefined) { id = vl.length; vmap.set(key, id); vl.push(`v ${a[q].toFixed(4)} ${a[q + 1].toFixed(4)} ${a[q + 2].toFixed(4)}`); if (p.uv) tl.push(`vt ${u.toFixed(5)} ${w.toFixed(5)}`); }
+        const key = cell
+          ? Math.round(a[q] / cell) + ',' + Math.round(a[q + 1] / cell) + ',' + Math.round(a[q + 2] / cell)
+          : a[q].toFixed(4) + ' ' + a[q + 1].toFixed(4) + ' ' + a[q + 2].toFixed(4) + (p.uv ? '|' + u.toFixed(5) + ' ' + w.toFixed(5) : '');
+        let id = ch.map.get(key);
+        if (id === undefined) { id = ch.pos.length / 3; ch.map.set(key, id); ch.pos.push(a[q], a[q + 1], a[q + 2]); ch.uv.push(u, w); }
         face.push(id);
       }
-      fl.push(face); kept++;
-      // map points: about one per 3 cm × 3 cm of surface
+      // map points: about one per 3 cm × 3 cm of surface (from the full-detail triangle)
       const A = [a[t * 3], a[t * 3 + 1], a[t * 3 + 2]], B = [a[t * 3 + 3], a[t * 3 + 4], a[t * 3 + 5]], C = [a[t * 3 + 6], a[t * 3 + 7], a[t * 3 + 8]];
       const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
       const area = Math.hypot(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]) / 2;
       addPt(A[0], A[1], A[2]);
-      for (let s = 0, ns = Math.min(5000, Math.floor(area / 9e-4)); s < ns; s++) {
+      for (let s2 = 0, ns = Math.min(5000, Math.floor(area / 9e-4)); s2 < ns; s2++) {
         let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
         addPt(A[0] + e1[0] * u + e2[0] * v, A[1] + e1[1] * u + e2[1] * v, A[2] + e1[2] * u + e2[2] * v);
       }
+      if (face[0] === face[1] || face[1] === face[2] || face[0] === face[2]) continue;   // collapsed by simplification
+      ch.faces.push(face); kept++;
+      if (ch.faces.length >= 50000) { flush(p, ch); ch = { map: new Map(), pos: [], uv: [], faces: [] }; }
     }
-    if (!fl.length) return;
-    if (mtlName && p.mat) out.push('usemtl ' + p.mat);
-    out.push(...vl); if (p.uv) out.push(...tl);
-    fl.forEach(f => out.push(p.uv ? `f ${f.map(x => `${x + vBase}/${x + tBase}`).join(' ')}` : `f ${f.map(x => x + vBase).join(' ')}`));
-    vBase += vl.length; if (p.uv) tBase += tl.length;
+    flush(p, ch);
   });
   (obj.userData.urls || []).forEach(u => URL.revokeObjectURL(u));
   if (!kept) return null;
@@ -2426,7 +2452,7 @@ async function cleanScanMesh(i) {
       files['scan_model.mtl'] = t;
     } else files[rename[k]] = buf;
   });
-  return { files, pts, dropped: total - kept, total };
+  return { files, pts, dropped: total - keptTotal, total, simplified: cell ? keptTotal - kept : 0 };
 }
 
 // Package copies of the scan: safe file names, ceiling faces removed from OBJ
