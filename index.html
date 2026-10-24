@@ -1991,7 +1991,7 @@ async function useScan() {
     }
     if (clean) {
       state.scan.v = clean.pts;
-      state.scan.mesh = { ext: 'obj', matrix: new THREE.Matrix4().toArray(), name: imp.name, clean: true };
+      state.scan.mesh = { ext: 'obj', matrix: new THREE.Matrix4().toArray(), name: imp.name, clean: true, format: 2 };
       meshFiles = { id: state.scan.id, files: clean.files, main: 'scan_model.obj' };
       note = ` Floor levelled${imp.tilt > 0.3 ? ` (${imp.tilt.toFixed(1)}° tilt corrected)` : ''}, ${clean.dropped.toLocaleString()} loose triangles removed${clean.simplified ? `, simplified to about ${(clean.total - clean.dropped - clean.simplified).toLocaleString()} triangles for Gazebo` : ''}.`;
     } else {
@@ -2447,7 +2447,7 @@ async function cleanScanMesh(i) {
   Object.entries(i.files).forEach(([k, buf]) => {
     if (k === i.main) return;
     if (/\.mtl$/i.test(k)) {
-      let t = new TextDecoder().decode(buf);
+      let t = typeof buf === 'string' ? buf : new TextDecoder().decode(buf);
       Object.keys(rename).forEach(o => { if (o !== rename[o] && !/\.mtl$/i.test(o)) t = t.split(o).join(rename[o]); });
       files['scan_model.mtl'] = t;
     } else files[rename[k]] = buf;
@@ -3166,7 +3166,25 @@ try {
   }
 } catch (e) {}
 try { const sc = localStorage.getItem('urdf-studio-scan'); if (sc) { const o = JSON.parse(sc); if (o && Array.isArray(o.v)) state.scan = o; } } catch (e) {}
-if (state.scan && state.scan.mesh) idbGet().then(m => { if (m && state.scan && m.id === state.scan.id) { meshFiles = m; envKey = null; rebuild(); } });
+if (state.scan && state.scan.mesh) idbGet().then(async m => {
+  if (!m || !state.scan || m.id !== state.scan.id) return;
+  meshFiles = m;
+  // Scans cleaned before format 2 have no normals, which makes Gazebo Fortress abort while loading
+  // the mesh. Re-write them in place (the saved OBJ is already in the robot frame).
+  if (state.scan.mesh.clean && !(state.scan.mesh.format >= 2) && typeof THREE !== 'undefined') {
+    try {
+      const obj = m.files['scan_model.obj'];
+      const again = await cleanScanMesh({ files: { ...m.files, 'scan_model.obj': typeof obj === 'string' ? new TextEncoder().encode(obj).buffer : obj },
+        main: 'scan_model.obj', ext: 'obj', heading: 0, start: [0, 0], floor: 0, up: 'z', scale: 1, flipped: false, level: null });
+      if (again) {
+        meshFiles = { id: state.scan.id, files: again.files, main: 'scan_model.obj' };
+        state.scan.mesh.format = 2; saveScan(); idbPut(meshFiles);
+        toast('Updated your saved custom map so Gazebo can load it. Download the package again.');
+      }
+    } catch (e) {}
+  }
+  envKey = null; rebuild();
+});
 if (state.world === 'custom' && !state.scan) state.world = 'empty';
 syncControls();
 renderTypes();
