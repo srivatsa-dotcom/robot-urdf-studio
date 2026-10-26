@@ -375,10 +375,47 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { .type:hover { transform: none; } }
 
+
+/* ===== Motion ===== */
+.hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.hero-in, .hazard { position: relative; z-index: 1; }
+.hero { animation: gridDrift 40s linear infinite; }
+@keyframes gridDrift { to { background-position: 0 0, 0 0, 0 40px, 40px 0; } }
+.hero h1 .c2 { background-size: 200% 100%; background-image: linear-gradient(90deg, #5B9BFF, #1F6BFF 40%, #8FB8FF 50%, #1F6BFF 60%, #5B9BFF); animation: shimmer 6s ease-in-out infinite; }
+@keyframes shimmer { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0 0; } }
+.motion .hero-copy > *, .motion .hero-facts > div { opacity: 0; transform: translateY(18px); animation: rise .7s cubic-bezier(.2, .7, .2, 1) forwards; }
+.motion .hero-copy > :nth-child(1) { animation-delay: .05s; } .motion .hero-copy > :nth-child(2) { animation-delay: .15s; }
+.motion .hero-copy > :nth-child(3) { animation-delay: .25s; } .motion .hero-copy > :nth-child(4) { animation-delay: .35s; }
+.motion .hero-copy > :nth-child(5) { animation-delay: .45s; }
+.motion .hero-facts > div:nth-child(1) { animation-delay: .35s; } .motion .hero-facts > div:nth-child(2) { animation-delay: .45s; }
+.motion .hero-facts > div:nth-child(3) { animation-delay: .55s; } .motion .hero-facts > div:nth-child(4) { animation-delay: .65s; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.hero-facts > div { transition: transform .25s, border-color .25s, background .25s; }
+.hero-facts > div:hover { transform: translateY(-4px); border-color: rgba(61, 128, 255, .55); background: linear-gradient(180deg, rgba(31, 107, 255, .18), rgba(42, 52, 57, .3)); }
+.kicker .tag { position: relative; }
+.kicker .tag::after { content: ""; position: absolute; inset: -3px; border-radius: 999px; border: 2px solid #3D80FF; animation: ping 2.4s ease-out infinite; }
+@keyframes ping { 0% { opacity: .8; transform: scale(1); } 80%, 100% { opacity: 0; transform: scale(1.35); } }
+.btn.primary { position: relative; overflow: hidden; }
+.btn.primary::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); transition: left .6s; }
+.btn.primary:hover::after { left: 130%; }
+.hero .btn.primary { animation: glow 3s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 1px 2px rgba(10, 12, 16, .2), 0 8px 28px -4px rgba(31, 107, 255, .85); } }
+.motion section.reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s cubic-bezier(.2, .7, .2, 1), transform .7s cubic-bezier(.2, .7, .2, 1); }
+.motion section.reveal.in { opacity: 1; transform: none; }
+.type svg, .world svg { transition: transform .3s cubic-bezier(.2, .7, .2, 1); }
+.type:hover svg, .world:hover svg { transform: translateY(-3px) scale(1.06); }
+.type[aria-pressed="true"] svg { animation: bob 2.4s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .hero, .hero h1 .c2, .kicker .tag::after, .hero .btn.primary, .type[aria-pressed="true"] svg { animation: none; }
+  .hero-fx { display: none; }
+}
 </style>
 
 <div class="wrap">
   <header class="hero">
+    <canvas class="hero-fx" id="heroFx" aria-hidden="true"></canvas>
     <div class="hero-in">
       <div class="hero-copy">
         <div class="kicker"><span class="tag">ROS 2</span> URDF · RViz · Gazebo · MoveIt 2</div>
@@ -2784,6 +2821,12 @@ function initViewer() {
   camera = new THREE.PerspectiveCamera(38, 1, 0.01, 200);
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.12;
+  // Idle showcase: turn slowly until the viewer grabs the model, resume after 8 s of quiet.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let idle; controls.autoRotate = true; controls.autoRotateSpeed = 0.8;
+    controls.addEventListener('start', () => { controls.autoRotate = false; clearTimeout(idle); });
+    controls.addEventListener('end', () => { clearTimeout(idle); idle = setTimeout(() => { controls.autoRotate = true; }, 8000); });
+  }
   scene.add(new THREE.HemisphereLight(0xffffff, 0x50585a, 0.75));
   sun = new THREE.DirectionalLight(0xffffff, 0.85);
   sun.position.set(2.5, 5, 3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -3320,6 +3363,67 @@ rebuild();
 (async () => {
   try { downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { downloads = null; }
 })();
+})();
+</script>
+
+<script>
+/* Motion: hero entrance, a drifting sensor-network canvas behind the hero, and section reveals. */
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.documentElement.classList.add('motion');
+  const secs = document.querySelectorAll('.wrap > section');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+    secs.forEach(s => { s.classList.add('reveal'); io.observe(s); });
+  }
+  const cv = document.getElementById('heroFx'), hero = cv && cv.parentElement;
+  if (!cv || !cv.getContext) return;
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, dpr = 1, pts = [], mouse = null, visible = true, raf = 0, t0 = performance.now();
+  function size() {
+    const r = hero.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round(Math.min(90, Math.max(30, W * H / 14000)));
+    while (pts.length < n) pts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35, r: Math.random() * 1.6 + .6 });
+    pts.length = n;
+  }
+  function frame(now) {
+    raf = 0; if (!visible) return;
+    const t = (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    // radar sweep from the upper right, like a lidar scanning the room
+    const cx = W * .82, cy = H * .18, R = Math.hypot(W, H) * .9, a = t * .5;
+    const g = ctx.createConicGradient ? ctx.createConicGradient(a, cx, cy) : null;
+    if (g) { g.addColorStop(0, 'rgba(61,128,255,.16)'); g.addColorStop(.08, 'rgba(61,128,255,0)'); g.addColorStop(1, 'rgba(61,128,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(110,160,255,.10)'; ctx.lineWidth = 1;
+    for (let k = 1; k <= 4; k++) { const rr = ((t * 40 + k * 160) % 640); ctx.globalAlpha = 1 - rr / 640; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10; if (p.y < -10) p.y = H + 10; if (p.y > H + 10) p.y = -10;
+      if (mouse) { const dx = p.x - mouse.x, dy = p.y - mouse.y, d = Math.hypot(dx, dy); if (d < 120 && d > 0) { p.x += dx / d * .8; p.y += dy / d * .8; } }
+    }
+    const L = 130;
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const a1 = pts[i], b = pts[j], d = Math.hypot(a1.x - b.x, a1.y - b.y);
+      if (d < L) { ctx.strokeStyle = `rgba(91,155,255,${(1 - d / L) * .35})`; ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    }
+    for (const p of pts) {
+      // a point lights up as the sweep passes it
+      const ang = (Math.atan2(p.y - cy, p.x - cx) - a) % (Math.PI * 2), lit = Math.max(0, 1 - ((ang + Math.PI * 4) % (Math.PI * 2)) / .9);
+      ctx.fillStyle = `rgba(${150 + 105 * lit | 0},${190 + 65 * lit | 0},255,${.55 + .45 * lit})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + lit * 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  const go = () => { if (!raf && visible) raf = requestAnimationFrame(frame); };
+  hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(); mouse = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+  hero.addEventListener('pointerleave', () => { mouse = null; });
+  new ResizeObserver(size).observe(hero);
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { visible = e.isIntersecting; go(); }).observe(hero);
+  document.addEventListener('visibilitychange', () => { visible = !document.hidden; go(); });
+  size(); go();
 })();
 </script>
 
