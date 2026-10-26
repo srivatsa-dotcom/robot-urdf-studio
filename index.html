@@ -8,44 +8,46 @@
 <title>Robot URDF Studio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: workbench — robot picker strip, then spec sheet beside a live 3D bay, then launch + package export */
+/* Layout: robot work cell. A safety-yellow hero with a hazard edge, then four numbered steps.
+   The 3D bay is always a dark machine stage; everything else follows the viewer's theme. */
 :root {
-  --bg: #ECEFEA;
-  --panel: #F8F9F6;
-  --ink: #172022;
-  --muted: #5B6866;
-  --line: #D2D8D1;
-  --accent: #C9480B;
-  --accent-soft: #F6E1D5;
-  --on-accent: #FFFFFF;
-  --view: #DFE4DD;
-  --grid1: #9AA59F;
-  --grid2: #C4CCC5;
-  --code: #F1F3EE;
-  --ok: #2E7A4C;
-  --warn: #A86A12;
+  --bg: #E9EAE6;          /* shop-floor concrete */
+  --panel: #FFFFFF;
+  --ink: #0F1113;
+  --muted: #565C62;
+  --line: #D3D5D0;
+  --accent: #FFC21A;      /* signal yellow, used as a fill */
+  --accent-text: #8A5C00; /* yellow-family text that reads on light surfaces */
+  --accent-soft: #FFF3C7;
+  --on-accent: #0F1113;
+  --stage: #121519;       /* the 3D bay, dark in both themes */
+  --stage-ink: #E9ECEE;
+  --view: #121519;
+  --grid1: #3B434B;
+  --grid2: #232A30;
+  --code: #F3F4F1;
+  --ok: #1F7A45;
+  --warn: #A3620A;
   --tag: #1F5FA8;
   --attr: #7A4BB0;
   --str: #2E7A4C;
-  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111716; --panel: #182020; --ink: #E3EAE6; --muted: #91A09B; --line: #2B3634;
-    --accent: #FF7C3F; --accent-soft: #3A2419; --on-accent: #1A0D06; --view: #0D1312;
-    --grid1: #3E4B48; --grid2: #232D2B; --code: #141B1A; --ok: #6BCB8E; --warn: #E5A84A;
-    --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+    --bg: #0D0F11; --panel: #16191D; --ink: #ECEDEA; --muted: #979EA5; --line: #2A3036;
+    --accent: #FFC21A; --accent-text: #FFC93D; --accent-soft: #2B2410; --on-accent: #0F1113;
+    --code: #111417; --ok: #5FD08E; --warn: #F0B04A; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #111716; --panel: #182020; --ink: #E3EAE6; --muted: #91A09B; --line: #2B3634;
-  --accent: #FF7C3F; --accent-soft: #3A2419; --on-accent: #1A0D06; --view: #0D1312;
-  --grid1: #3E4B48; --grid2: #232D2B; --code: #141B1A; --ok: #6BCB8E; --warn: #E5A84A;
-  --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+  --bg: #0D0F11; --panel: #16191D; --ink: #ECEDEA; --muted: #979EA5; --line: #2A3036;
+  --accent: #FFC21A; --accent-text: #FFC93D; --accent-soft: #2B2410; --on-accent: #0F1113;
+  --code: #111417; --ok: #5FD08E; --warn: #F0B04A; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -58,10 +60,8 @@ body {
 h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
 h1 { font-size: 30px; font-weight: 700; line-height: 1.1; }
 h2 { font-size: 19px; font-weight: 600; display: flex; align-items: baseline; gap: 10px; }
-h2 .step { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 500; letter-spacing: 0.08em; }
+h2 .step { font-family: var(--font-mono); font-size: 12px; color: var(--accent-text); font-weight: 500; letter-spacing: 0.08em; }
 .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 24px; }
-header.top p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
 section { display: flex; flex-direction: column; gap: 14px; }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -237,7 +237,7 @@ pre.cmd .c { color: var(--muted); }
 }
 .tree button span { color: var(--muted); }
 .tree button:hover { background: var(--bg); }
-.tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent); }
 .viewer { display: flex; flex-direction: column; min-width: 0; }
 .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .viewer .bar code { font-family: var(--font-mono); font-size: 12px; }
@@ -267,29 +267,148 @@ pre.cmd .c { color: var(--muted); }
   h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ===== Bold layer: work-cell identity ===== */
+body { padding-block: 0 56px; font-size: 14.5px; }
+.wrap { gap: 56px; max-width: 1440px; }
+h1, h2, h3 { letter-spacing: 0; }
+
+/* Hero: full-bleed safety yellow with a hazard-tape edge */
+.hero { position: relative; margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  background: var(--accent); color: #0F1113; }
+.hero-in { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 40px 56px; align-items: end;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 56px 48px; }
+.kicker { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kicker .tag { background: #0F1113; color: #FFC21A; padding: 3px 8px; letter-spacing: .1em; }
+.hero h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(56px, 9.5vw, 132px); line-height: .86; text-transform: uppercase; margin: 18px 0 20px; letter-spacing: -.01em; }
+.hero .lede { font-size: 17px; line-height: 1.55; max-width: 58ch; margin: 0; color: #2A2A22; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.hero-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.hero-facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 3px solid #0F1113; }
+.hero-facts > div { padding: 16px 12px 18px 0; border-bottom: 1px solid rgba(15, 17, 19, .25); }
+.hero-facts > div:nth-child(odd) { padding-right: 20px; border-right: 1px solid rgba(15, 17, 19, .25); }
+.hero-facts > div:nth-child(even) { padding-left: 20px; }
+.hero-facts dt { font-family: var(--font-display); font-weight: 900; font-size: 56px; line-height: .9; }
+.hero-facts dd { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: #2A2A22; }
+.hazard { height: 18px; background: repeating-linear-gradient(-45deg, #0F1113 0 16px, #FFC21A 16px 32px); }
+
+/* Buttons: chunky, square-shouldered */
+.btn { border-radius: 3px; border-width: 1.5px; font-weight: 600; padding: 7px 14px; transition: transform .12s, background .12s, border-color .12s, box-shadow .12s; text-decoration: none; color: inherit; }
+.btn:hover { border-color: var(--ink); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 3px 0 #0F1113; }
+.btn.primary:hover { filter: none; background: #FFCF45; border-color: #FFCF45; }
+.btn.primary:active { box-shadow: 0 1px 0 #0F1113; transform: translateY(2px); }
+.btn.big { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: .03em; text-transform: uppercase; padding: 10px 24px 9px; }
+.hero .btn.primary { background: #0F1113; border-color: #0F1113; color: #FFC21A; box-shadow: 0 4px 0 rgba(15, 17, 19, .35); }
+.hero .btn.primary:hover { background: #262A2E; border-color: #262A2E; }
+.btn.ghost { background: transparent; border: 2px solid #0F1113; color: #0F1113; }
+.btn.ghost:hover { background: rgba(15, 17, 19, .08); }
+.btn.quiet { background: transparent; border-color: rgba(15, 17, 19, .35); color: #0F1113; font-weight: 500; font-size: 13px; padding: 5px 10px; }
+.btn.quiet:hover { border-color: #0F1113; }
+
+/* Steps: big numerals over a heavy rule */
+section > h2 { border-top: 3px solid var(--ink); padding-top: 14px; align-items: baseline; gap: 16px; }
+h2 .step { font-family: var(--font-display); font-weight: 900; font-size: 64px; line-height: .8; letter-spacing: -.02em; color: var(--ink);
+  -webkit-text-stroke: 0; }
+h2 .steplabel { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 3.4vw, 42px); text-transform: uppercase; line-height: 1; letter-spacing: .01em; }
+h2 .step::after { content: ""; display: inline-block; width: 12px; height: 12px; background: var(--accent); margin-left: 10px; vertical-align: top; }
+
+/* Robot picker: bold tiles, the chosen one goes black and yellow */
+.types { gap: 12px; }
+.type { padding: 16px 16px 18px; border-radius: 4px; border: 1.5px solid var(--line); gap: 8px; transition: transform .15s, border-color .15s, background .15s; }
+.type:hover { border-color: var(--ink); transform: translateY(-2px); }
+.type svg { width: 84px; height: 52px; }
+.type b { font-family: var(--font-display); font-weight: 800; font-size: 24px; text-transform: uppercase; line-height: 1; letter-spacing: .01em; }
+.type[aria-pressed="true"] { background: #0F1113; border-color: #0F1113; box-shadow: 0 5px 0 var(--accent); color: #F2F2EE; }
+.type[aria-pressed="true"] svg { color: #F2F2EE; }
+.type[aria-pressed="true"] svg .hl { stroke: #FFC21A; }
+.type[aria-pressed="true"] span { color: #B9BDC1; }
+
+/* Spec sheet */
+.spec { border-radius: 4px; border: 1.5px solid var(--line); }
+legend { color: var(--ink); font-weight: 600; }
+legend::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--accent); margin-right: 8px; }
+.row input[type="number"]:focus, .text input:focus, select:focus { border-color: var(--ink); outline: 2px solid var(--accent); outline-offset: 0; }
+
+/* The 3D bay: a dark machine stage with camera-frame corners */
+.viewport { background: var(--stage); border: 0; border-radius: 4px; color: var(--stage-ink);
+  box-shadow: 0 0 0 1.5px #0F1113, 0 18px 40px -24px rgba(0, 0, 0, .55); }
+.viewport::before, .viewport::after { content: ""; position: absolute; width: 26px; height: 26px; pointer-events: none; z-index: 2; }
+.viewport::before { left: 10px; bottom: 10px; border-left: 3px solid #FFC21A; border-bottom: 3px solid #FFC21A; }
+.viewport::after { right: 10px; bottom: 10px; border-right: 3px solid #FFC21A; border-bottom: 3px solid #FFC21A; }
+.chip { background: rgba(18, 21, 25, .78); border-color: #3A4148; color: #E9ECEE; border-radius: 2px; }
+.chip i { color: #FFC21A; }
+.viewtools .btn { background: rgba(18, 21, 25, .78); border-color: #3A4148; color: #E9ECEE; }
+.viewtools .btn:hover { border-color: #FFC21A; }
+.legendkey { color: #8A939B; left: 46px; bottom: 14px; }
+.box { border-radius: 4px; border: 1.5px solid var(--line); }
+.box h3 { font-weight: 800; font-size: 20px; text-transform: uppercase; }
+
+/* Launch choices */
+.target label, .world { border-radius: 4px; border-width: 1.5px; }
+.target label b, .world b { font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1; }
+.target input:checked + label, .world[aria-checked="true"] { background: #0F1113; border-color: #0F1113; color: #F2F2EE; box-shadow: 0 5px 0 var(--accent); }
+.target input:checked + label span, .world[aria-checked="true"] span { color: #B9BDC1; }
+.world[aria-checked="true"] svg { color: #F2F2EE; }
+.world[aria-checked="true"] svg .hl { stroke: #FFC21A; }
+pre.cmd { border-radius: 4px; background: #0F1113; color: #E3E6E8; border-color: #0F1113; }
+pre.cmd .c { color: #FFC21A; }
+.cmdwrap .btn { background: #1E2328; border-color: #3A4148; color: #E3E6E8; }
+
+/* Package */
+.pkg { border-radius: 4px; border: 1.5px solid var(--ink); }
+.tree .root { font-weight: 600; }
+#zipBtn { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: .03em; text-transform: uppercase; padding: 10px 24px 9px; }
+
+/* Footer */
+.foot { border-top: 3px solid var(--ink); padding-top: 14px; }
+
+@media (max-width: 1080px) {
+  .hero-in { grid-template-columns: minmax(0, 1fr); padding-block: 40px 36px; }
+}
+@media (max-width: 720px) {
+  .hero-facts dt { font-size: 44px; }
+  h2 .step { font-size: 48px; }
+  .hero .lede { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .type:hover { transform: none; } }
+
 </style>
 
 <div class="wrap">
-  <header class="top">
-    <div>
-      <div class="eyebrow">ROS 2 · URDF · RViz · Gazebo</div>
-      <h1>Robot URDF Studio</h1>
-      <p>Pick a robot, enter its real dimensions and masses, and check it in the 3D preview. Then choose RViz or Gazebo and download a ROS 2 package you can build with colcon.</p>
+  <header class="hero">
+    <div class="hero-in">
+      <div class="hero-copy">
+        <div class="kicker"><span class="tag">ROS 2</span> URDF · RViz · Gazebo · MoveIt 2</div>
+        <h1>Robot<br>URDF Studio</h1>
+        <p class="lede">Real dimensions in. A robot that drives, plans and senses in simulation out. Pick a body, size it, drop it into a factory, a warehouse or your own scanned room, and download a ROS 2 package that builds with colcon.</p>
+        <div class="hero-cta">
+          <a class="btn primary big" href="#h-type">Start building</a>
+          <button class="btn ghost big" id="heroScan" type="button">Scan your room</button>
+        </div>
+        <div class="hero-tools">
+          <button class="btn quiet" id="importBtn" type="button">Import spec…</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+          <button class="btn quiet" id="exportSpecBtn" type="button">Save spec (.json)</button>
+        </div>
+      </div>
+      <dl class="hero-facts">
+        <div><dt>5</dt><dd>robot bodies, from a 2-wheel rover to a 23-joint humanoid</dd></div>
+        <div><dt>4+1</dt><dd>Gazebo worlds, plus any room you scan with your phone</dd></div>
+        <div><dt>2</dt><dd>ROS 2 distros: Jazzy with Harmonic, Humble with Fortress</dd></div>
+        <div><dt>1</dt><dd>zip with URDF, launch files and MoveIt config, ready for colcon</dd></div>
+      </dl>
     </div>
-    <div class="actions">
-      <button class="btn" id="importBtn" type="button">Import spec…</button>
-      <input type="file" id="importFile" accept=".json,application/json" hidden>
-      <button class="btn" id="exportSpecBtn" type="button">Save spec (.json)</button>
-    </div>
+    <div class="hazard" aria-hidden="true"></div>
   </header>
 
   <section aria-labelledby="h-type">
-    <h2 id="h-type"><span class="step">STEP 1</span>Choose the robot</h2>
+    <h2 id="h-type"><span class="step">01</span><span class="steplabel">Choose the robot</span></h2>
     <div class="types" id="types"></div>
   </section>
 
   <section aria-labelledby="h-dim">
-    <h2 id="h-dim"><span class="step">STEP 2</span>Describe its dimensions</h2>
+    <h2 id="h-dim"><span class="step">02</span><span class="steplabel">Describe its dimensions</span></h2>
     <div class="bench">
       <form class="spec" id="spec" autocomplete="off"></form>
       <div class="bay">
@@ -315,7 +434,7 @@ pre.cmd .c { color: var(--muted); }
   </section>
 
   <section aria-labelledby="h-launch">
-    <h2 id="h-launch"><span class="step">STEP 3</span>Choose where to launch it</h2>
+    <h2 id="h-launch"><span class="step">03</span><span class="steplabel">Choose where to launch it</span></h2>
     <div class="launch">
       <div class="launchleft">
       <div class="targets" role="radiogroup" aria-label="Launch target">
@@ -345,7 +464,7 @@ pre.cmd .c { color: var(--muted); }
   </section>
 
   <section aria-labelledby="h-pkg">
-    <h2 id="h-pkg"><span class="step">STEP 4</span>Download the package</h2>
+    <h2 id="h-pkg"><span class="step">04</span><span class="steplabel">Download the package</span></h2>
     <div class="actions">
       <button class="btn primary" type="button" id="zipBtn">Download package (.zip)</button>
       <span class="toast" id="toast" role="status"></span>
@@ -3041,6 +3160,10 @@ $('worlds').addEventListener('click', e => {
   state.world = b.dataset.world; rebuild(); overview();
 });
 $('rescan').addEventListener('click', openScanner);
+$('heroScan').addEventListener('click', () => {
+  if (state.target === 'rviz') { state.target = 'both'; syncControls(); rebuild(); }
+  openScanner();
+});
 $('shareScan').addEventListener('click', openShare);
 $('shareConsent').addEventListener('change', e => { $('shareSend').disabled = !e.target.checked; });
 $('shareSend').addEventListener('click', sendShare);
