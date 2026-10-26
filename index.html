@@ -376,6 +376,27 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 18px; }
 @media (prefers-reduced-motion: reduce) { .type:hover { transform: none; } }
 
 
+/* ===== RL step ===== */
+.rl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 24px; align-items: start; }
+.rlleft { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#rlOpts { display: flex; flex-direction: column; gap: 12px; }
+.rltasks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rlgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.rlgrid .text { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.rlgrid .text label { color: var(--muted); font-size: 12.5px; }
+.rlgrid input, .rlgrid select { width: 100%; }
+.rlspec { margin: 0; display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.rlspec div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; }
+.rlspec dt { font-family: var(--font-mono); font-size: 11px; color: var(--accent-text); text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+.rlspec dd { margin: 0; font-size: 13.5px; }
+.rlnote { margin: 0; font-size: 13px; color: var(--ink); padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.rlnote.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.rlarena { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.rlarena canvas { width: 100%; aspect-ratio: 3 / 2; border-radius: 16px; border: 1px solid #1F282E; background: #0F1418; display: block; box-shadow: 0 24px 48px -28px rgba(10, 12, 16, .6); }
+.rlarena figcaption { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 1080px) { .rl { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .rltasks, .rlgrid { grid-template-columns: minmax(0, 1fr); } .rlspec div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
 /* ===== Motion ===== */
 .hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .hero-in, .hazard { position: relative; z-index: 1; }
@@ -420,7 +441,7 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 18px; }
       <div class="hero-copy">
         <div class="kicker"><span class="tag">ROS 2</span> URDF · RViz · Gazebo · MoveIt 2</div>
         <h1>Robot <span class="c2">URDF</span> <span class="c3">Studio</span></h1>
-        <p class="lede">Real dimensions in. A robot that drives, plans and senses in simulation out. Pick a body, size it, drop it into a factory, a warehouse or your own scanned room, and download a ROS 2 package that builds with colcon.</p>
+        <p class="lede">Real dimensions in. A robot that drives, plans and senses in simulation out. Pick a body, size it, drop it into a factory, a warehouse or your own scanned room, download a ROS 2 package that builds with colcon, and train it with reinforcement learning.</p>
         <div class="hero-cta">
           <a class="btn primary big" href="#h-type">Start building</a>
           <button class="btn ghost big" id="heroScan" type="button">Scan your room</button>
@@ -435,7 +456,7 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 18px; }
         <div><dt>5</dt><dd>robot bodies, from a 2-wheel rover to a 23-joint humanoid</dd></div>
         <div><dt>4+1</dt><dd>Gazebo worlds, plus any room you scan with your phone</dd></div>
         <div><dt>2</dt><dd>ROS 2 distros: Jazzy with Harmonic, Humble with Fortress</dd></div>
-        <div><dt>1</dt><dd>zip with URDF, launch files and MoveIt config, ready for colcon</dd></div>
+        <div><dt>1</dt><dd>zip with URDF, launch files, MoveIt config and an RL training kit</dd></div>
       </dl>
     </div>
     <div class="hazard" aria-hidden="true"></div>
@@ -502,8 +523,30 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 18px; }
     </div>
   </section>
 
+  <section aria-labelledby="h-rl">
+    <h2 id="h-rl"><span class="step">04</span><span class="steplabel">Train it with reinforcement learning</span></h2>
+    <div class="rl">
+      <div class="rlleft">
+        <label class="check rlon"><input type="checkbox" id="rlOn">Add an RL training kit to the download <small>Gymnasium + Stable-Baselines3 · fast trainer + Gazebo</small></label>
+        <div id="rlOpts">
+          <div class="eyebrow">Task</div>
+          <div class="worlds rltasks" id="rlTasks" role="radiogroup" aria-label="Training task"></div>
+          <div class="rlgrid">
+            <div class="text"><label for="rlAlgo">Algorithm</label><select id="rlAlgo"><option value="PPO">PPO · steady, on-policy</option><option value="SAC">SAC · sample-efficient</option></select></div>
+            <div class="text"><label for="rlSteps">Training steps</label><input id="rlSteps" type="number" min="1000" max="100000000" step="10000" inputmode="numeric"></div>
+            <div class="text"><label for="rlEp">Episode length (s)</label><input id="rlEp" type="number" min="2" max="600" step="1" inputmode="numeric"></div>
+            <div class="text"><label for="rlSpeed">Gazebo speed</label><select id="rlSpeed"><option value="1">1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="8">8× (fast PC)</option></select></div>
+          </div>
+          <dl class="rlspec" id="rlSpec"></dl>
+          <p class="rlnote" id="rlNote" hidden></p>
+        </div>
+      </div>
+      <figure class="rlarena"><canvas id="rlCanvas" role="img" aria-label="Training arena preview"></canvas><figcaption id="rlCap"></figcaption></figure>
+    </div>
+  </section>
+
   <section aria-labelledby="h-pkg">
-    <h2 id="h-pkg"><span class="step">04</span><span class="steplabel">Download the package</span></h2>
+    <h2 id="h-pkg"><span class="step">05</span><span class="steplabel">Download the package</span></h2>
     <div class="actions">
       <button class="btn primary" type="button" id="zipBtn">Download package (.zip)</button>
       <span class="toast" id="toast" role="status"></span>
@@ -691,6 +734,7 @@ const state = {
   pkgAuto: {}, pkg: {},
   colors: { body: '#C8CEC9', accent: '#E0601A' },
   distro: 'jazzy', target: 'both', moveit: true, world: 'warehouse', scan: null,
+  rl: { on: true, task: {}, opts: {}, speed: 1 },
   q: {},
 };
 for (const [t, d] of Object.entries(TYPES)) {
@@ -1027,6 +1071,12 @@ function gazeboXml(M) {
       '      <tf_topic>/tf</tf_topic>', '      <frame_id>odom</frame_id>', '      <child_frame_id>base_footprint</child_frame_id>',
       '    </plugin>', '  </gazebo>');
   }
+  if (M.wheels && M.rl && M.rl.task === 'navigate') {
+    o.push('', '  <!-- Ground-truth pose for RL training (robot_rl reads /ground_truth/odom) -->', '  <gazebo>',
+      `    <plugin filename="${g.lib('odometry-publisher')}" name="${g.cls('OdometryPublisher')}">`,
+      '      <odom_frame>world</odom_frame>', '      <robot_base_frame>base_footprint</robot_base_frame>', '      <odom_topic>/ground_truth/odom</odom_topic>',
+      '      <odom_publish_frequency>30</odom_publish_frequency>', '      <dimensions>2</dimensions>', '    </plugin>', '  </gazebo>');
+  }
   if (M.ctrl.length && !M.moveit) {
     o.push('', '  <!-- Position control: publish std_msgs/Float64 to /' + M.name + '/<joint>/cmd_pos -->', '  <gazebo>');
     M.ctrl.forEach(j => {
@@ -1241,6 +1291,7 @@ function bridgeArgs(M) {
   if (!M.moveit) a.push(`/world/${WORLD_NAME}/model/${M.name}/joint_state@sensor_msgs/msg/JointState[${g.msg('Model')}`);
   if (M.wheels) a.push(`/cmd_vel@geometry_msgs/msg/Twist]${g.msg('Twist')}`, `/odom@nav_msgs/msg/Odometry[${g.msg('Odometry')}`, `/tf@tf2_msgs/msg/TFMessage[${g.msg('Pose_V')}`);
   if (M.sensors.lidar) a.push(`/scan@sensor_msgs/msg/LaserScan[${g.msg('LaserScan')}`);
+  if (M.wheels && M.rl && M.rl.task === 'navigate') a.push(`/ground_truth/odom@nav_msgs/msg/Odometry[${g.msg('Odometry')}`);
   if (M.sensors.camera) a.push(`/camera/image_raw@sensor_msgs/msg/Image[${g.msg('Image')}`, `/camera/camera_info@sensor_msgs/msg/CameraInfo[${g.msg('CameraInfo')}`);
   if (M.sensors.imu) a.push(`/imu@sensor_msgs/msg/Imu[${g.msg('IMU')}`);
   if (!M.moveit) M.ctrl.forEach(j => a.push(`/${M.name}/${j}/cmd_pos@std_msgs/msg/Float64]${g.msg('Double')}`));
@@ -1340,7 +1391,7 @@ def generate_launch_description():
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ['-r ', worlds_dir, '/', LaunchConfiguration('world'), '.sdf']}.items())
+        launch_arguments={'gz_args': [LaunchConfiguration('gz_flags'), ' ', worlds_dir, '/', LaunchConfiguration('world'), '.sdf']}.items())
 
     robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -1379,6 +1430,7 @@ ${args}
         DeclareLaunchArgument(
             'world', default_value='${state.world}',
             description='${worldKeys().join(', ')}'),
+        DeclareLaunchArgument('gz_flags', default_value='-r', description='Gazebo flags; "-r -s" runs without the window (headless), faster for RL training'),
         SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
@@ -1427,7 +1479,7 @@ ament_package()
 `;
 }
 
-const zipName = M => M.moveit ? `${M.name}_ros2.zip` : `${state.pkg[state.type]}.zip`;
+const zipName = M => M.moveit || M.rl ? `${M.name}_ros2.zip` : `${state.pkg[state.type]}.zip`;
 
 function runCommands(pkg, M, forReadme) {
   const d = state.distro, gz = state.target !== 'rviz', mi = M.moveit;
@@ -1462,6 +1514,14 @@ function runCommands(pkg, M, forReadme) {
     const val = /lift/.test(j) ? 0.1 : -0.8;
     L.push('', `# ${step++}. Move a joint (new terminal)`, `ros2 topic pub --once /${M.name}/${j}/cmd_pos std_msgs/msg/Float64 "{data: ${val}}"`);
   }
+  if (M.rl) {
+    L.push('', `# ${step++}. Train it with reinforcement learning (new terminal)`, `cd ~/ros2_ws/src/${M.name}_rl`,
+      'python3 -m venv --system-site-packages .venv && source .venv/bin/activate',
+      'pip install -r requirements.txt',
+      'python train.py              # fast trainer, no Gazebo needed',
+      'python run_policy.py         # watch it and print the success rate');
+    if (gz) L.push('python train.py --backend gazebo --resume $(cat runs/LATEST)/best_model.zip   # fine-tune with the simulation running');
+  }
   if (gz) L.push('', `# Other worlds: world:=${worldKeys().join(' | ')}`);
   if (state.scan) L.push('', '# Nav2 map of your scanned space', `ros2 run nav2_map_server map_server --ros-args -p yaml_filename:=$(ros2 pkg prefix ${pkg})/share/${pkg}/maps/custom_map.yaml`);
   if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
@@ -1479,6 +1539,7 @@ function readme(pkg, M, bbox, stats) {
   if (gz && !mi) fileRows.push([`${pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`)`]);
   if (gz) fileRows.push([`${pkg}/worlds/*.sdf`, `Gazebo worlds: ${worldKeys().join(', ')} (default: ${state.world}). Switch with \`world:=<name>\``]);
   if (state.scan) fileRows.push([`${pkg}/maps/custom_map.pgm` + ' + .yaml', '2D occupancy map of your phone scan (5 cm cells) for Nav2 map_server; the robot start is the map origin']);
+  if (M.rl) fileRows.push([`${M.name}_rl/`, `Reinforcement learning kit: ${RL_INFO[M.rl.task].label.toLowerCase()} with ${M.rl.algo}, a fast trainer and a Gazebo environment. See its README.md`]);
   fileRows.push([`${pkg}/rviz/*.rviz`, 'Saved RViz layouts'], [`${pkg}/robot_spec.json`, 'The inputs used to generate this package. Import it back into the studio to edit.']);
   if (mi) {
     fileRows.push(
@@ -1776,7 +1837,7 @@ ${builder(`
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ['-r ', worlds_dir, '/', LaunchConfiguration('world'), '.sdf']}.items())
+        launch_arguments={'gz_args': [LaunchConfiguration('gz_flags'), ' ', worlds_dir, '/', LaunchConfiguration('world'), '.sdf']}.items())
 
     robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -1836,6 +1897,7 @@ ${bridgeArgs(M).map(a => `            '${a}',`).join('\n')}
         DeclareLaunchArgument('moveit', default_value='true', description='Start MoveIt move_group'),
         DeclareLaunchArgument('rviz', default_value='true', description='Open RViz with the MotionPlanning panel'),
         DeclareLaunchArgument('world', default_value='${state.world}', description='${worldKeys().join(', ')}'),
+        DeclareLaunchArgument('gz_flags', default_value='-r', description='Gazebo flags; "-r -s" runs without the window (headless), faster for RL training'),
         SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
@@ -1895,6 +1957,1399 @@ function specJson() {
     distro: state.distro, target: state.target, world: state.world, moveit: useMoveit(), colors: state.colors, sensors: state.sensors[t], params: cleanParams(),
   }, null, 2) + '\n';
 }
+
+/* RL-KIT-BEGIN */
+/* ---------- Reinforcement learning kit ----------
+   A plain Python folder next to the ROS packages: a Gymnasium task, a fast simulator built from the
+   world's occupancy map (or the arm's kinematics), and a Gazebo backend with the same observations,
+   so a policy trained in minutes can be fine-tuned and run in the real simulation. */
+const RL_TASKS = { diff2: ['navigate'], diff4: ['navigate'], arm6: ['reach'], humanoid: ['reach'], semi: ['navigate', 'reach'] };
+const RL_INFO = {
+  navigate: { label: 'Drive to goals', sub: 'Reach random goals across the world without touching anything, steering by lidar.', algo: 'PPO', steps: 500000, gz: 20000, ep: 60 },
+  reach: { label: 'Reach targets', sub: 'Move the hand to random points in its workspace, as fast and smoothly as it can.', algo: 'SAC', steps: 150000, gz: 10000, ep: 8 },
+};
+const RL_SPEEDS = [1, 2, 4, 8];
+
+function rlTask() {
+  const ts = RL_TASKS[state.type];
+  return ts.includes(state.rl.task[state.type]) ? state.rl.task[state.type] : ts[0];
+}
+function rlOpts(task) {
+  const d = RL_INFO[task], o = state.rl.opts[task] || {};
+  return { algo: o.algo || d.algo, steps: o.steps || d.steps, ep: o.ep || d.ep };
+}
+
+function chainEntries(M, base, tip) {
+  const byChild = Object.fromEntries(M.joints.map(j => [j.child, j]));
+  const out = [];
+  for (let l = tip; l !== base;) {
+    const j = byChild[l];
+    if (!j) return null;
+    out.unshift(j);
+    l = j.parent;
+  }
+  return out.map(j => ({ name: j.name, type: j.type === 'continuous' ? 'revolute' : j.type, xyz: j.xyz, rpy: j.rpy, axis: j.axis,
+    lower: j.lim && j.type !== 'continuous' ? j.lim.lo : -PI, upper: j.lim && j.type !== 'continuous' ? j.lim.hi : PI }));
+}
+
+function rlReachSpec(M) {
+  const p = M.p;
+  if (M.type === 'arm6') {
+    const chain = chainEntries(M, 'base_link', 'tool0');
+    if (p.gripper) chain.push({ name: 'grasp_point', type: 'fixed', xyz: [0, 0, 0.03 + p.fingerL * 0.6], rpy: [0, 0, 0], axis: [0, 0, 1], lower: 0, upper: 0 });
+    return { base: 'base_link', group: 'arm', chain, tol: 0.03, minZ: 0.05, keepout: null };
+  }
+  const chain = chainEntries(M, 'torso_link', 'right_hand_link');
+  chain.push({ name: 'hand_center', type: 'fixed', xyz: [0, 0, -(p.handL / 2 + p.armR * 0.3)], rpy: [0, 0, 0], axis: [0, 0, 1], lower: 0, upper: 0 });
+  const m = 0.06;
+  return { base: 'torso_link', group: 'right_arm', chain, tol: 0.04, minZ: -10,
+    keepout: { min: [-p.torsoD / 2 - m, -p.torsoW / 2 - m, -10], max: [p.torsoD / 2 + m, p.torsoW / 2 + m, p.torsoH + m] } };
+}
+
+function rlNavSpec(M) {
+  const p = M.p, w = M.wheels, side = p.W / 2 + p.gap + p.wheelW;
+  return {
+    front: p.L / 2, back: -p.L / 2, left: side, right: -side,
+    lidarX: M.mounts.lidar ? M.mounts.lidar.xyz[0] : 0, lidarZ: w.R + (M.mounts.lidar ? M.mounts.lidar.xyz[2] : p.H),
+    axleX: M.type === 'diff2' ? p.wheelX : 0,
+    maxLin: +Math.min(M.type === 'semi' ? 0.5 : 0.6, 0.8 * 20 * w.R).toFixed(2), maxAng: 1.5,
+  };
+}
+
+// Occupancy grid of the chosen world at the lidar's height (5 cm cells, row 0 at the bottom)
+const rlMapCache = {};
+function rlMap(M) {
+  const res = 0.05;
+  if (state.world === 'custom' && state.scan) {
+    const a = analyzeScan(state.scan), key = 'custom:' + a.nx + 'x' + a.ny + ':' + a.boxes.length;
+    if (rlMapCache.key === key) return rlMapCache.map;
+    const W = a.nx, Hh = a.ny, data = new Uint8Array(W * Hh);
+    for (let i = 0; i < data.length; i++) data[i] = a.occ[i] === 2 ? 0 : a.occ[i] === 1 ? 254 : 205;
+    // A scan only marks floor where it caught floor points; close gaps up to 30 cm between seen floor
+    // so the trainer has room to place the robot, but never paint over an obstacle.
+    const rc = Math.round(0.3 / (a.R / 100)), seen = data.slice();
+    for (let iy = 0; iy < Hh; iy++) for (let ix = 0; ix < W; ix++) {
+      if (seen[iy * W + ix] !== 205) continue;
+      let l = 0, r = 0, d = 0, u = 0;
+      for (let k = 1; k <= rc; k++) {
+        if (!l && ix - k >= 0 && seen[iy * W + ix - k] !== 205) l = seen[iy * W + ix - k];
+        if (!r && ix + k < W && seen[iy * W + ix + k] !== 205) r = seen[iy * W + ix + k];
+        if (!d && iy - k >= 0 && seen[(iy - k) * W + ix] !== 205) d = seen[(iy - k) * W + ix];
+        if (!u && iy + k < Hh && seen[(iy + k) * W + ix] !== 205) u = seen[(iy + k) * W + ix];
+      }
+      if ((l === 254 && r === 254) || (d === 254 && u === 254)) data[iy * W + ix] = 254;
+    }
+    const map = { name: 'custom', w: W, h: Hh, res: a.R / 100, ox: (a.minX - a.R / 2) / 100, oy: (a.minY - a.R / 2) / 100, data };
+    Object.assign(rlMapCache, { key, map });
+    return map;
+  }
+  const world = state.world === 'custom' ? 'empty' : state.world;
+  const nav = rlNavSpec(M), lo = 0.03, hi = nav.lidarZ + 0.03;
+  const key = world + ':' + hi.toFixed(3);
+  if (rlMapCache.key === key) return rlMapCache.map;
+  const env = buildEnv(world), bounded = env.W > 0;
+  const W = bounded ? env.W : 12, D = bounded ? env.D : 12, pad = 0.5;
+  const ox = -W / 2 - pad, oy = -D / 2 - pad, w = Math.ceil((W + 2 * pad) / res), h = Math.ceil((D + 2 * pad) / res);
+  const data = new Uint8Array(w * h).fill(254);
+  if (bounded) for (let iy = 0; iy < h; iy++) for (let ix = 0; ix < w; ix++) {
+    const x = ox + (ix + 0.5) * res, y = oy + (iy + 0.5) * res;
+    if (Math.abs(x) > W / 2 || Math.abs(y) > D / 2) data[iy * w + ix] = 205;
+  }
+  const grow = res * 0.5;
+  env.objects.forEach(ob => {
+    const c = Math.cos(ob.yaw), s = Math.sin(ob.yaw);
+    ob.parts.filter(pt => pt.col).forEach(pt => {
+      const g = pt.g, hz = g[0] === 'box' ? g[3] / 2 : g[0] === 'cyl' ? g[2] / 2 : g[1];
+      if (pt.xyz[2] + hz < lo || pt.xyz[2] - hz > hi) return;
+      const px = ob.x + c * pt.xyz[0] - s * pt.xyz[1], py = ob.y + s * pt.xyz[0] + c * pt.xyz[1];
+      const hx = (g[0] === 'box' ? g[1] / 2 : g[1]) + grow, hy = (g[0] === 'box' ? g[2] / 2 : g[1]) + grow, rr = Math.hypot(hx, hy);
+      const x0 = Math.max(0, Math.floor((px - rr - ox) / res)), x1 = Math.min(w - 1, Math.ceil((px + rr - ox) / res));
+      const y0 = Math.max(0, Math.floor((py - rr - oy) / res)), y1 = Math.min(h - 1, Math.ceil((py + rr - oy) / res));
+      for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) {
+        const dx = ox + (ix + 0.5) * res - px, dy = oy + (iy + 0.5) * res - py;
+        const inside = g[0] === 'box' ? Math.abs(c * dx + s * dy) <= hx && Math.abs(-s * dx + c * dy) <= hy : Math.hypot(dx, dy) <= hx;
+        if (inside) data[iy * w + ix] = 0;
+      }
+    });
+  });
+  const map = { name: world, w, h, res, ox, oy, data };
+  Object.assign(rlMapCache, { key, map });
+  return map;
+}
+
+function rlMapFiles(map) {
+  const head = `P5\n# Occupancy grid for RL training (Robot URDF Studio). 0 obstacle, 254 free, 205 outside the world.\n${map.w} ${map.h}\n255\n`;
+  const bin = new Uint8Array(head.length + map.data.length);
+  for (let i = 0; i < head.length; i++) bin[i] = head.charCodeAt(i);
+  for (let iy = 0; iy < map.h; iy++) bin.set(map.data.subarray(iy * map.w, (iy + 1) * map.w), head.length + (map.h - 1 - iy) * map.w);
+  return {
+    [`maps/${map.name}.pgm`]: { bin },
+    [`maps/${map.name}.yaml`]: `image: ${map.name}.pgm\nmode: trinary\nresolution: ${n(map.res)}\norigin: [${n(map.ox)}, ${n(map.oy)}, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n`,
+  };
+}
+
+// What the RL kit can do for this robot, or why it cannot
+function rlStatus(M) {
+  const task = rlTask(), issues = [], notes = [];
+  if (task === 'navigate' && !M.sensors.lidar) issues.push('Navigation steers by lidar. Turn the lidar on in step 02.');
+  if (task === 'reach' && M.type === 'humanoid' && !M.p.fixBase) notes.push('The humanoid is not pinned, so in Gazebo it will fall over. Pin the pelvis in step 02 to train the arm there; the fast trainer works either way.');
+  if (state.target === 'rviz') notes.push('Gazebo is off, so only the fast trainer can run. Pick Gazebo in step 03 to fine-tune and run policies in physics.');
+  return { task, issues, notes };
+}
+
+function rlConfig(M) {
+  if (!state.rl.on) return null;
+  const st = rlStatus(M);
+  if (st.issues.length) return null;
+  return { task: st.task, ...rlOpts(st.task) };
+}
+
+const yv = v => Array.isArray(v) ? `[${v.map(yv).join(', ')}]` : typeof v === 'number' ? yf(v) : v;
+function rlConfigYaml(M, rl, map) {
+  const g = gzNames(), h = state.distro === 'humble', dt = 0.1;
+  const L = [
+    `# RL training kit for ${M.name} (${TYPES[M.type].label}), generated by Robot URDF Studio.`,
+    '# Edit freely: the trainer and both backends read everything from here.', '',
+    `robot: ${M.name}`, `task: ${rl.task}              # ${RL_TASKS[M.type].join(' | ')}`,
+    `algorithm: ${rl.algo}           # PPO | SAC`,
+    `total_steps: ${rl.steps}      # fast trainer`, `gazebo_steps: ${RL_INFO[rl.task].gz}      # train.py --backend gazebo`,
+    'n_envs: {PPO: 8, SAC: 4}       # parallel fast simulators',
+    `control_dt: ${yf(dt)}           # seconds per action`, `episode_seconds: ${yf(rl.ep)}`, 'seed: 0', '',
+    'gazebo:', `  cli: ${h ? 'ign' : 'gz'}`, `  msg_prefix: ${g.msg('').slice(0, -1)}`, `  world: ${WORLD_NAME}`, `  model: ${M.name}`,
+    `  spawn_z: ${yf(M.spawnZ)}`, `  sim_speed: ${yf(state.rl.speed)}        # real-time factor requested while training in Gazebo`, '',
+  ];
+  if (rl.task === 'navigate') {
+    const s = rlNavSpec(M), diag = Math.max(map.w, map.h) * map.res;
+    L.push('navigate:', `  map: maps/${map.name}.yaml`, '  pose_topic: /ground_truth/odom   # Gazebo ground-truth pose (OdometryPublisher in the URDF)',
+      `  max_lin: ${yf(s.maxLin)}          # m/s`, `  max_ang: ${yf(s.maxAng)}          # rad/s`,
+      '  lidar_beams: 24', '  lidar_range: 3.5', '  lidar_min: 0.12', `  lidar_x: ${yf(s.lidarX)}`, `  axle_x: ${yf(s.axleX)}`,
+      `  footprint: {front: ${yf(s.front)}, back: ${yf(s.back)}, left: ${yf(s.left)}, right: ${yf(s.right)}}`,
+      '  clearance: 0.05      # closer than this to the footprint counts as a collision',
+      '  goal_min: 1.0', `  goal_max: ${yf(+Math.min(8, Math.max(2, diag * 0.5)).toFixed(1))}`, '  goal_tolerance: 0.3',
+      '  rewards: {progress: 10.0, step: -0.02, turn: -0.02, near: -0.1, goal: 25.0, collision: -50.0}   # near: per step within 30 cm of an obstacle', '');
+  } else {
+    const s = rlReachSpec(M), mi = !!M.moveit;
+    L.push('reach:', `  base_frame: ${s.base}`, `  control: ${mi ? 'trajectory' : 'position'}`,
+      `  topic: ${mi ? `/${s.group}_controller/joint_trajectory` : `/${M.name}/{joint}/cmd_pos`}`,
+      '  max_step: 0.08        # rad per action at full stick', `  tolerance: ${yf(s.tol)}`, `  min_target_z: ${yf(s.minZ)}`,
+      s.keepout ? `  keepout: {min: ${yv(s.keepout.min)}, max: ${yv(s.keepout.max)}}   # no targets inside the torso` : '  keepout: null',
+      '  rewards: {progress: 20.0, distance: -0.5, action: -0.005, goal: 10.0}', '  chain:');
+    s.chain.forEach(e => L.push(`    - {name: ${e.name}, type: ${e.type}, xyz: ${yv(e.xyz)}, rpy: ${yv(e.rpy)}, axis: ${yv(e.axis)}, lower: ${yf(e.lower)}, upper: ${yf(e.upper)}}`));
+    L.push('');
+  }
+  L.push('hyperparameters:',
+    '  PPO: {n_steps: 1024, batch_size: 256, learning_rate: 0.0003, gamma: 0.99, gae_lambda: 0.95, ent_coef: 0.005, policy_kwargs: {net_arch: [256, 256]}}',
+    `  SAC: {learning_rate: 0.0003, batch_size: 256, gamma: ${rl.task === 'reach' ? '0.95' : '0.99'}, learning_starts: 2000, buffer_size: 300000, policy_kwargs: {net_arch: [256, 256]}}`, '');
+  return L.join('\n');
+}
+
+function rlReadme(M, rl, map, pkg) {
+  const d = state.distro, gz = state.target !== 'rviz', nav = rl.task === 'navigate', dir = `${M.name}_rl`;
+  const launch = M.moveit ? `ros2 launch ${M.moveit.pkg} gazebo.launch.py world:=${state.world} rviz:=false moveit:=false` : `ros2 launch ${pkg} gazebo.launch.py world:=${state.world} rviz:=false`;
+  return `# ${dir}: reinforcement learning for ${M.name}
+
+Train a policy to **${RL_INFO[rl.task].label.toLowerCase()}** with [Stable-Baselines3](https://stable-baselines3.readthedocs.io) (${rl.algo}).
+There are two simulators with identical observations, actions and rewards:
+
+| Backend | What it simulates | Speed | Needs |
+| --- | --- | --- | --- |
+| \`fast\` | ${nav ? `Differential-drive motion on the ${map.name} map with a simulated 24-sector lidar` : 'Joint motion of the arm chain, with a little actuator lag'} | thousands of steps per second | Python only |
+| \`gazebo\` | The full ${gzNames().sim} simulation through ROS 2 | real time × sim_speed | ROS 2 ${d[0].toUpperCase() + d.slice(1)}, the running simulation |
+
+Train fast first, then fine-tune in Gazebo, then run the policy in Gazebo.
+
+## 1. Install (once)
+
+\`\`\`bash
+source /opt/ros/${d}/setup.bash
+cd ~/ros2_ws/src/${dir}
+python3 -m venv --system-site-packages .venv      # system site packages so rclpy is visible
+source .venv/bin/activate
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional: CPU-only PyTorch, much smaller download
+pip install -r requirements.txt
+\`\`\`
+
+## 2. Train with the fast simulator
+
+\`\`\`bash
+python train.py                 # ${rl.steps.toLocaleString('en-US')} steps; Ctrl+C stops early and keeps the model
+tensorboard --logdir runs       # optional: reward and success curves at http://localhost:6006
+python run_policy.py            # watch it in a live plot and get a success rate
+\`\`\`
+
+## 3. Fine-tune and run in Gazebo
+${gz ? `
+Terminal 1, the simulation (add \`gz_flags:="-r -s"\` to run Gazebo without its window, which is faster):
+
+\`\`\`bash
+source ~/ros2_ws/install/setup.bash
+${launch}
+\`\`\`
+
+Terminal 2, the trainer:
+
+\`\`\`bash
+source /opt/ros/${d}/setup.bash && cd ~/ros2_ws/src/${dir} && source .venv/bin/activate
+python train.py --backend gazebo --resume $(cat runs/LATEST)/best_model.zip
+python run_policy.py --backend gazebo
+\`\`\`
+
+Gazebo runs at real time × \`sim_speed\` (set in step 04 or \`config.yaml\`), so the default ${RL_INFO[rl.task].gz.toLocaleString('en-US')} fine-tuning steps take about ${Math.round(RL_INFO[rl.task].gz * 0.1 / 60 / state.rl.speed)} minutes. The fast trainer does the heavy lifting; Gazebo polishes the policy against real physics.
+
+${nav ? 'Episodes restart by teleporting the robot with the `set_pose` service; the robot\'s true position comes from `/ground_truth/odom`.' : `Episodes restart by sending the arm home. ${M.moveit ? `Commands go to \`/${rlReachSpec(M).group}_controller/joint_trajectory\`.` : 'Commands go to the joint position controllers on `/' + M.name + '/<joint>/cmd_pos`.'} Add a Marker display on \`/rl/target\` in RViz to see the target.`}
+` : `
+This package was generated for RViz only. Choose Gazebo in step 03 of the studio and download again to train in Gazebo.
+`}
+## What the policy sees and does
+
+${nav ? `- **Route:** each episode the kit plans the shortest path to the goal on the map (20 cm grid, kept clear of obstacles) and guides the policy toward a point 1.2 m along it. That is how real robots split the job: a global planner finds the way, the learned controller drives it and dodges what the lidar sees.
+- **Observation (29 numbers):** 24 lidar sectors (closest reading in each, 0.12–3.5 m, scaled 0–1), route length left, sine and cosine of the direction to the next route point, and the previous action.
+- **Action (2 numbers, −1…1):** forward speed (up to ${rlNavSpec(M).maxLin} m/s, reversing at 30 %) and turn rate (up to ${rlNavSpec(M).maxAng} rad/s).
+- **Reward:** +10 per metre of progress along the route, −0.02 per step, a small cost for turning, up to −0.1 per step for driving within 30 cm of an obstacle, +25 for arriving within 0.3 m, −50 for a collision.
+- **Episode ends** at the goal, on a collision (a lidar reading inside the footprint plus 5 cm), on leaving the map, or after ${rl.ep} s.
+- **Starts and goals** are random free spots on \`maps/${map.name}.pgm\`, at least 15 cm clear of obstacles, 1–${n(+Math.min(8, Math.max(2, Math.max(map.w, map.h) * map.res * 0.5)).toFixed(1))} m apart.` :
+`- **Observation:** joint positions (scaled to their limits), the hand position, the target position and the difference between them (in \`${rlReachSpec(M).base}\`).
+- **Action (one number per joint, −1…1):** a joint position change of up to 0.08 rad per step.
+- **Reward:** +20 per metre of progress, −0.5 × distance per step, a small cost on large actions, +10 for getting within ${rlReachSpec(M).tol * 100} cm.
+- **Targets** are random reachable points: forward kinematics of random joint angles within 85 % of the limits${rlReachSpec(M).keepout ? ', never inside the torso' : ', at least 5 cm above the floor'}.`}
+
+Every number above is in \`config.yaml\`: change rewards, speeds, episode length or the algorithm there.
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| \`config.yaml\` | Task, robot geometry, rewards, algorithm and hyperparameters |
+| \`train.py\` | Training entry point (\`--backend fast\` or \`gazebo\`, \`--resume\`, \`--steps\`, \`--algo\`) |
+| \`run_policy.py\` | Runs a saved policy and reports its success rate |
+| \`robot_rl/common.py\` | Shared task, observation, reward, lidar and kinematics code |
+| \`robot_rl/fast_env.py\` | The fast simulator (Gymnasium environment) |
+| \`robot_rl/gazebo_env.py\` | The Gazebo environment (rclpy) |
+${nav ? `| \`maps/${map.name}.pgm\` + \`.yaml\` | The world's obstacles at lidar height, 5 cm cells |\n` : ''}| \`runs/\` | Created by training: models, checkpoints, TensorBoard logs |
+
+The folder holds a \`COLCON_IGNORE\` file, so it can sit in \`ros2_ws/src\` without colcon trying to build it.
+`;
+}
+
+function rlFiles(M, rl, pkg) {
+  const out = {};
+  const map = rl.task === 'navigate' ? rlMap(M) : null;
+  out['COLCON_IGNORE'] = '';
+  out['README.md'] = rlReadme(M, rl, map, pkg);
+  out['config.yaml'] = rlConfigYaml(M, rl, map);
+  out['requirements.txt'] = 'gymnasium>=0.29\nstable-baselines3>=2.3\nnumpy\npyyaml\ntensorboard\nmatplotlib\n';
+  Object.entries(RL_SRC).forEach(([k, v]) => out[k] = v);
+  if (map) Object.assign(out, rlMapFiles(map));
+  return out;
+}
+
+/* Arena preview: the training map with safe spots and sample start→goal pairs,
+   or the arm's reachable targets seen from above and from the side. */
+function rlFk(chain, q) {
+  const tf = (xyz, rpy) => {
+    const [r, p, y] = rpy, cr = Math.cos(r), sr = Math.sin(r), cp = Math.cos(p), sp = Math.sin(p), cy = Math.cos(y), sy = Math.sin(y);
+    return [[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr], [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr], [-sp, cp * sr, cp * cr]];
+  };
+  const mm = (A, B) => A.map(r => [0, 1, 2].map(k => r[0] * B[0][k] + r[1] * B[1][k] + r[2] * B[2][k]));
+  const mv = (A, v) => A.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+  const axisRot = (a, t) => {
+    const l = Math.hypot(...a) || 1, [x, y, z] = a.map(v => v / l), c = Math.cos(t), s = Math.sin(t), C = 1 - c;
+    return [[c + x * x * C, x * y * C - z * s, x * z * C + y * s], [y * x * C + z * s, c + y * y * C, y * z * C - x * s], [z * x * C - y * s, z * y * C + x * s, c + z * z * C]];
+  };
+  let R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], p = [0, 0, 0], k = 0;
+  const pts = [p];
+  for (const e of chain) {
+    const d = mv(R, e.xyz); p = [p[0] + d[0], p[1] + d[1], p[2] + d[2]];
+    R = mm(R, tf(e.xyz, e.rpy));
+    if (e.type === 'revolute') R = mm(R, axisRot(e.axis, q[k++]));
+    else if (e.type === 'prismatic') { const a = mv(R, e.axis.map(v => v * q[k++])); p = [p[0] + a[0], p[1] + a[1], p[2] + a[2]]; }
+    pts.push(p);
+  }
+  return pts;
+}
+
+function drawRL(M) {
+  const cv = $('rlCanvas'); if (!cv) return;
+  const st = rlStatus(M), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const Wc = cv.clientWidth || 480, Hc = cv.clientHeight || 320;
+  cv.width = Wc * dpr; cv.height = Hc * dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0F1418'; ctx.fillRect(0, 0, Wc, Hc);
+  const r = rng(42);
+  if (st.task === 'navigate') {
+    if (!M.sensors.lidar || !M.wheels) { $('rlCap').textContent = 'Turn on the lidar in step 02 to preview the training arena.'; return; }
+    const map = rlMap(M), s = Math.min((Wc - 16) / map.w, (Hc - 16) / map.h), x0 = (Wc - map.w * s) / 2, y0 = (Hc - map.h * s) / 2;
+    const img = ctx.createImageData(map.w, map.h);
+    for (let iy = 0; iy < map.h; iy++) for (let ix = 0; ix < map.w; ix++) {
+      const v = map.data[iy * map.w + ix], o = ((map.h - 1 - iy) * map.w + ix) * 4;
+      const c = v === 0 ? [200, 210, 220] : v === 254 ? [34, 44, 52] : [15, 20, 24];
+      img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+    }
+    const tmp = document.createElement('canvas'); tmp.width = map.w; tmp.height = map.h; tmp.getContext('2d').putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(tmp, x0, y0, map.w * s, map.h * s);
+    const toPx = (x, y) => [x0 + (x - map.ox) / map.res * s, y0 + (map.h - (y - map.oy) / map.res) * s];
+    const nav = rlNavSpec(M), rad = Math.hypot(Math.max(nav.front, -nav.back), nav.left) + 0.15, rc = Math.ceil(rad / map.res);
+    const free = [];
+    for (let k = 0; k < 4000 && free.length < 40; k++) {
+      const ix = Math.floor(r() * map.w), iy = Math.floor(r() * map.h);
+      let ok = map.data[iy * map.w + ix] === 254;
+      for (let dy = -rc; ok && dy <= rc; dy += 2) for (let dx = -rc; ok && dx <= rc; dx += 2) {
+        if (dx * dx + dy * dy > rc * rc) continue;
+        const jx = ix + dx, jy = iy + dy;
+        if (jx < 0 || jy < 0 || jx >= map.w || jy >= map.h || map.data[jy * map.w + jx] !== 254) ok = false;
+      }
+      if (ok) free.push([map.ox + (ix + 0.5) * map.res, map.oy + (iy + 0.5) * map.res]);
+    }
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i + 1 < free.length && i < 16; i += 2) {
+      const [ax, ay] = toPx(...free[i]), [bx, by] = toPx(...free[i + 1]);
+      ctx.strokeStyle = 'rgba(61,128,255,.55)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#6EA0FF'; ctx.beginPath(); ctx.arc(ax, ay, 3.5, 0, 2 * PI); ctx.fill();
+      ctx.fillStyle = '#FF8A3D'; ctx.beginPath(); ctx.arc(bx, by, 4, 0, 2 * PI); ctx.fill();
+    }
+    $('rlCap').textContent = `Training arena: ${state.world === 'custom' && state.scan ? 'your scanned room' : WORLDS[state.world === 'custom' ? 'empty' : state.world].label.toLowerCase() + ' world'} at lidar height, ${(map.w * map.res).toFixed(1)} × ${(map.h * map.res).toFixed(1)} m. Blue: random starts. Orange: goals.`;
+  } else {
+    const s = rlReachSpec(M), chain = s.chain, nq = chain.filter(e => e.type !== 'fixed');
+    const lo = nq.map(e => e.lower), hi = nq.map(e => e.upper), mid = lo.map((l, i) => (l + hi[i]) / 2), half = lo.map((l, i) => (hi[i] - l) / 2);
+    const pts = [];
+    for (let k = 0; k < 1500 && pts.length < 350; k++) {
+      const q = mid.map((m, i) => m + (r() * 2 - 1) * half[i] * 0.85), t = rlFk(chain, q).pop();
+      const ko = s.keepout;
+      if (ko && t.every((v, i) => v >= ko.min[i] && v <= ko.max[i])) continue;
+      if (t[2] < s.minZ) continue;
+      pts.push(t);
+    }
+    const home = rlFk(chain, lo.map((l, i) => Math.min(hi[i], Math.max(l, 0))));
+    const all = pts.concat(home), R = Math.max(...all.map(p => Math.max(Math.abs(p[0]), Math.abs(p[1]), Math.abs(p[2])))) * 1.1 || 1;
+    const panel = (cx, title, ax, ay) => {
+      const sz = Math.min(Wc / 2 - 24, Hc - 44) / 2, cy = Hc / 2 + 10;
+      ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.strokeRect(cx - sz, cy - sz, 2 * sz, 2 * sz);
+      ctx.fillStyle = '#7D8A94'; ctx.font = '11px "JetBrains Mono", monospace'; ctx.fillText(title, cx - sz, cy - sz - 8);
+      const P = p => [cx + p[ax] / R * sz, cy - p[ay] / R * sz];
+      pts.forEach(p => { const [x, y] = P(p); ctx.fillStyle = 'rgba(255,138,61,.55)'; ctx.fillRect(x - 1.5, y - 1.5, 3, 3); });
+      ctx.strokeStyle = '#E6EBF0'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath();
+      home.forEach((p, i) => { const [x, y] = P(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+      home.forEach(p => { const [x, y] = P(p); ctx.fillStyle = '#3D80FF'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 2 * PI); ctx.fill(); });
+    };
+    panel(Wc / 4, 'top view (x→, y↑)', 0, 1);
+    panel(3 * Wc / 4, 'side view (x→, z↑)', 0, 2);
+    $('rlCap').textContent = `Reachable targets for the ${M.type === 'arm6' ? 'tool' : 'right hand'} (orange), arm at home (white), in ${s.base}.`;
+  }
+}
+
+function renderRL(M) {
+  const st = rlStatus(M), task = st.task, o = rlOpts(task);
+  $('rlOn').checked = state.rl.on;
+  $('rlOpts').hidden = !state.rl.on;
+  $('rlTasks').innerHTML = RL_TASKS[state.type].map(t => `<button type="button" class="world" role="radio" data-task="${t}" aria-checked="${t === task}"><b>${RL_INFO[t].label}</b><span>${RL_INFO[t].sub}</span></button>`).join('');
+  $('rlAlgo').value = o.algo; $('rlSteps').value = o.steps; $('rlEp').value = o.ep; $('rlSpeed').value = String(state.rl.speed);
+  const nav = task === 'navigate';
+  const rows = nav ? [
+    ['Sees', '24 lidar sectors, the next point on a planned route, distance left'],
+    ['Does', 'Forward speed and turn rate'],
+    ['Rewarded for', 'Progress along the route and arriving; penalised for collisions and time'],
+  ] : [
+    ['Sees', 'Joint angles, hand and target positions'],
+    ['Does', `Small position changes on ${rlReachSpec(M).chain.filter(e => e.type !== 'fixed').length} joints`],
+    ['Rewarded for', 'Closing the distance and touching the target; penalised for jerky moves'],
+  ];
+  $('rlSpec').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const msg = [...st.issues, ...st.notes];
+  $('rlNote').hidden = !msg.length || !state.rl.on;
+  $('rlNote').textContent = msg.join(' ');
+  $('rlNote').className = st.issues.length ? 'rlnote warn' : 'rlnote';
+  drawRL(M);
+}
+
+// Python sources of the kit (identical for every robot; config.yaml carries the robot)
+const RL_SRC = {
+  'robot_rl/__init__.py': String.raw``,
+  'robot_rl/common.py': String.raw`"""Shared pieces for both backends: config, occupancy map, lidar model, kinematics, observations and rewards.
+
+The fast simulator and the Gazebo environment build observations and rewards with these same
+functions, so a policy trained in one runs in the other without changes.
+"""
+import heapq
+import math
+import os
+
+import numpy as np
+import yaml
+
+KIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def load_config(path=None):
+    path = path or os.path.join(KIT_DIR, 'config.yaml')
+    with open(path, 'r') as f:
+        cfg = yaml.safe_load(f)
+    cfg['_dir'] = os.path.dirname(os.path.abspath(path))
+    return cfg
+
+
+def wrap(a):
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+# ---------------------------------------------------------------- occupancy map
+
+class OccMap:
+    """ROS map_server style map (PGM + YAML). grid[iy, ix] with iy = 0 at the bottom (min y)."""
+
+    def __init__(self, yaml_path):
+        with open(yaml_path, 'r') as f:
+            meta = yaml.safe_load(f)
+        img = read_pgm(os.path.join(os.path.dirname(yaml_path), meta['image']))
+        self.res = float(meta['resolution'])
+        self.ox, self.oy = float(meta['origin'][0]), float(meta['origin'][1])
+        img = img[::-1]                       # PGM row 0 is the top of the map
+        self.h, self.w = img.shape
+        self.occ = img < 50                    # black: obstacle
+        self.free = img > 250                  # white: known free space
+        self.width_m, self.height_m = self.w * self.res, self.h * self.res
+
+    def to_cell(self, x, y):
+        return ((np.asarray(x) - self.ox) / self.res).astype(int), ((np.asarray(y) - self.oy) / self.res).astype(int)
+
+    def inside(self, x, y):
+        return (x >= self.ox) & (y >= self.oy) & (x < self.ox + self.width_m) & (y < self.oy + self.height_m)
+
+    def occupied(self, x, y):
+        """Vectorised lookup; points off the map count as free (the bounds check handles leaving the map)."""
+        ix, iy = self.to_cell(x, y)
+        ok = (ix >= 0) & (iy >= 0) & (ix < self.w) & (iy < self.h)
+        out = np.zeros(np.shape(ix), dtype=bool)
+        out[ok] = self.occ[iy[ok], ix[ok]]
+        return out
+
+    def clearance_mask(self, radius):
+        """Free cells whose distance to every obstacle (and unknown space) is at least radius."""
+        blocked = ~self.free
+        r = int(math.ceil(radius / self.res))
+        grown = blocked.copy()
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if dx * dx + dy * dy > r * r or (dx == 0 and dy == 0):
+                    continue
+                grown |= shift(blocked, dx, dy)
+        return self.free & ~grown
+
+    def cell_centers(self, mask):
+        iy, ix = np.nonzero(mask)
+        return np.stack([self.ox + (ix + 0.5) * self.res, self.oy + (iy + 0.5) * self.res], axis=1)
+
+
+def shift(a, dx, dy):
+    out = np.ones_like(a)                     # outside the map counts as blocked
+    h, w = a.shape
+    ys, yd = (slice(0, h - dy), slice(dy, h)) if dy >= 0 else (slice(-dy, h), slice(0, h + dy))
+    xs, xd = (slice(0, w - dx), slice(dx, w)) if dx >= 0 else (slice(-dx, w), slice(0, w + dx))
+    out[yd, xd] = a[ys, xs]
+    return out
+
+
+def read_pgm(path):
+    with open(path, 'rb') as f:
+        data = f.read()
+    magic = data[:2]
+    if magic == b'P5':
+        tokens, pos = [], 2
+        while len(tokens) < 3:
+            while data[pos:pos + 1].isspace():
+                pos += 1
+            if data[pos:pos + 1] == b'#':
+                while data[pos:pos + 1] not in (b'\n', b''):
+                    pos += 1
+                continue
+            start = pos
+            while not data[pos:pos + 1].isspace():
+                pos += 1
+            tokens.append(int(data[start:pos]))
+        w, h, _ = tokens
+        return np.frombuffer(data, dtype=np.uint8, count=w * h, offset=pos + 1).reshape(h, w)
+    words = [t for line in data.decode().splitlines() for t in line.split('#')[0].split()]
+    w, h = int(words[1]), int(words[2])
+    return np.array(words[4:4 + w * h], dtype=np.uint8).reshape(h, w)
+
+
+# ---------------------------------------------------------------- route planning
+
+class PathField:
+    """Shortest-path distance to the goal over the map (Dijkstra on a 20 cm grid, kept clear of obstacles).
+    The policy steers toward a point a little way along this route, so it can find its way around racks
+    and walls instead of getting stuck behind them; progress is measured along the route too."""
+
+    def __init__(self, occmap, passable, goal, cell=0.2, lookahead=1.2):
+        self.m = occmap
+        self.f = max(1, int(round(cell / occmap.res)))
+        self.cell = self.f * occmap.res
+        f = self.f
+        H, W = passable.shape[0] // f, passable.shape[1] // f
+        self.H, self.W = H, W
+        self.ok = passable[f // 2:H * f:f, f // 2:W * f:f][:H, :W].copy()
+        self.goal = np.asarray(goal, dtype=np.float64)
+        self.look = max(1, int(round(lookahead / self.cell)))
+        gx, gy = self.idx(*goal)
+        self.ok[gy, gx] = True
+        dist = np.full((H, W), np.inf)
+        dist[gy, gx] = 0.0
+        pq = [(0.0, gy, gx)]
+        steps = [(-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0), (-1, -1, 1.4142), (-1, 1, 1.4142), (1, -1, 1.4142), (1, 1, 1.4142)]
+        ok = self.ok
+        while pq:
+            d, y, x = heapq.heappop(pq)
+            if d > dist[y, x]:
+                continue
+            for dy, dx, c in steps:
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < H and 0 <= nx < W and ok[ny, nx]:
+                    if dy and dx and not (ok[y, nx] and ok[ny, x]):
+                        continue                  # no cutting corners
+                    nd = d + c
+                    if nd < dist[ny, nx]:
+                        dist[ny, nx] = nd
+                        heapq.heappush(pq, (nd, ny, nx))
+        self.dist = dist * self.cell
+
+    def idx(self, x, y):
+        ix = int((x - self.m.ox) / self.cell)
+        iy = int((y - self.m.oy) / self.cell)
+        return min(max(ix, 0), self.W - 1), min(max(iy, 0), self.H - 1)
+
+    def center(self, ix, iy):
+        return np.array([self.m.ox + (ix + 0.5) * self.cell, self.m.oy + (iy + 0.5) * self.cell])
+
+    def _near(self, x, y):
+        """Closest reachable cell around (x, y) and the route length from it."""
+        ix, iy = self.idx(x, y)
+        best, bc = np.inf, (ix, iy)
+        for r in range(0, 4):
+            for dy in range(-r, r + 1):
+                for dx in range(-r, r + 1):
+                    if max(abs(dx), abs(dy)) != r:
+                        continue
+                    jx, jy = ix + dx, iy + dy
+                    if 0 <= jx < self.W and 0 <= jy < self.H and np.isfinite(self.dist[jy, jx]):
+                        v = self.dist[jy, jx] + float(np.hypot(*(self.center(jx, jy) - (x, y))))
+                        if v < best:
+                            best, bc = v, (jx, jy)
+            if np.isfinite(best):
+                break
+        return best, bc
+
+    def reachable(self, x, y):
+        return np.isfinite(self._near(x, y)[0])
+
+    def distance(self, x, y):
+        """Distance left to the goal: the straight line, plus however much longer the route is when it
+        has to detour. Continuous, so the progress reward does not jump on the coarse planning grid."""
+        straight = float(np.hypot(self.goal[0] - x, self.goal[1] - y))
+        d, _ = self._near(x, y)
+        if not np.isfinite(d):
+            return straight
+        return straight + max(0.0, d - straight - 2 * self.cell)
+
+    def waypoint(self, x, y):
+        """A point about lookahead metres along the route (or the goal itself when it is closer)."""
+        d, (ix, iy) = self._near(x, y)
+        if not np.isfinite(d) or d <= self.look * self.cell:
+            return self.goal.copy()
+        for _ in range(self.look):
+            best, nxt = self.dist[iy, ix], None
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    jx, jy = ix + dx, iy + dy
+                    if (dx or dy) and 0 <= jx < self.W and 0 <= jy < self.H and self.dist[jy, jx] < best:
+                        best, nxt = self.dist[jy, jx], (jx, jy)
+            if nxt is None:
+                break
+            ix, iy = nxt
+            if self.dist[iy, ix] == 0:
+                return self.goal.copy()
+        return self.center(ix, iy)
+
+
+# ---------------------------------------------------------------- lidar
+
+def sector_angles(n):
+    """Centre angle of each lidar sector, robot frame, counter-clockwise from straight ahead."""
+    return wrap(np.arange(n) * 2 * math.pi / n)
+
+
+def bin_scan(ranges, angles, n, rmin, rmax):
+    """Reduce a full scan to n sectors by taking the closest reading in each one."""
+    r = np.asarray(ranges, dtype=np.float64)
+    r = np.where(np.isfinite(r), r, rmax)
+    r = np.clip(r, rmin, rmax)
+    k = np.round(wrap(np.asarray(angles)) / (2 * math.pi / n)).astype(int) % n
+    out = np.full(n, rmax)
+    np.minimum.at(out, k, r)
+    return out
+
+
+def raycast(occmap, x, y, theta, n, rmin, rmax, rays_per_sector=3):
+    """Simulated lidar on the occupancy grid, binned the same way as the real scan."""
+    width = 2 * math.pi / n
+    offs = (np.arange(rays_per_sector) + 0.5) / rays_per_sector * width - width / 2
+    rel = (sector_angles(n)[:, None] + offs[None, :]).ravel()
+    step = occmap.res * 0.5
+    d = np.arange(rmin, rmax + step, step)
+    ang = theta + rel
+    px = x + np.cos(ang)[:, None] * d[None, :]
+    py = y + np.sin(ang)[:, None] * d[None, :]
+    hit = occmap.occupied(px, py)
+    first = np.where(hit.any(axis=1), hit.argmax(axis=1), len(d) - 1)
+    return bin_scan(d[first], rel, n, rmin, rmax)
+
+
+def footprint_ranges(nav, n):
+    """Distance from the lidar to the edge of the robot's footprint in each sector direction.
+    A reading closer than this plus the clearance means the robot is touching something."""
+    fp = nav['footprint']
+    lx = nav['lidar_x']
+    out = []
+    for a in sector_angles(n):
+        c, s = math.cos(a), math.sin(a)
+        ts = []
+        if c > 1e-9:
+            ts.append((fp['front'] - lx) / c)
+        if c < -1e-9:
+            ts.append((fp['back'] - lx) / c)
+        if s > 1e-9:
+            ts.append(fp['left'] / s)
+        if s < -1e-9:
+            ts.append(fp['right'] / s)
+        out.append(max(0.0, min(ts)))
+    return np.array(out)
+
+
+# ---------------------------------------------------------------- navigation task
+
+class NavTask:
+    """Drive to a goal without touching anything. Shared by both backends."""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        nav = cfg['navigate']
+        self.nav = nav
+        self.n = int(nav['lidar_beams'])
+        self.rmin, self.rmax = float(nav['lidar_min']), float(nav['lidar_range'])
+        self.touch = footprint_ranges(nav, self.n) + float(nav['clearance'])
+        self.W = nav['rewards']
+        self.max_steps = int(round(cfg['episode_seconds'] / cfg['control_dt']))
+        self.obs_dim = self.n + 5
+
+    def observe(self, scan, pose, route, last_action):
+        """Lidar, route length to the goal, direction of the next route point, last action."""
+        x, y, th = pose
+        wx, wy = route.waypoint(x, y)
+        bearing = wrap(math.atan2(wy - y, wx - x) - th)
+        lid = (scan - self.rmin) / (self.rmax - self.rmin)
+        d = min(route.distance(x, y), 20.0) / 20.0
+        return np.concatenate([lid, [d, math.sin(bearing), math.cos(bearing)], last_action]).astype(np.float32)
+
+    def collided(self, scan):
+        return bool(np.any(scan < self.touch))
+
+    def reward(self, prev_dist, dist, action, collided, reached, scan=None):
+        W = self.W
+        r = W['progress'] * (prev_dist - dist) + W['step'] + W['turn'] * abs(float(action[1]))
+        if scan is not None and W.get('near'):
+            gap = float(np.min(scan - self.touch))           # free space left around the footprint
+            r += W['near'] * max(0.0, (0.3 - gap) / 0.3)
+        if reached:
+            r += W['goal']
+        if collided:
+            r += W['collision']
+        return r
+
+    def action_to_cmd(self, action):
+        a = np.clip(action, -1.0, 1.0)
+        v = float(a[0]) * self.nav['max_lin']
+        if v < 0:
+            v *= 0.3                               # reversing is allowed but slow, like most real bases
+        return v, float(a[1]) * self.nav['max_ang']
+
+
+def robot_radii(nav):
+    """(circumscribed, routing) radius of the footprint: spots keep the first clear, routes the second."""
+    fp = nav['footprint']
+    outer = math.hypot(max(fp['front'], -fp['back']), max(fp['left'], -fp['right']))
+    inner = min(fp['front'], -fp['back'], fp['left'], -fp['right'])
+    return outer, (outer + inner) / 2 + 0.03
+
+
+def sample_start_goal(rng, spots, nav, occmap=None, passable=None):
+    """Pick a start and a goal from precomputed safe spots, at a useful distance and joined by a route.
+    Returns (start pose, goal, PathField)."""
+    lo, hi = float(nav['goal_min']), float(nav['goal_max'])
+    for _ in range(200):
+        s = spots[rng.integers(len(spots))]
+        d = np.hypot(*(spots - s).T)
+        cand = np.nonzero((d >= lo) & (d <= hi))[0]
+        if not len(cand):
+            continue
+        g = spots[cand[rng.integers(len(cand))]]
+        route = PathField(occmap, passable, g)
+        if route.reachable(*s):
+            return (float(s[0]), float(s[1]), float(rng.uniform(-math.pi, math.pi))), (float(g[0]), float(g[1])), route
+    raise RuntimeError('Could not find a start and goal joined by a route; lower goal_min or check the map.')
+
+
+# ---------------------------------------------------------------- reach task
+
+def rot_rpy(r, p, y):
+    cr, sr, cp, sp, cy, sy = math.cos(r), math.sin(r), math.cos(p), math.sin(p), math.cos(y), math.sin(y)
+    return np.array([[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+                     [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+                     [-sp, cp * sr, cp * cr]])
+
+
+def rot_axis(axis, q):
+    a = np.asarray(axis, dtype=np.float64)
+    a = a / (np.linalg.norm(a) or 1.0)
+    K = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
+    return np.eye(3) + math.sin(q) * K + (1 - math.cos(q)) * K @ K
+
+
+class Chain:
+    """Serial chain from the URDF, base frame to tip, used for forward kinematics."""
+
+    def __init__(self, entries):
+        self.entries = entries
+        self.joints = [e for e in entries if e['type'] != 'fixed']
+        self.names = [e['name'] for e in self.joints]
+        self.lower = np.array([e['lower'] for e in self.joints], dtype=np.float64)
+        self.upper = np.array([e['upper'] for e in self.joints], dtype=np.float64)
+
+    def fk(self, q):
+        R, p, k = np.eye(3), np.zeros(3), 0
+        for e in self.entries:
+            p = p + R @ np.asarray(e['xyz'], dtype=np.float64)
+            R = R @ rot_rpy(*e['rpy'])
+            if e['type'] == 'revolute':
+                R = R @ rot_axis(e['axis'], q[k])
+                k += 1
+            elif e['type'] == 'prismatic':
+                p = p + R @ (np.asarray(e['axis'], dtype=np.float64) * q[k])
+                k += 1
+        return p
+
+    def home(self):
+        return np.clip(np.zeros(len(self.joints)), self.lower, self.upper)
+
+    def reach(self):
+        return sum(np.linalg.norm(e['xyz']) for e in self.entries) or 1.0
+
+
+class ReachTask:
+    def __init__(self, cfg):
+        self.cfg = cfg
+        rc = cfg['reach']
+        self.rc = rc
+        self.chain = Chain(rc['chain'])
+        self.n = len(self.chain.joints)
+        self.L = self.chain.reach()
+        self.W = rc['rewards']
+        self.max_steps = int(round(cfg['episode_seconds'] / cfg['control_dt']))
+        self.obs_dim = self.n + 9
+        self.mid = (self.chain.lower + self.chain.upper) / 2
+        self.half = np.maximum((self.chain.upper - self.chain.lower) / 2, 1e-6)
+
+    def sample_target(self, rng):
+        for _ in range(500):
+            q = rng.uniform(self.mid - self.half * 0.85, self.mid + self.half * 0.85)
+            t = self.chain.fk(q)
+            ko = self.rc.get('keepout')
+            if ko and all(lo <= v <= hi for v, lo, hi in zip(t, ko['min'], ko['max'])):
+                continue                          # inside the robot's own body
+            if t[2] >= self.rc['min_target_z'] and np.linalg.norm(t) > 0.1 * self.L:
+                return t
+        return self.chain.fk(self.chain.home())
+
+    def observe(self, q, target):
+        ee = self.chain.fk(q)
+        return np.concatenate([(q - self.mid) / self.half, ee / self.L, target / self.L, (target - ee) / self.L]).astype(np.float32), ee
+
+    def step_q(self, q_cmd, action):
+        return np.clip(q_cmd + np.clip(action, -1, 1) * self.rc['max_step'], self.chain.lower, self.chain.upper)
+
+    def reward(self, prev_dist, dist, action, reached):
+        W = self.W
+        r = W['progress'] * (prev_dist - dist) + W['distance'] * dist + W['action'] * float(np.square(action).sum())
+        if reached:
+            r += W['goal']
+        return r
+`,
+  'robot_rl/fast_env.py': String.raw`"""Fast trainer: a lightweight simulator of the same task, thousands of steps per second.
+
+Navigation drives a differential-drive robot on the world's occupancy map with a simulated lidar.
+Reaching moves the arm's joints kinematically. Train here first, then fine-tune or run in Gazebo.
+"""
+import math
+import os
+
+import gymnasium as gym
+import numpy as np
+
+from .common import NavTask, OccMap, ReachTask, raycast, robot_radii, sample_start_goal, wrap
+
+
+class NavFastEnv(gym.Env):
+    metadata = {'render_modes': ['human']}
+
+    def __init__(self, cfg, render_mode=None):
+        self.cfg, self.render_mode = cfg, render_mode
+        self.task = NavTask(cfg)
+        nav = cfg['navigate']
+        self.map = OccMap(os.path.join(cfg['_dir'], nav['map']))
+        outer, route_r = robot_radii(nav)
+        self.spots = self.map.cell_centers(self.map.clearance_mask(outer + 0.15))
+        self.passable = self.map.clearance_mask(route_r)
+        if len(self.spots) < 2:
+            raise RuntimeError('The map has no free space big enough for this robot. Check the map or shrink the robot.')
+        self.dt, self.axle_x = cfg['control_dt'], nav.get('axle_x', 0.0)
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (self.task.obs_dim,), np.float32)
+        self.action_space = gym.spaces.Box(-1.0, 1.0, (2,), np.float32)
+        self._fig = None
+
+    def _scan(self):
+        x, y, th = self.pose
+        lx = self.task.nav['lidar_x']
+        return raycast(self.map, x + lx * math.cos(th), y + lx * math.sin(th), th, self.task.n, self.task.rmin, self.task.rmax)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.pose, self.goal, self.route = sample_start_goal(self.np_random, self.spots, self.task.nav, self.map, self.passable)
+        self.last = np.zeros(2, dtype=np.float32)
+        self.steps = 0
+        self.dist = self.route.distance(*self.pose[:2])
+        self.scan = self._scan()
+        return self.task.observe(self.scan, self.pose, self.route, self.last), {}
+
+    def step(self, action):
+        action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
+        v, w = self.task.action_to_cmd(action)
+        x, y, th = self.pose
+        ax = self.axle_x                         # the robot turns about its drive axle
+        px, py = x + ax * math.cos(th), y + ax * math.sin(th)
+        px += v * self.dt * math.cos(th + w * self.dt / 2)
+        py += v * self.dt * math.sin(th + w * self.dt / 2)
+        th = wrap(th + w * self.dt)
+        self.pose = (px - ax * math.cos(th), py - ax * math.sin(th), th)
+        self.steps += 1
+        self.scan = self._scan()
+        dist = self.route.distance(*self.pose[:2])
+        reached = math.hypot(self.goal[0] - self.pose[0], self.goal[1] - self.pose[1]) < self.task.nav['goal_tolerance']
+        collided = self.task.collided(self.scan) or not self.map.inside(self.pose[0], self.pose[1])
+        r = self.task.reward(self.dist, dist, action, collided, reached, self.scan)
+        self.dist, self.last = dist, action
+        obs = self.task.observe(self.scan, self.pose, self.route, self.last)
+        if self.render_mode == 'human':
+            self.render()
+        return obs, float(r), bool(reached or collided), self.steps >= self.task.max_steps, {'is_success': reached, 'collision': collided}
+
+    def render(self):
+        import matplotlib.pyplot as plt
+        if self._fig is None:
+            plt.ion()
+            self._fig, self._ax = plt.subplots(figsize=(7, 7 * self.map.height_m / max(self.map.width_m, 1e-6)))
+        ax = self._ax
+        ax.clear()
+        ax.imshow(np.where(self.map.occ, 0.1, np.where(self.map.free, 1.0, 0.75)), cmap='gray', origin='lower', vmin=0, vmax=1,
+                  extent=[self.map.ox, self.map.ox + self.map.width_m, self.map.oy, self.map.oy + self.map.height_m])
+        x, y, th = self.pose
+        lx = self.task.nav['lidar_x']
+        ox, oy = x + lx * math.cos(th), y + lx * math.sin(th)
+        for a, r in zip(np.arange(self.task.n) * 2 * math.pi / self.task.n, self.scan):
+            ax.plot([ox, ox + r * math.cos(th + a)], [oy, oy + r * math.sin(th + a)], color='#1F6BFF', lw=0.6, alpha=0.6)
+        wx, wy = self.route.waypoint(x, y)
+        ax.plot([x, wx], [y, wy], ':', color='#E0601A', lw=1.5)
+        ax.plot(*self.goal, marker='*', ms=16, color='#E0601A')
+        ax.plot(x, y, 'o', ms=8, color='#0A0C10')
+        ax.arrow(x, y, 0.4 * math.cos(th), 0.4 * math.sin(th), width=0.04, color='#0A0C10')
+        ax.set_title(f'step {self.steps}   route to goal {self.dist:.2f} m')
+        plt.pause(0.001)
+
+
+class ReachFastEnv(gym.Env):
+    metadata = {'render_modes': ['human']}
+
+    def __init__(self, cfg, render_mode=None):
+        self.cfg, self.render_mode = cfg, render_mode
+        self.task = ReachTask(cfg)
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (self.task.obs_dim,), np.float32)
+        self.action_space = gym.spaces.Box(-1.0, 1.0, (self.task.n,), np.float32)
+        self._fig = None
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.q = self.task.chain.home()
+        self.target = self.task.sample_target(self.np_random)
+        self.steps = 0
+        obs, ee = self.task.observe(self.q, self.target)
+        self.dist = float(np.linalg.norm(self.target - ee))
+        return obs, {}
+
+    def step(self, action):
+        action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
+        # Real joints lag the command a little; model that so the policy transfers to Gazebo.
+        q_cmd = self.task.step_q(self.q, action)
+        self.q = self.q + 0.85 * (q_cmd - self.q)
+        self.steps += 1
+        obs, ee = self.task.observe(self.q, self.target)
+        dist = float(np.linalg.norm(self.target - ee))
+        reached = dist < self.task.rc['tolerance']
+        r = self.task.reward(self.dist, dist, action, reached)
+        self.dist = dist
+        if self.render_mode == 'human':
+            self.render()
+        return obs, float(r), bool(reached), self.steps >= self.task.max_steps, {'is_success': reached}
+
+    def render(self):
+        import matplotlib.pyplot as plt
+        if self._fig is None:
+            plt.ion()
+            self._fig = plt.figure(figsize=(6, 6))
+            self._ax = self._fig.add_subplot(projection='3d')
+        ax = self._ax
+        ax.clear()
+        pts, R, p, k = [np.zeros(3)], np.eye(3), np.zeros(3), 0
+        from .common import rot_axis, rot_rpy
+        for e in self.task.chain.entries:
+            p = p + R @ np.asarray(e['xyz'], dtype=float)
+            R = R @ rot_rpy(*e['rpy'])
+            if e['type'] == 'revolute':
+                R = R @ rot_axis(e['axis'], self.q[k]); k += 1
+            elif e['type'] == 'prismatic':
+                p = p + R @ (np.asarray(e['axis'], dtype=float) * self.q[k]); k += 1
+            pts.append(p.copy())
+        P = np.array(pts)
+        ax.plot(P[:, 0], P[:, 1], P[:, 2], '-o', color='#0A0C10', lw=3, ms=4)
+        ax.scatter(*self.target, color='#E0601A', s=80)
+        L = self.task.L
+        ax.set_xlim(-L, L); ax.set_ylim(-L, L); ax.set_zlim(-L * 0.3, L * 1.2)
+        ax.set_title(f'step {self.steps}   distance {self.dist * 100:.1f} cm')
+        plt.pause(0.001)
+
+
+def make_fast_env(cfg, render_mode=None):
+    return (NavFastEnv if cfg['task'] == 'navigate' else ReachFastEnv)(cfg, render_mode)
+`,
+  'robot_rl/gazebo_env.py': String.raw`"""Gazebo backend: the same task, observations and rewards, run against the live simulation through ROS 2.
+
+Start the simulation first (see README.md), then train or run a policy with --backend gazebo.
+Episodes are reset by teleporting the robot (navigation) or sending the arm home (reaching).
+"""
+import math
+import os
+import subprocess
+import time
+
+import gymnasium as gym
+import numpy as np
+
+from .common import NavTask, OccMap, ReachTask, bin_scan, robot_radii, sample_start_goal
+
+try:
+    import rclpy
+    from rclpy.node import Node
+    from rclpy.qos import qos_profile_sensor_data
+except ImportError as e:                         # pragma: no cover - only on machines without ROS 2
+    raise ImportError('The Gazebo backend needs ROS 2. Source /opt/ros/<distro>/setup.bash and use a venv '
+                      'created with --system-site-packages (see README.md).') from e
+
+
+class _Ros:
+    """One rclpy node shared by the environment, ticking on simulation time from /clock."""
+
+    def __init__(self, name):
+        if not rclpy.ok():
+            rclpy.init()
+        self.node = Node(name)
+        from rosgraph_msgs.msg import Clock
+        self.sim_time = None
+        self.node.create_subscription(Clock, '/clock', self._clock, 10)
+
+    def _clock(self, msg):
+        self.sim_time = msg.clock.sec + msg.clock.nanosec * 1e-9
+
+    def spin(self, timeout=0.01):
+        rclpy.spin_once(self.node, timeout_sec=timeout)
+
+    def wait_for(self, cond, what, timeout=30.0):
+        t0 = time.time()
+        while not cond():
+            self.spin(0.05)
+            if time.time() - t0 > timeout:
+                raise TimeoutError(f'No {what} after {timeout:.0f} s. Is the simulation running and unpaused?')
+
+    def sleep_sim(self, seconds):
+        self.wait_for(lambda: self.sim_time is not None, '/clock')
+        end = self.sim_time + seconds
+        t0 = time.time()
+        while self.sim_time < end:
+            self.spin(0.005)
+            if time.time() - t0 > max(10.0, seconds * 50):
+                raise TimeoutError('Simulation time stopped advancing. Is Gazebo paused?')
+
+
+def gz_service(cfg, service, reqtype, req, timeout_ms=3000):
+    g = cfg['gazebo']
+    cmd = [g['cli'], 'service', '-s', f"/world/{g['world']}/{service}", '--reqtype', f"{g['msg_prefix']}.{reqtype}",
+           '--reptype', f"{g['msg_prefix']}.Boolean", '--timeout', str(timeout_ms), '--req', req]
+    out = subprocess.run(cmd, capture_output=True, text=True)
+    return out.returncode == 0 and 'data: true' in out.stdout
+
+
+def set_sim_speed(cfg):
+    speed = float(cfg['gazebo'].get('sim_speed', 1.0))
+    if abs(speed - 1.0) > 1e-6:
+        ok = gz_service(cfg, 'set_physics', 'Physics', f'max_step_size: 0.001, real_time_factor: {speed}')
+        print(f'[robot_rl] Simulation speed x{speed}: {"set" if ok else "could not be set, running at the world default"}')
+
+
+class NavGazeboEnv(gym.Env):
+    def __init__(self, cfg, render_mode=None):
+        from geometry_msgs.msg import Twist
+        from nav_msgs.msg import Odometry
+        from sensor_msgs.msg import LaserScan
+        self.cfg = cfg
+        self.task = NavTask(cfg)
+        nav = cfg['navigate']
+        self.map = OccMap(os.path.join(cfg['_dir'], nav['map']))
+        outer, route_r = robot_radii(nav)
+        self.spots = self.map.cell_centers(self.map.clearance_mask(outer + 0.15))
+        self.passable = self.map.clearance_mask(route_r)
+        self.ros = _Ros('robot_rl_nav')
+        self.Twist = Twist
+        self.cmd = self.ros.node.create_publisher(Twist, '/cmd_vel', 10)
+        self.scan_msg, self.odom_msg = None, None
+        self.ros.node.create_subscription(LaserScan, '/scan', lambda m: setattr(self, 'scan_msg', m), qos_profile_sensor_data)
+        self.ros.node.create_subscription(Odometry, nav['pose_topic'], lambda m: setattr(self, 'odom_msg', m), 10)
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (self.task.obs_dim,), np.float32)
+        self.action_space = gym.spaces.Box(-1.0, 1.0, (2,), np.float32)
+        self.ros.wait_for(lambda: self.scan_msg is not None, '/scan')
+        self.ros.wait_for(lambda: self.odom_msg is not None, nav['pose_topic'])
+        set_sim_speed(cfg)
+
+    def _pose(self):
+        p = self.odom_msg.pose.pose
+        q = p.orientation
+        return (p.position.x, p.position.y, math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z)))
+
+    def _scan(self):
+        m = self.scan_msg
+        angles = m.angle_min + np.arange(len(m.ranges)) * m.angle_increment
+        return bin_scan(np.array(m.ranges), angles, self.task.n, self.task.rmin, self.task.rmax)
+
+    def _drive(self, v, w):
+        t = self.Twist()
+        t.linear.x, t.angular.z = float(v), float(w)
+        self.cmd.publish(t)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        g = self.cfg['gazebo']
+        self._drive(0, 0)
+        self.ros.sleep_sim(0.2)
+        start, self.goal, self.route = sample_start_goal(self.np_random, self.spots, self.task.nav, self.map, self.passable)
+        x, y, th = start
+        req = (f'name: "{g["model"]}", position: {{x: {x:.3f}, y: {y:.3f}, z: {g["spawn_z"]:.3f}}}, '
+               f'orientation: {{x: 0, y: 0, z: {math.sin(th / 2):.5f}, w: {math.cos(th / 2):.5f}}}')
+        if not gz_service(self.cfg, 'set_pose', 'Pose', req):
+            print('[robot_rl] set_pose failed; the episode starts wherever the robot is.')
+        self.ros.sleep_sim(0.5)
+        self.steps, self.last, self.stuck = 0, np.zeros(2, dtype=np.float32), 0
+        pose = self._pose()
+        self.dist = self.route.distance(pose[0], pose[1])
+        print(f'[robot_rl] episode: start ({x:.2f}, {y:.2f})  goal ({self.goal[0]:.2f}, {self.goal[1]:.2f})  route {self.dist:.1f} m')
+        return self.task.observe(self._scan(), pose, self.route, self.last), {}
+
+    def step(self, action):
+        action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
+        v, w = self.task.action_to_cmd(action)
+        before = self._pose()
+        self._drive(v, w)
+        self.ros.sleep_sim(self.cfg['control_dt'])
+        pose, scan = self._pose(), self._scan()
+        self.steps += 1
+        moved = math.hypot(pose[0] - before[0], pose[1] - before[1])
+        self.stuck = self.stuck + 1 if abs(v) > 0.1 and moved < abs(v) * self.cfg['control_dt'] * 0.1 else 0
+        dist = self.route.distance(pose[0], pose[1])
+        reached = math.hypot(self.goal[0] - pose[0], self.goal[1] - pose[1]) < self.task.nav['goal_tolerance']
+        collided = self.task.collided(scan) or self.stuck >= 10 or not self.map.inside(pose[0], pose[1])
+        r = self.task.reward(self.dist, dist, action, collided, reached, scan)
+        self.dist, self.last = dist, action
+        if reached or collided:
+            self._drive(0, 0)
+        return (self.task.observe(scan, pose, self.route, self.last), float(r), bool(reached or collided),
+                self.steps >= self.task.max_steps, {'is_success': reached, 'collision': collided})
+
+    def close(self):
+        self._drive(0, 0)
+        self.ros.node.destroy_node()
+
+
+class ReachGazeboEnv(gym.Env):
+    def __init__(self, cfg, render_mode=None):
+        from sensor_msgs.msg import JointState
+        from visualization_msgs.msg import Marker
+        self.cfg = cfg
+        self.task = ReachTask(cfg)
+        rc = cfg['reach']
+        self.ros = _Ros('robot_rl_reach')
+        self.q_meas = None
+        self.idx = None
+        self.ros.node.create_subscription(JointState, '/joint_states', self._js, 20)
+        self.mode = rc['control']
+        if self.mode == 'trajectory':
+            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+            self.JT, self.JTP = JointTrajectory, JointTrajectoryPoint
+            self.pub = self.ros.node.create_publisher(JointTrajectory, rc['topic'], 10)
+        else:
+            from std_msgs.msg import Float64
+            self.F64 = Float64
+            self.pubs = [self.ros.node.create_publisher(Float64, rc['topic'].replace('{joint}', j), 10) for j in self.task.chain.names]
+        self.Marker = Marker
+        self.marker = self.ros.node.create_publisher(Marker, '/rl/target', 10)
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (self.task.obs_dim,), np.float32)
+        self.action_space = gym.spaces.Box(-1.0, 1.0, (self.task.n,), np.float32)
+        self.ros.wait_for(lambda: self.q_meas is not None, '/joint_states with the arm joints')
+        set_sim_speed(cfg)
+
+    def _js(self, m):
+        names = list(m.name)
+        if self.idx is None:
+            if not all(j in names for j in self.task.chain.names):
+                return
+            self.idx = [names.index(j) for j in self.task.chain.names]
+        if len(m.position) >= len(names):
+            self.q_meas = np.array([m.position[i] for i in self.idx], dtype=np.float64)
+
+    def _command(self, q, seconds):
+        if self.mode == 'trajectory':
+            msg = self.JT()
+            msg.joint_names = list(self.task.chain.names)
+            pt = self.JTP()
+            pt.positions = [float(x) for x in q]
+            pt.time_from_start.sec = int(seconds)
+            pt.time_from_start.nanosec = int((seconds % 1) * 1e9)
+            msg.points = [pt]
+            self.pub.publish(msg)
+        else:
+            for p, x in zip(self.pubs, q):
+                p.publish(self.F64(data=float(x)))
+
+    def _show_target(self):
+        m = self.Marker()
+        m.header.frame_id = self.cfg['reach']['base_frame']
+        m.type, m.action = m.SPHERE, m.ADD
+        m.pose.position.x, m.pose.position.y, m.pose.position.z = (float(v) for v in self.target)
+        m.pose.orientation.w = 1.0
+        m.scale.x = m.scale.y = m.scale.z = 2 * float(self.cfg['reach']['tolerance'])
+        m.color.r, m.color.g, m.color.b, m.color.a = 0.88, 0.38, 0.1, 0.9
+        self.marker.publish(m)
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.q_cmd = self.task.chain.home()
+        self._command(self.q_cmd, 1.5)
+        self.ros.sleep_sim(2.0)
+        self.target = self.task.sample_target(self.np_random)
+        self._show_target()
+        self.steps = 0
+        obs, ee = self.task.observe(self.q_meas, self.target)
+        self.dist = float(np.linalg.norm(self.target - ee))
+        return obs, {}
+
+    def step(self, action):
+        action = np.clip(np.asarray(action, dtype=np.float32), -1, 1)
+        self.q_cmd = self.task.step_q(self.q_meas, action)
+        dt = self.cfg['control_dt']
+        self._command(self.q_cmd, dt)
+        self.ros.sleep_sim(dt)
+        self.steps += 1
+        obs, ee = self.task.observe(self.q_meas, self.target)
+        dist = float(np.linalg.norm(self.target - ee))
+        reached = dist < self.task.rc['tolerance']
+        r = self.task.reward(self.dist, dist, action, reached)
+        self.dist = dist
+        if self.steps % 10 == 0:
+            self._show_target()
+        return obs, float(r), bool(reached), self.steps >= self.task.max_steps, {'is_success': reached}
+
+    def close(self):
+        self.ros.node.destroy_node()
+
+
+def make_gazebo_env(cfg, render_mode=None):
+    return (NavGazeboEnv if cfg['task'] == 'navigate' else ReachGazeboEnv)(cfg, render_mode)
+`,
+  'train.py': String.raw`#!/usr/bin/env python3
+"""Train a policy with Stable-Baselines3.
+
+  python train.py                          # fast trainer (minutes, no Gazebo needed)
+  python train.py --backend gazebo         # train inside the running Gazebo simulation
+  python train.py --backend gazebo --resume runs/<run>/best_model.zip   # fine-tune a fast-trained policy in Gazebo
+
+Progress is logged for TensorBoard:  tensorboard --logdir runs
+"""
+import argparse
+import os
+import time
+
+from stable_baselines3 import PPO, SAC
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.monitor import Monitor
+
+from robot_rl.common import KIT_DIR, load_config
+from robot_rl.fast_env import make_fast_env
+
+ALGOS = {'PPO': PPO, 'SAC': SAC}
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--backend', choices=['fast', 'gazebo'], default='fast')
+    ap.add_argument('--config', default=os.path.join(KIT_DIR, 'config.yaml'))
+    ap.add_argument('--steps', type=int, help='total environment steps (default: from config.yaml)')
+    ap.add_argument('--algo', choices=list(ALGOS), help='default: from config.yaml')
+    ap.add_argument('--envs', type=int, help='parallel fast environments (default: from config.yaml)')
+    ap.add_argument('--resume', help='continue training from a saved model .zip')
+    ap.add_argument('--seed', type=int)
+    args = ap.parse_args()
+
+    cfg = load_config(args.config)
+    algo = args.algo or cfg['algorithm']
+    if args.resume and not args.algo:
+        tag = os.path.join(os.path.dirname(os.path.abspath(args.resume)), 'ALGO')
+        if os.path.exists(tag):
+            with open(tag) as f:
+                algo = f.read().strip()
+    steps = args.steps or (cfg['total_steps'] if args.backend == 'fast' else cfg['gazebo_steps'])
+    seed = cfg.get('seed', 0) if args.seed is None else args.seed
+    run = os.path.join(KIT_DIR, 'runs', f"{cfg['robot']}_{cfg['task']}_{args.backend}_{time.strftime('%Y%m%d_%H%M%S')}")
+    os.makedirs(run, exist_ok=True)
+
+    if args.backend == 'fast':
+        n = args.envs or cfg.get('n_envs', {}).get(algo, 4)
+        env = make_vec_env(lambda: make_fast_env(cfg), n_envs=n, seed=seed)
+        eval_env = Monitor(make_fast_env(cfg))
+        callbacks = [EvalCallback(eval_env, best_model_save_path=run, log_path=run, eval_freq=max(10000 // n, 500),
+                                  n_eval_episodes=20, deterministic=True)]
+    else:
+        from robot_rl.gazebo_env import make_gazebo_env
+        env = Monitor(make_gazebo_env(cfg))
+        callbacks = []
+    callbacks.append(CheckpointCallback(save_freq=max(50000 // getattr(env, 'num_envs', 1), 1000), save_path=os.path.join(run, 'checkpoints')))
+
+    Algo = ALGOS[algo]
+    if args.resume:
+        model = Algo.load(args.resume, env=env, tensorboard_log=run)
+        print(f'Resuming from {args.resume}')
+    else:
+        kw = dict(cfg.get('hyperparameters', {}).get(algo, {}))
+        model = Algo('MlpPolicy', env, verbose=1, seed=seed, tensorboard_log=run, **kw)
+
+    with open(os.path.join(KIT_DIR, 'runs', 'LATEST'), 'w') as f:
+        f.write(run)
+    with open(os.path.join(run, 'ALGO'), 'w') as f:
+        f.write(algo)
+    print(f'\nTraining {algo} on "{cfg["task"]}" with the {args.backend} backend for {steps:,} steps.\nRun folder: {run}\n')
+    try:
+        model.learn(total_timesteps=steps, callback=callbacks, reset_num_timesteps=not args.resume, progress_bar=False)
+    except KeyboardInterrupt:
+        print('\nStopped early; saving what was learned so far.')
+    model.save(os.path.join(run, 'final_model'))
+    best = os.path.join(run, 'best_model.zip')
+    print(f'\nSaved {os.path.join(run, "final_model.zip")}' + (f' and {best}' if os.path.exists(best) else ''))
+    print('Watch it:  python run_policy.py' + ('' if args.backend == 'fast' else ' --backend gazebo'))
+    env.close()
+
+
+if __name__ == '__main__':
+    main()
+`,
+  'run_policy.py': String.raw`#!/usr/bin/env python3
+"""Run a trained policy and report how often it succeeds.
+
+  python run_policy.py                      # latest run, fast simulator, with a live plot
+  python run_policy.py --backend gazebo     # drive the robot in the running Gazebo simulation
+  python run_policy.py --model runs/<run>/best_model.zip --episodes 20 --no-render
+"""
+import argparse
+import os
+
+import numpy as np
+from stable_baselines3 import PPO, SAC
+
+from robot_rl.common import KIT_DIR, load_config
+from robot_rl.fast_env import make_fast_env
+
+
+def latest_model():
+    try:
+        with open(os.path.join(KIT_DIR, 'runs', 'LATEST')) as f:
+            run = f.read().strip()
+    except OSError:
+        raise SystemExit('No trained model yet. Run: python train.py first, or pass --model.')
+    for name in ('best_model.zip', 'final_model.zip'):
+        if os.path.exists(os.path.join(run, name)):
+            return os.path.join(run, name)
+    raise SystemExit(f'No model saved in {run} yet.')
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--backend', choices=['fast', 'gazebo'], default='fast')
+    ap.add_argument('--model')
+    ap.add_argument('--config', default=os.path.join(KIT_DIR, 'config.yaml'))
+    ap.add_argument('--episodes', type=int, default=10)
+    ap.add_argument('--no-render', action='store_true', help='fast backend: skip the live plot')
+    args = ap.parse_args()
+
+    cfg = load_config(args.config)
+    path = args.model or latest_model()
+    if args.backend == 'fast':
+        env = make_fast_env(cfg, render_mode=None if args.no_render else 'human')
+    else:
+        from robot_rl.gazebo_env import make_gazebo_env
+        env = make_gazebo_env(cfg)
+    name = cfg['algorithm']
+    for d in (os.path.dirname(path), os.path.dirname(os.path.dirname(path))):
+        if os.path.exists(os.path.join(d, 'ALGO')):
+            with open(os.path.join(d, 'ALGO')) as f:
+                name = f.read().strip()
+            break
+    algo = {'PPO': PPO, 'SAC': SAC}[name].load(path)
+    print(f'Running {path}')
+
+    wins, lengths = 0, []
+    for ep in range(args.episodes):
+        obs, _ = env.reset()
+        done, steps, ret, info = False, 0, 0.0, {}
+        while not done:
+            action, _ = algo.predict(obs, deterministic=True)
+            obs, r, term, trunc, info = env.step(action)
+            ret += r
+            steps += 1
+            done = term or trunc
+        ok = bool(info.get('is_success'))
+        wins += ok
+        lengths.append(steps)
+        why = 'reached the goal' if ok else ('collided' if info.get('collision') else 'ran out of time')
+        print(f'episode {ep + 1:3d}: {why:16s} steps {steps:4d}  return {ret:8.2f}')
+    print(f'\nSuccess rate {wins}/{args.episodes} ({100 * wins / args.episodes:.0f}%), mean length {np.mean(lengths):.0f} steps')
+    env.close()
+
+
+if __name__ == '__main__':
+    main()
+`,
+};
+/* RL-KIT-END */
 
 /* ---------- Custom map from a phone scan ---------- */
 const SCAN_PAGE = 'https://srivatsa-dotcom.github.io/robot-urdf-studio/scan.html';
@@ -3119,6 +4574,7 @@ function rebuild() {
   const pkg = state.pkg[state.type], gz = state.target !== 'rviz';
   M.moveit = useMoveit() ? { pkg: `${M.name}_moveit_config` } : null;
   M.bbox = bb;
+  M.rl = rlConfig(M);
   const d = {};
   d[`urdf/${M.name}.urdf`] = toURDF(M, gz);
   d['launch/display.launch.py'] = displayLaunch(pkg, M);
@@ -3140,15 +4596,17 @@ function rebuild() {
   files = {};
   Object.entries(d).forEach(([k, v]) => files[`${pkg}/${k}`] = v);
   Object.entries(mf).forEach(([k, v]) => files[`${M.moveit.pkg}/${k}`] = v);
+  if (M.rl) Object.entries(rlFiles(M, M.rl, pkg)).forEach(([k, v]) => files[`${M.name}_rl/${k}`] = v);
   if (M.moveit) files[`${M.moveit.pkg}/README.md`] = `# ${M.moveit.pkg}\n\nMoveIt 2 configuration for \`${M.name}\`. See ../${pkg}/README.md for build and launch steps.\n`;
   if (!files[curFile]) curFile = `${pkg}/urdf/${M.name}.urdf`;
   renderTree(pkg);
   showFile(curFile);
+  renderRL(M);
   $('runCmd').innerHTML = runCommands(pkg, M, false).split('\n').map(l => l.startsWith('#') ? `<span class="c">${esc(l)}</span>` : esc(l)).join('\n');
   $('zipBtn').textContent = `Download ${zipName(M)}`;
   $('moveitRow').hidden = !MOVEIT_TYPES.includes(state.type);
   $('moveitNote').hidden = MOVEIT_TYPES.includes(state.type);
-  try { localStorage.setItem('urdf-studio-v1', JSON.stringify({ world: state.world, moveit: state.moveit, type: state.type, params: state.params, sensors: state.sensors, names: state.names, pkg: state.pkg, pkgAuto: state.pkgAuto, colors: state.colors, distro: state.distro, target: state.target })); } catch (e) {}
+  try { localStorage.setItem('urdf-studio-v1', JSON.stringify({ world: state.world, moveit: state.moveit, type: state.type, params: state.params, sensors: state.sensors, names: state.names, pkg: state.pkg, pkgAuto: state.pkgAuto, colors: state.colors, distro: state.distro, target: state.target, rl: state.rl })); } catch (e) {}
 }
 
 /* ---------- Events ---------- */
@@ -3205,6 +4663,17 @@ $('worlds').addEventListener('click', e => {
   state.world = b.dataset.world; rebuild(); overview();
 });
 $('rescan').addEventListener('click', openScanner);
+$('rlOn').addEventListener('change', e => { state.rl.on = e.target.checked; rebuild(); });
+$('rlTasks').addEventListener('click', e => {
+  const b = e.target.closest('[data-task]'); if (!b) return;
+  state.rl.task[state.type] = b.dataset.task; rebuild();
+});
+const rlSet = (k, v) => { const t = rlTask(); state.rl.opts[t] = { ...(state.rl.opts[t] || {}), [k]: v }; schedule(); };
+$('rlAlgo').addEventListener('change', e => rlSet('algo', e.target.value));
+$('rlSteps').addEventListener('change', e => { const v = Math.round(+e.target.value); if (v >= 1000 && v <= 1e8) rlSet('steps', v); else e.target.value = rlOpts(rlTask()).steps; });
+$('rlEp').addEventListener('change', e => { const v = +e.target.value; if (v >= 2 && v <= 600) rlSet('ep', v); else e.target.value = rlOpts(rlTask()).ep; });
+$('rlSpeed').addEventListener('change', e => { state.rl.speed = +e.target.value; schedule(); });
+if ('ResizeObserver' in window) new ResizeObserver(() => lastModel && drawRL(lastModel)).observe($('rlCanvas'));
 $('heroScan').addEventListener('click', () => {
   if (state.target === 'rviz') { state.target = 'both'; syncControls(); rebuild(); }
   openScanner();
@@ -3331,6 +4800,11 @@ try {
     if (saved.target) state.target = saved.target;
     if (WORLDS[saved.world]) state.world = saved.world;
     if (typeof saved.moveit === 'boolean') state.moveit = saved.moveit;
+    if (saved.rl && typeof saved.rl === 'object') {
+      if (typeof saved.rl.on === 'boolean') state.rl.on = saved.rl.on;
+      Object.assign(state.rl.task, saved.rl.task || {}); Object.assign(state.rl.opts, saved.rl.opts || {});
+      if (RL_SPEEDS.includes(saved.rl.speed)) state.rl.speed = saved.rl.speed;
+    }
   }
 } catch (e) {}
 try { const sc = localStorage.getItem('urdf-studio-scan'); if (sc) { const o = JSON.parse(sc); if (o && Array.isArray(o.v)) state.scan = o; } } catch (e) {}
