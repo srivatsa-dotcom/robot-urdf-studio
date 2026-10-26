@@ -2237,7 +2237,7 @@ function rlFiles(M, rl, pkg) {
   out['COLCON_IGNORE'] = '';
   out['README.md'] = rlReadme(M, rl, map, pkg);
   out['config.yaml'] = rlConfigYaml(M, rl, map);
-  out['requirements.txt'] = 'gymnasium>=0.29\nstable-baselines3>=2.3\nnumpy\npyyaml\ntensorboard\nmatplotlib\n';
+  out['requirements.txt'] = '# numpy below 2: ROS 2 and Ubuntu\'s matplotlib are built against NumPy 1.x\nnumpy<2\ngymnasium>=0.29\nstable-baselines3>=2.3\npyyaml\ntensorboard\nmatplotlib\n';
   Object.entries(RL_SRC).forEach(([k, v]) => out[k] = v);
   if (map) Object.assign(out, rlMapFiles(map));
   return out;
