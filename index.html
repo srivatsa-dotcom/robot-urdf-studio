@@ -8,52 +8,55 @@
 <title>Robot URDF Studio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: a robot simulation lab. A slate control-room hero with a live simulator window and telemetry,
-   a four-stage pipeline of what the download does, then the builder on cool light panels.
-   Signal orange is the only action colour; cyan is reserved for simulation readouts. */
+/* Layout: a friendly first-robot guide. Light, airy sections with soft tints (sun, mint, sky, lilac),
+   a robot that talks to you in the hero, plain-language explanations before the builder.
+   One warm orange for every action, matching the robots themselves. Type chosen for easy reading. */
 :root {
-  --night: #0D1117; --night-2: #141A22; --night-deep: #090D12; --night-ink: #E9EEF3; --night-muted: #8C96A3;
-  --night-line: rgba(255, 255, 255, .1); --night-grid: rgba(255, 255, 255, .035);
-  --signal: #FF6A2B; --signal-hover: #FF8550; --hud: #3FE0C5;
-  --bg: #EEF1F4;
+  --bg: #F6F8FB;
   --panel: #FFFFFF;
-  --ink: #0D1117;
-  --muted: #56616D;
-  --line: #D5DBE2;
-  --accent: #E8541A;      /* signal orange on light surfaces: selection, focus */
-  --accent-text: #B83F0C;
-  --accent-soft: #FFF0E7;
-  --on-accent: #0D1117;
-  --action: #FF6A2B;
-  --action-hover: #FF8550;
-  --stage: #10161D;
-  --stage-ink: #E9EEF3;
-  --view: #10161D;
-  --grid1: #2B4A52;
-  --grid2: #1A262E;
-  --code: #F3F5F7;
+  --ink: #1B2333;
+  --ink-soft: #2E384A;
+  --muted: #586377;
+  --line: #E2E7EF;
+  --accent: #F2611D;      /* robot orange: selection, highlights */
+  --accent-text: #C2410C;
+  --accent-soft: #FFEDE3;
+  --on-accent: #FFFFFF;
+  --action: #D9480F;      /* buttons: white text stays readable */
+  --action-hover: #C23F0B;
+  --mint: #E3F6EE; --mint-ink: #0F6B4A;
+  --sky: #E6F0FD; --sky-ink: #2456A6;
+  --sun: #FFF3D6; --lilac: #EFEAFD;
+  --stage: #1E2738;
+  --stage-ink: #EEF2F7;
+  --view: #1E2738;
+  --grid1: #3A4659;
+  --grid2: #283244;
+  --code: #F3F5F9;
   --ok: #1F7A45;
   --warn: #B3471F;
   --tag: #1F5FA8;
   --attr: #7A4BB0;
   --str: #2E7A4C;
-  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "Archivo", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0B0F14; --panel: #141A22; --ink: #E9EEF3; --muted: #8C96A3; --line: #263040;
-    --accent: #FF7A3D; --accent-text: #FF905E; --accent-soft: #2A1A10; --on-accent: #0D1117;
-    --code: #0F141A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+    --bg: #0F141C; --panel: #171D28; --ink: #EEF2F7; --ink-soft: #D5DCE6; --muted: #9AA5B5; --line: #273142;
+    --accent: #FF7A45; --accent-text: #FF9A6B; --accent-soft: #33201A; --on-accent: #FFFFFF;
+    --mint: #12302A; --mint-ink: #7FE0B8; --sky: #16263D; --sky-ink: #8DB8F5; --sun: #2E2716; --lilac: #241E3A;
+    --code: #121822; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0B0F14; --panel: #141A22; --ink: #E9EEF3; --muted: #8C96A3; --line: #263040;
-  --accent: #FF7A3D; --accent-text: #FF905E; --accent-soft: #2A1A10; --on-accent: #0D1117;
-  --code: #0F141A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+  --bg: #0F141C; --panel: #171D28; --ink: #EEF2F7; --ink-soft: #D5DCE6; --muted: #9AA5B5; --line: #273142;
+  --accent: #FF7A45; --accent-text: #FF9A6B; --accent-soft: #33201A; --on-accent: #FFFFFF;
+  --mint: #12302A; --mint-ink: #7FE0B8; --sky: #16263D; --sky-ink: #8DB8F5; --sun: #2E2716; --lilac: #241E3A;
+  --code: #121822; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -273,165 +276,183 @@ pre.cmd .c { color: var(--muted); }
   h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-/* ===== Lab layer ===== */
-body { margin: 0; padding-block: 0 64px; font-size: 15px; -webkit-font-smoothing: antialiased; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--night); }
+/* ===== Friendly layer ===== */
+body { margin: 0; padding-block: 0 64px; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--panel); }
 html { overflow-x: clip; scroll-behavior: smooth; }
-.wrap { gap: 80px; max-width: 1240px; }
-h1, h2, h3 { letter-spacing: -0.01em; }
-section, [id^="h-"] { scroll-margin-top: 84px; }
-.kicker { margin: 0; display: inline-flex; align-items: center; gap: 10px; font: 500 12px/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--hud); }
-.kicker .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hud); box-shadow: 0 0 0 4px rgba(63, 224, 197, .16); }
-.disp { font-family: var(--font-display); font-stretch: 118%; font-weight: 800; text-transform: uppercase; }
+.wrap { gap: 96px; max-width: 1180px; }
+h1, h2, h3 { letter-spacing: -0.02em; }
+section, [id^="h-"] { scroll-margin-top: 88px; }
+.eyebrow-f { margin: 0; font: 700 15px/1.3 var(--font-body); color: var(--accent-text); }
+.h2f { margin: 6px 0 0; max-width: 22ch; font: 750 clamp(30px, 3.8vw, 48px)/1.1 var(--font-display); letter-spacing: -.03em; text-wrap: balance; }
+.lead { margin: 12px 0 0; max-width: 60ch; color: var(--muted); font-size: clamp(17px, 1.5vw, 19px); }
 
-/* Nav: a solid control bar */
-.gnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-inline: calc(50% - 50vw); margin-bottom: -80px; background: var(--night); border-bottom: 1px solid var(--night-line); }
-.gnav-in { max-width: 1240px; height: 56px; margin: 0 auto; display: flex; align-items: center; gap: 28px;
+/* Nav */
+.gnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-inline: calc(50% - 50vw); margin-bottom: -96px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.gnav-in { max-width: 1180px; height: 64px; margin: 0 auto; display: flex; align-items: center; gap: 26px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.brand { margin-right: auto; display: inline-flex; align-items: center; gap: 10px; color: var(--night-ink); text-decoration: none;
-  font: 800 15px/1 var(--font-display); font-stretch: 120%; letter-spacing: .04em; text-transform: uppercase; }
-.brand svg { width: 24px; height: 24px; color: var(--signal); }
+.brand { margin-right: auto; display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 750 18px/1 var(--font-display); letter-spacing: -.02em; }
+.brand svg { width: 32px; height: 32px; }
 .gnav-links { display: flex; gap: 24px; }
-.gnav-links a { color: var(--night-muted); text-decoration: none; font: 500 11.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; transition: color .2s; }
-.gnav-links a:hover { color: var(--night-ink); }
+.gnav-links a { color: var(--muted); text-decoration: none; font-weight: 700; font-size: 15px; transition: color .2s; }
+.gnav-links a:hover { color: var(--ink); }
 
-/* Buttons: squared, uppercase, an arrow that nudges */
-.cta { display: inline-flex; align-items: center; gap: 10px; border-radius: 6px; border: 1px solid var(--signal); background: var(--signal); color: var(--night);
-  padding: 14px 20px; font: 750 14px/1 var(--font-display); font-stretch: 112%; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; cursor: pointer;
-  transition: background .2s, border-color .2s, color .2s; }
-.cta::after { content: "→"; font-family: var(--font-mono); transition: transform .2s; }
-.cta:hover { background: var(--signal-hover); border-color: var(--signal-hover); }
-.cta:hover::after { transform: translateX(3px); }
-.cta.ghost { background: transparent; color: var(--night-ink); border-color: rgba(255, 255, 255, .3); }
-.cta.ghost::after { content: none; }
-.cta.ghost:hover { border-color: var(--night-ink); }
-.cta.xs { padding: 9px 13px; font-size: 11.5px; }
+/* Buttons */
+.cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border: 2px solid var(--action); background: var(--action); color: var(--on-accent);
+  padding: 13px 22px; font: 700 17px/1.1 var(--font-body); text-decoration: none; cursor: pointer; box-shadow: 0 8px 18px -10px var(--action);
+  transition: transform .15s, background .2s, border-color .2s; }
+.cta:hover { background: var(--action-hover); border-color: var(--action-hover); transform: translateY(-1px); }
+.cta.ghost { background: var(--panel); color: var(--ink); border-color: var(--line); box-shadow: none; }
+.cta.ghost:hover { border-color: var(--ink); background: var(--panel); }
+.cta.sm { padding: 9px 16px; font-size: 15px; border-radius: 10px; }
 
-/* Hero: words on the left, a live simulator window on the right, the pipeline underneath */
-.hero { margin-inline: calc(50% - 50vw); color: var(--night-ink); background-color: var(--night); overflow: hidden;
-  background-image: linear-gradient(var(--night-grid) 1px, transparent 1px), linear-gradient(90deg, var(--night-grid) 1px, transparent 1px);
-  background-size: 48px 48px; background-position: center top;
-  display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); grid-template-rows: minmax(0, 1fr) auto; gap: 26px 48px; align-items: center;
-  height: clamp(600px, calc(100svh - 56px), 900px); padding: 36px max(24px, calc((100vw - 1240px) / 2)) 0; }
+/* Hero: a robot says hello */
+.hero { margin-inline: calc(50% - 50vw); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px 56px; align-items: center;
+  padding: 112px max(16px, calc((100vw - 1180px) / 2)) 56px;
+  background: radial-gradient(ellipse 45% 60% at 85% 35%, var(--sky), transparent 70%), radial-gradient(ellipse 40% 55% at 5% 95%, var(--sun), transparent 70%), var(--bg); }
 .hero-in { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; min-width: 0; }
-.hero h1 { margin: 0; font: 800 clamp(40px, 4.3vw, 70px)/.95 var(--font-display); font-stretch: 118%; letter-spacing: -.01em; text-transform: uppercase; }
-.hero h1 .hl { color: var(--signal); }
-.tagline { margin: 0; max-width: 36ch; color: var(--night-muted); font-size: clamp(16px, 1.45vw, 19px); line-height: 1.5; }
-.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
-.simwin { align-self: stretch; min-width: 0; display: flex; flex-direction: column; margin-block: 6px; border: 1px solid var(--night-line); border-radius: 10px;
-  background: var(--night-deep); overflow: hidden; box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .9); }
-.simbar { display: flex; align-items: center; gap: 14px; padding: 7px 10px; border-bottom: 1px solid var(--night-line); background: var(--night-2); }
-.lights { display: flex; gap: 6px; flex: none; }
-.lights i { width: 9px; height: 9px; border-radius: 50%; background: #2A333F; }
-.lights i:first-child { background: var(--signal); }
-.sr-pager { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
-.sr-pager button { flex: none; border: 0; border-radius: 4px; background: none; color: var(--night-muted); padding: 6px 10px; font: 500 12px var(--font-mono); white-space: nowrap; cursor: pointer; transition: color .2s, background .2s; }
-.sr-pager button:hover { color: var(--night-ink); }
-.sr-pager button[aria-selected="true"] { background: rgba(255, 255, 255, .07); color: var(--night-ink); box-shadow: inset 0 -2px 0 var(--signal); }
-.showroom { position: relative; flex: 1 1 auto; min-height: 300px; }
-.showroom::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 58%, rgba(63, 224, 197, .12), transparent 62%); }
+.hello { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--mint); color: var(--mint-ink); font-weight: 700; font-size: 15px; }
+.hero h1 { margin: 0; font: 800 clamp(42px, 5.4vw, 74px)/1.02 var(--font-display); letter-spacing: -.04em; text-wrap: balance; }
+.hero h1 .hl { padding-bottom: .12em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cpath d='M2 8 C 20 2, 40 2, 60 7 S 100 11, 118 4' fill='none' stroke='%23FF7A45' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") bottom / 100% .28em no-repeat; }
+.tagline { margin: 0; max-width: 44ch; color: var(--muted); font-size: clamp(17px, 1.55vw, 20px); line-height: 1.55; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+.ticks { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--ink-soft); font-size: 15.5px; }
+.ticks li { display: inline-flex; align-items: center; gap: 8px; }
+.ticks li::before { content: ""; width: 20px; height: 20px; border-radius: 50%; background: var(--mint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-5' fill='none' stroke='%230F6B4A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; flex: none; }
+.stagebox { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.showroom { position: relative; height: clamp(320px, 36vw, 460px); border-radius: 28px; border: 1px solid var(--line); overflow: hidden;
+  background: radial-gradient(ellipse 60% 45% at 50% 78%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%), linear-gradient(180deg, var(--sky), var(--panel)); }
 .showroom canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-.simhud { position: absolute; z-index: 1; font: 500 11.5px/1.55 var(--font-mono); color: var(--hud); letter-spacing: .02em; pointer-events: none; }
-.simhud.tl { top: 14px; left: 16px; display: flex; flex-direction: column; max-width: 60%; }
-.simhud.tl b { color: var(--night-ink); font: 800 16px/1.2 var(--font-display); font-stretch: 116%; letter-spacing: .03em; text-transform: uppercase; }
-.simhud.tl span { color: var(--night-muted); }
-.simhud.tr { top: 14px; right: 16px; text-align: right; }
-.simhud.bl { bottom: 14px; left: 16px; white-space: pre; }
-.simhud.br { bottom: 12px; right: 14px; pointer-events: auto; color: var(--signal); font-weight: 600; text-decoration: none; }
-.simhud.br:hover { text-decoration: underline; }
-.journey { grid-column: 1 / -1; list-style: none; margin: 0; padding: 18px 0 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--night-line); counter-reset: stage; }
-.journey li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; align-items: baseline; padding: 0 18px; border-left: 1px solid var(--night-line); counter-increment: stage; min-width: 0; }
-.journey li:first-child { border-left: 0; padding-left: 0; }
-.journey li::before { content: counter(stage, decimal-leading-zero); grid-row: 1 / 3; color: var(--signal); font: 500 12px var(--font-mono); }
-.journey svg { display: none; }
-.journey b { font: 800 15px/1.2 var(--font-display); font-stretch: 116%; letter-spacing: .04em; text-transform: uppercase; }
-.journey span { color: var(--night-muted); font-size: 13px; line-height: 1.35; }
+.bubble { position: absolute; z-index: 1; top: 16px; left: 16px; max-width: min(80%, 330px); padding: 12px 16px; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; box-shadow: 0 12px 26px -16px rgba(27, 35, 51, .45); font-size: 15.5px; line-height: 1.45; }
+.bubble b { display: block; font: 750 17px/1.3 var(--font-display); }
+.bubble a { display: inline-block; margin-top: 6px; color: var(--accent-text); font-weight: 700; text-decoration: none; }
+.bubble a:hover { text-decoration: underline; }
+.pager-label { margin: 0; color: var(--muted); font-size: 15px; text-align: center; }
+.sr-pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.sr-pager button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px;
+  padding: 6px 14px 6px 8px; font: 700 14.5px var(--font-body); cursor: pointer; transition: border-color .2s, background .2s; }
+.sr-pager button svg { width: 30px; height: 19px; color: var(--ink); }
+.sr-pager button:hover { border-color: var(--muted); }
+.sr-pager button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.sr-pager button[aria-selected="true"] svg .hl { stroke: var(--accent); }
 
-/* Pipeline: what the download does */
-.pipe { display: flex; flex-direction: column; gap: 26px; }
-.pipe .kicker, .buildhead .kicker { color: var(--accent-text); }
-.pipe-head h2, .buildhead h2 { margin: 10px 0 0; max-width: 22ch; font: 800 clamp(30px, 3.6vw, 50px)/1.02 var(--font-display); font-stretch: 120%; letter-spacing: -.01em; text-transform: uppercase; }
-.stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.stage { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: var(--panel); min-width: 0; }
-.stage .idx { font: 500 12px var(--font-mono); color: var(--accent-text); letter-spacing: .08em; }
-.stage-art { height: 150px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 6px; color: var(--ink);
-  background-color: var(--bg); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 20px 20px; background-position: center; }
-.stage-art svg { max-height: 118px; max-width: 100%; width: auto; height: auto; }
-.stage-art.worlds svg { width: 30%; }
-.stage-art .hl { stroke: var(--accent); }
-.stage h3 { margin: 6px 0 0; font: 800 18px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
-.stage p { margin: 0; color: var(--muted); line-height: 1.45; }
-.stage a, .stage .linkish { margin-top: auto; padding: 4px 0 0; border: 0; background: none; color: var(--accent-text); text-align: left; font: 600 14px var(--font-body); text-decoration: none; cursor: pointer; }
-.stage a:hover, .stage .linkish:hover { text-decoration: underline; }
+/* Content sections */
+.sec { display: flex; flex-direction: column; gap: 30px; }
+.sec-head { display: flex; flex-direction: column; align-items: flex-start; }
+.places { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.place { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: 22px; min-width: 0; }
+.place:nth-child(1) { background: var(--sun); } .place:nth-child(2) { background: var(--mint); }
+.place:nth-child(3) { background: var(--sky); } .place:nth-child(4) { background: var(--lilac); }
+.place .pic { height: 70px; display: flex; align-items: center; }
+.place .pic svg { height: 56px; width: auto; color: var(--ink); }
+.place .pic svg .hl { stroke: var(--accent); }
+.place h3 { margin: 0; font: 750 22px/1.2 var(--font-display); }
+.place p { margin: 0; color: var(--ink-soft); font-size: 16px; line-height: 1.5; }
+.note { margin: 0; max-width: 64ch; color: var(--muted); }
+.steps4 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.steps4 li { display: flex; flex-direction: column; gap: 10px; padding: 24px 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; counter-increment: s; min-width: 0; }
+.steps4 li::before { content: counter(s); width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); font: 800 19px var(--font-display); }
+.steps4 h3 { margin: 0; font: 750 22px/1.2 var(--font-display); }
+.steps4 p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.steps4 .mini { margin-top: auto; display: flex; align-items: center; gap: 10px; color: var(--ink); }
+.steps4 .mini svg { width: 44px; height: auto; }
+.steps4 .mini svg .hl { stroke: var(--accent); }
+.steps4 .mini .linkish, .linkish { padding: 0; border: 0; background: none; color: var(--accent-text); font: 700 15.5px var(--font-body); cursor: pointer; text-align: left; }
+.linkish { text-decoration: none; }
+.linkish:hover { text-decoration: underline; }
+.after { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 20px 24px; border-radius: 22px; background: var(--mint); color: var(--mint-ink); }
+.after p { flex: 1; min-width: 240px; margin: 0; font-size: 17px; }
+.words { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.word { padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; min-width: 0; }
+.word dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 750 20px/1.25 var(--font-display); }
+.word dt small { color: var(--muted); font: 400 14px var(--font-body); }
+.word dd { margin: 6px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.promises { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.promise { display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; min-width: 0; }
+.promise .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--sky); }
+.promise .ic svg { width: 24px; height: 24px; fill: none; stroke: var(--sky-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.promise h3 { margin: 0; font: 750 21px/1.25 var(--font-display); }
+.promise p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.promise a { color: var(--accent-text); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.promise a:hover { text-decoration: underline; }
+.faq { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.faq details { padding: 2px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+.faq summary { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; font: 750 18.5px/1.35 var(--font-display); cursor: pointer; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--accent-text); font-size: 24px; line-height: 1; }
+.faq details[open] summary::after { content: "\2013"; }
+.faq p { margin: 0 0 16px; color: var(--muted); }
+.cheer { margin-inline: calc(50% - 50vw); padding: 64px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; background: var(--sun); }
+.cheer h2 { margin: 0; max-width: 24ch; font: 800 clamp(30px, 4vw, 50px)/1.1 var(--font-display); letter-spacing: -.03em; text-wrap: balance; }
+.cheer p { margin: 0; color: var(--ink-soft); max-width: 50ch; }
 
 /* Builder heading */
-.buildhead { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 40px; border-top: 1px solid var(--line); }
-.buildhead h2 { margin: 0; }
-.buildhead p { margin: 0; max-width: 52ch; color: var(--muted); font-size: 17px; line-height: 1.5; }
-.spec-tools { display: flex; flex-wrap: wrap; gap: 4px 22px; }
-.spec-tools .btn { background: none; border: 0; padding: 4px 0; color: var(--accent-text); font-size: 14px; font-weight: 500; }
+.buildhead { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.buildhead .h2f { max-width: none; }
+.buildhead .lead { margin: 0; }
+.spec-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; }
+.spec-tools .btn { background: none; border: 0; padding: 4px 0; color: var(--accent-text); font-size: 15px; font-weight: 700; }
 .spec-tools .btn:hover { text-decoration: underline; }
 
-/* Steps */
-section > h2 { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
-h2 .step { font: 500 12px/1 var(--font-mono); color: var(--accent-text); letter-spacing: .12em; background: none; border: 0; padding: 0; }
-h2 .step::before { content: "STEP "; }
-h2 .step::after { content: " / 05"; color: var(--muted); }
-h2 .steplabel { font: 800 clamp(24px, 2.8vw, 36px)/1.1 var(--font-display); font-stretch: 118%; letter-spacing: 0; text-transform: uppercase; }
-
-/* Builder surfaces: white panels with hairlines, a solid orange edge on the choice */
-.btn { border-radius: 6px; border-width: 1px; font-weight: 600; padding: 7px 14px; text-decoration: none; color: inherit; transition: background .2s, border-color .2s; }
+/* Builder steps */
+section > h2 { flex-direction: column; align-items: flex-start; gap: 8px; }
+h2 .step { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font: 700 14px/1.3 var(--font-body); letter-spacing: 0; border: 0; }
+h2 .step::before { content: "Step "; }
+h2 .steplabel { font: 750 clamp(26px, 3vw, 36px)/1.15 var(--font-display); letter-spacing: -.025em; }
+.helper { margin: -6px 0 0; max-width: 72ch; color: var(--muted); font-size: 16.5px; }
+.btn { border-radius: 10px; border-width: 1px; font-weight: 700; padding: 8px 15px; text-decoration: none; color: inherit; transition: background .2s, border-color .2s; }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--action); border-color: var(--action); color: var(--on-accent); }
 .btn.primary:hover { filter: none; background: var(--action-hover); border-color: var(--action-hover); }
-.btn.big, #zipBtn { font: 750 15px/1 var(--font-display); font-stretch: 112%; letter-spacing: .06em; text-transform: uppercase; padding: 15px 22px; }
-.types { gap: 12px; }
-.type { padding: 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); gap: 8px; transition: border-color .2s, box-shadow .2s; }
-.type:hover { border-color: var(--muted); }
+.btn.big, #zipBtn { font: 700 17px/1.1 var(--font-body); padding: 14px 24px; border-radius: 12px; }
+.types { gap: 14px; }
+.type { padding: 18px; border-radius: 18px; border: 2px solid var(--line); background: var(--panel); gap: 8px; transition: border-color .2s, transform .2s; }
+.type:hover { border-color: var(--muted); transform: translateY(-2px); }
 .type svg { width: 76px; height: 48px; }
-.type b { font: 800 16px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
-.type[aria-pressed="true"] { border-color: var(--accent); background: var(--panel); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
+.type b { font: 750 18px/1.2 var(--font-display); }
+.type[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: none; }
 .type[aria-pressed="true"] svg .hl { stroke: var(--accent); }
-.spec { border-radius: 10px; border: 1px solid var(--line); }
-legend { color: var(--ink); font-weight: 600; }
-.row input[type="number"], .text input, select { border-radius: 6px; }
+.spec { border-radius: 18px; border: 1px solid var(--line); }
+legend { color: var(--ink); font-weight: 700; }
+.row input[type="number"], .text input, select { border-radius: 8px; }
 .row input[type="number"]:focus, .text input:focus, select:focus { border-color: var(--accent); outline: 3px solid var(--accent-soft); outline-offset: 0; }
-.viewport { background: var(--stage); border: 1px solid #1E2A33; border-radius: 10px; color: var(--stage-ink); }
-.chip { background: rgba(13, 17, 23, .82); border-color: #26323C; color: #E9EEF3; border-radius: 4px; }
-.chip i { color: #3FE0C5; }
-.viewtools .btn { background: rgba(13, 17, 23, .82); border-color: #26323C; color: #E9EEF3; }
-.viewtools .btn:hover { border-color: #FF6A2B; }
-.legendkey { color: #7C8794; }
-.box { border-radius: 10px; border: 1px solid var(--line); padding: 16px 18px; }
-.box h3 { font: 800 16px/1.2 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
-.target label, .world { border-radius: 10px; border: 1px solid var(--line); background: var(--panel); transition: border-color .2s; }
-.target label b, .world b { font: 800 15px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
-.target input:checked + label, .world[aria-checked="true"] { background: var(--panel); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
+.viewport { background: var(--stage); border: 0; border-radius: 18px; color: var(--stage-ink); }
+.chip { background: rgba(27, 35, 51, .8); border-color: #3A4659; color: #EEF2F7; border-radius: 999px; }
+.chip i { color: #FFB38F; }
+.viewtools .btn { background: rgba(27, 35, 51, .8); border-color: #3A4659; color: #EEF2F7; }
+.viewtools .btn:hover { border-color: #FF7A45; }
+.legendkey { color: #8D98AA; }
+.box { border-radius: 18px; border: 1px solid var(--line); padding: 18px 20px; }
+.box h3 { font: 750 19px/1.2 var(--font-display); }
+.target label, .world { border-radius: 16px; border: 2px solid var(--line); background: var(--panel); transition: border-color .2s; }
+.target label b, .world b { font: 750 17px/1.2 var(--font-display); }
+.target input:checked + label, .world[aria-checked="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: none; }
 .world[aria-checked="true"] svg .hl { stroke: var(--accent); }
-pre.cmd { border-radius: 10px; background: #0A0E13; color: #E9EEF3; border: 1px solid #1E2A33; }
-pre.cmd .c { color: #3FE0C5; }
-.cmdwrap .btn { background: #18202A; border-color: #2A3542; color: #E9EEF3; }
-.pkg { border-radius: 10px; border: 1px solid var(--line); }
-.tree .root { font-weight: 600; }
+pre.cmd { border-radius: 14px; background: #1B2333; color: #EEF2F7; border: 0; }
+pre.cmd .c { color: #FFB38F; }
+.cmdwrap .btn { background: #2A3446; border-color: #3A4659; color: #EEF2F7; }
+.pkg { border-radius: 18px; border: 1px solid var(--line); }
+.tree .root { font-weight: 700; }
 .tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent); }
-dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
-.rlspec { border: 1px solid var(--line); border-radius: 10px; }
-.rlarena canvas { border-radius: 10px; }
+dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
+.rlspec { border: 1px solid var(--line); border-radius: 18px; }
+.rlarena canvas { border-radius: 18px; }
 .foot { padding-top: 16px; border-top: 1px solid var(--line); }
 
 @media (max-width: 1000px) {
-  .hero { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; height: auto; padding-top: 40px; gap: 28px; }
-  .simwin { height: 440px; }
-  .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
-  .journey li:nth-child(3) { border-left: 0; padding-left: 0; }
-  .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero { grid-template-columns: minmax(0, 1fr); padding-top: 104px; }
+  .places, .steps4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .words { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .promises { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 760px) { .gnav-links { display: none; } .brand { font-size: 13px; } }
+@media (max-width: 760px) { .gnav-links { display: none; } }
+@media (max-width: 560px) { .brand { font-size: 16px; white-space: nowrap; } .gnav .cta.sm { padding: 8px 12px; font-size: 14px; white-space: nowrap; } }
 @media (max-width: 560px) {
-  .simwin { height: 380px; }
-  .stages { grid-template-columns: minmax(0, 1fr); }
-  .simhud.bl { display: none; }
+  .places, .steps4, .words { grid-template-columns: minmax(0, 1fr); }
+  .showroom { height: 330px; }
 }
 
 /* ===== RL step ===== */
@@ -456,16 +477,13 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
 @media (max-width: 720px) { .rltasks, .rlgrid { grid-template-columns: minmax(0, 1fr); } .rlspec div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* ===== Motion ===== */
-.motion .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1); }
+.motion .reveal { opacity: 0; transform: translateY(20px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1); }
 .motion .reveal.in { opacity: 1; transform: none; }
-.kicker .dot { animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(63, 224, 197, 0); } }
-.stage-art.learn .route { stroke-dasharray: 7 9; animation: march 1.6s linear infinite; }
-@keyframes march { to { stroke-dashoffset: -32; } }
-.stage-art.phone .sweep { animation: sweep 2.8s ease-in-out infinite; }
-@keyframes sweep { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(120px); } }
+.bubble.pop { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes pop { from { transform: scale(.92) translateY(6px); opacity: .4; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .kicker .dot, .stage-art.learn .route, .stage-art.phone .sweep { animation: none; }
+  .bubble.pop { animation: none; }
+  .type:hover, .cta:hover { transform: none; }
   html { scroll-behavior: auto; }
 }
 </style>
@@ -473,67 +491,122 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
 <div class="wrap">
   <nav class="gnav" aria-label="Sections">
     <div class="gnav-in">
-      <a class="brand" href="#top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h7M7.5 20v-5l5-6 6 2.5"/><circle cx="12.5" cy="9" r="1.6"/><path d="M18.5 11.5l1.5 2.5M18.5 11.5l2.5-1"/></svg>Robot URDF Studio</a>
-      <div class="gnav-links"><a href="#h-type">Robots</a><a href="#h-dim">Size</a><a href="#h-launch">Worlds</a><a href="#h-rl">Train</a><a href="#h-pkg">Download</a></div>
-      <a class="cta xs" href="#h-type">Build</a>
+      <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="22" height="17" rx="7" fill="#FF7A45"/><circle cx="12" cy="17.5" r="2.4" fill="#fff"/><circle cx="20" cy="17.5" r="2.4" fill="#fff"/><path d="M12.5 22.2c2 1.3 5 1.3 7 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M16 9V5" stroke="#FF7A45" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="4" r="2" fill="#FF7A45"/></svg>Robot URDF Studio</a>
+      <div class="gnav-links"><a href="#how">How it works</a><a href="#why">Why robotics</a><a href="#words">Robot words</a><a href="#help">Help</a></div>
+      <a class="cta sm" href="#h-type">Make my robot</a>
     </div>
   </nav>
 
   <header class="hero" id="top">
     <div class="hero-in">
-      <p class="kicker"><span class="dot" aria-hidden="true"></span>Free · runs in your browser</p>
-      <h1>Build it.<br><span class="hl">Simulate it.</span><br>Teach it.</h1>
-      <p class="tagline">Set your robot’s size here, then download a ROS 2 package that runs in Gazebo and learns to drive by itself.</p>
+      <p class="hello">No robotics experience needed</p>
+      <h1>Your first robot <span class="hl">starts here.</span></h1>
+      <p class="tagline">Pick a robot, make it your size and watch it move. When you’re ready, take it home: you get everything to run it on your own computer, with every step explained in plain words.</p>
       <div class="hero-cta">
-        <a class="cta" href="#h-type">Start building</a>
-        <button class="cta ghost" id="heroScan" type="button">Scan your room</button>
+        <a class="cta" href="#h-type">Make my first robot</a>
+        <a class="cta ghost" href="#how">How does it work?</a>
       </div>
+      <ul class="ticks"><li>Free</li><li>Nothing to install to start</li><li>Every word explained</li></ul>
     </div>
-    <div class="simwin">
-      <div class="simbar"><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span><div class="sr-pager" id="srPager" role="tablist" aria-label="Robots in the simulator"></div></div>
-      <div class="showroom" id="showroom" role="img" aria-label="A robot moving in a live simulator view">
-        <div class="simhud tl" aria-live="polite"><b id="srName">2-Wheel Drive</b><span id="srSub">Differential drive with a front caster</span></div>
-        <div class="simhud tr" id="srHud">SIM t 0.0 s<br>LIVE</div>
-        <div class="simhud bl" id="srJoints"></div>
-        <a class="simhud br" href="#h-type" id="srBuild">Build this one →</a>
+    <button id="heroScan" type="button" hidden>Scan your room</button>
+    <div class="stagebox">
+      <div class="showroom" id="showroom" role="img" aria-label="A friendly robot moving on screen">
+        <div class="bubble" aria-live="polite"><b id="srName">2-Wheel Drive</b><span id="srSub"></span><br><a href="#h-type" id="srBuild">Build me →</a></div>
       </div>
+      <p class="pager-label">Meet the robots</p>
+      <div class="sr-pager" id="srPager" role="tablist" aria-label="Pick a robot to meet"></div>
     </div>
-    <ol class="journey" aria-label="What you get">
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Design</b><span>5 robots, your sizes</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Simulate</b><span>Gazebo worlds or your room</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Plan</b><span>MoveIt 2 for arms</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Train</b><span>It learns by itself</span></li>
-    </ol>
   </header>
 
-  <section class="pipe" aria-labelledby="pipe-h">
-    <div class="pipe-head"><p class="kicker">What’s in the download</p><h2 id="pipe-h">One zip. Four things your robot can do.</h2></div>
-    <div class="stages">
-      <article class="stage"><span class="idx">01</span><div class="stage-art worlds" id="tileWorlds"></div><h3>Drive in real places</h3><p>Factory, warehouse and office worlds, ready for Gazebo.</p><a href="#h-launch">Choose a world →</a></article>
-      <article class="stage"><span class="idx">02</span><div class="stage-art phone"><svg viewBox="0 0 150 250" fill="none" aria-hidden="true"><rect x="4" y="4" width="142" height="242" rx="22" stroke="currentColor" stroke-width="5"/><rect x="56" y="14" width="38" height="8" rx="4" fill="currentColor" opacity=".3"/><g stroke="currentColor" stroke-width="2.5" opacity=".6"><path d="M22 190 L60 160 L128 172 L128 70 L60 58 L22 88 Z"/><path d="M60 58 V160"/><path d="M78 172 l12 -9 l20 4 l-12 9 z M78 172 v10 M110 167 v10"/></g><g class="sweep"><rect x="16" y="52" width="118" height="4" rx="2" fill="var(--accent)"/></g></svg></div><h3>Use your own room</h3><p>Scan it with your phone, then drive your robot through it.</p><button class="linkish" id="tileScan" type="button">Scan your room →</button></article>
-      <article class="stage"><span class="idx">03</span><div class="stage-art arm" id="tileArm6"></div><h3>Plan arm moves</h3><p>MoveIt 2 set up for arms and humanoids.</p><button class="linkish" id="tileArm" type="button">Build an arm →</button></article>
-      <article class="stage"><span class="idx">04</span><div class="stage-art learn"><svg viewBox="0 0 240 140" fill="none" aria-hidden="true"><rect x="88" y="28" width="62" height="62" rx="4" fill="currentColor" opacity=".14"/><rect x="176" y="70" width="40" height="22" rx="3" fill="currentColor" opacity=".14"/><path class="route" d="M22 112 H150 Q166 112 166 96 V52 Q166 32 186 32 H206" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><circle cx="22" cy="112" r="11" fill="currentColor"/><path d="M212 16 l4.4 8.9 9.8 1.4 -7.1 6.9 1.7 9.8 -8.8 -4.6 -8.8 4.6 1.7 -9.8 -7.1 -6.9 9.8 -1.4z" fill="var(--accent)"/></svg></div><h3>Let it learn</h3><p>Reinforcement learning teaches it to drive or reach by itself.</p><a href="#h-rl">Train a robot →</a></article>
+  <section class="sec" id="how" aria-labelledby="how-h">
+    <div class="sec-head">
+      <p class="eyebrow-f">How it works</p>
+      <h2 class="h2f" id="how-h">From zero to a robot that learns, in four steps</h2>
+      <p class="lead">You don’t need to know anything yet. Each step takes a few minutes, and you can’t break anything.</p>
+    </div>
+    <ol class="steps4">
+      <li><h3>Pick a robot</h3><p>Wheels, an arm, or a body like ours. Not sure? Start with the 2-wheel rover.</p><div class="mini"><button class="linkish" type="button" data-pick="diff2">Start with the rover →</button></div></li>
+      <li><h3>Make it yours</h3><p>Change its size with simple number boxes. You’ll see it change in 3D right away.</p><div class="mini"><a class="linkish" href="#h-dim">Try it →</a></div></li>
+      <li><h3>Give it a world</h3><p>A factory, a warehouse, an office, or your own room scanned with your phone.</p><div class="mini" id="tileWorlds"></div><div class="mini"><button class="linkish" id="tileScan" type="button">Scan my room →</button></div></li>
+      <li><h3>Teach it</h3><p>It practises thousands of times and gets better, the way you learned to ride a bike.</p><div class="mini"><a class="linkish" href="#h-rl">See how →</a></div></li>
+    </ol>
+    <div class="after"><p><b>Then take it home.</b> You download one folder that runs on your computer, with a guide that tells you exactly what to type.</p><a class="cta sm" href="#h-type">Let’s start</a></div>
+  </section>
+
+  <section class="sec" id="why" aria-labelledby="why-h">
+    <div class="sec-head">
+      <p class="eyebrow-f">Why robotics</p>
+      <h2 class="h2f" id="why-h">Robots are already everywhere. They need people like you.</h2>
+      <p class="lead">Companies everywhere are looking for people who can design, test and teach robots. Every one of those people started with a first robot model, just like the one you’ll make today.</p>
+    </div>
+    <div class="places">
+      <article class="place"><div class="pic" data-glyph="diff4"></div><h3>Warehouses</h3><p>Robots carry shelves, move boxes and pack orders.</p></article>
+      <article class="place"><div class="pic" data-glyph="arm6"></div><h3>Hospitals</h3><p>Robot arms help surgeons and deliver medicine.</p></article>
+      <article class="place"><div class="pic" data-glyph="semi"></div><h3>Farms</h3><p>Robots pick fruit and check on crops, row by row.</p></article>
+      <article class="place"><div class="pic" data-glyph="diff2"></div><h3>Homes</h3><p>Robot vacuums and helpers learn to find their way around.</p></article>
     </div>
   </section>
 
+  <section class="sec" id="words" aria-labelledby="words-h">
+    <div class="sec-head">
+      <p class="eyebrow-f">Robot words, made simple</p>
+      <h2 class="h2f" id="words-h">You’ll see these words. Here’s what they mean.</h2>
+    </div>
+    <dl class="words">
+      <div class="word"><dt>URDF <small>“your-dif”</small></dt><dd>Your robot’s blueprint: its parts, their sizes and how they connect.</dd></div>
+      <div class="word"><dt>ROS 2</dt><dd>The common language robot parts use to talk to each other.</dd></div>
+      <div class="word"><dt>Gazebo</dt><dd>A practice world, like a video game, where your robot moves with real physics.</dd></div>
+      <div class="word"><dt>RViz</dt><dd>A window that shows what your robot sees and how it is moving.</dd></div>
+      <div class="word"><dt>MoveIt</dt><dd>A planner that works out how an arm should move to reach something.</dd></div>
+      <div class="word"><dt>Reinforcement learning</dt><dd>Learning by trying. Good moves earn points, so the robot repeats them.</dd></div>
+    </dl>
+  </section>
+
+  <section class="sec" id="help" aria-labelledby="help-h">
+    <div class="sec-head">
+      <p class="eyebrow-f">Help</p>
+      <h2 class="h2f" id="help-h">You won’t be stuck. We’ll help you.</h2>
+    </div>
+    <div class="promises">
+      <article class="promise"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z"/></svg></span><h3>A guide in every download</h3><p>Step-by-step instructions written for beginners, with fixes for common problems.</p></article>
+      <article class="promise"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></span><h3>Commands you can copy</h3><p>No guessing what to type. Copy, paste, press Enter.</p></article>
+      <article class="promise"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M8.5 10.5h7"/></svg></span><h3>Ask anytime</h3><p>Stuck on something? Ask a question on our GitHub page: <a href="https://github.com/srivatsa-dotcom/robot-urdf-studio/issues" target="_blank" rel="noopener">github.com/srivatsa-dotcom/robot-urdf-studio/issues</a></p></article>
+    </div>
+    <div class="faq">
+      <details><summary>Do I need to know how to code?</summary><p>No. You can design, preview and download your robot without writing any code. To run it on your computer, you copy and paste a few commands we give you.</p></details>
+      <details><summary>What do I need on my computer?</summary><p>To design your robot: just this website. To run the simulation: a computer with Ubuntu Linux and ROS 2, both free. The guide in your download shows you how to install them.</p></details>
+      <details><summary>Is it free?</summary><p>Yes. Everything on this website is free to use.</p></details>
+      <details><summary>Can this become a real robot?</summary><p>Yes. The blueprint you download (a URDF file) is the same kind of file real robot teams use. Many real robots start as a simulation like this one.</p></details>
+      <details><summary>What if something goes wrong?</summary><p>Every download has a guide with fixes for common problems. If you’re still stuck, ask on our GitHub page and we’ll help.</p></details>
+    </div>
+  </section>
+
+  <section class="cheer" aria-label="Get started">
+    <h2>Every robotics engineer started with a first robot. Make yours today.</h2>
+    <p>It takes about ten minutes, and you’ll have a robot moving on your screen.</p>
+    <a class="cta" href="#h-type">Make my first robot</a>
+  </section>
+
   <div class="buildhead">
-    <p class="kicker">The builder</p>
-    <h2>Build yours in five steps.</h2>
-    <p>Pick a body, size it, choose a world, teach it, download. Everything updates live.</p>
+    <p class="eyebrow-f">Let’s build</p>
+    <h2 class="h2f">Make your first robot</h2>
+    <p class="lead">Five short steps. Everything updates as you go, and nothing can break.</p>
     <div class="spec-tools">
-      <button class="btn quiet" id="importBtn" type="button">Import a saved spec</button>
+      <button class="btn quiet" id="importBtn" type="button">Open a robot you saved</button>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
-      <button class="btn quiet" id="exportSpecBtn" type="button">Save this spec (.json)</button>
+      <button class="btn quiet" id="exportSpecBtn" type="button">Save this robot (.json)</button>
     </div>
   </div>
 
   <section aria-labelledby="h-type">
-    <h2 id="h-type"><span class="step">01</span><span class="steplabel">Choose the robot</span></h2>
+    <h2 id="h-type"><span class="step">1</span><span class="steplabel">Choose the robot</span></h2>
+    <p class="helper">Start with any robot. You can switch at any time.</p>
     <div class="types" id="types"></div>
   </section>
 
   <section aria-labelledby="h-dim">
-    <h2 id="h-dim"><span class="step">02</span><span class="steplabel">Describe its dimensions</span></h2>
+    <h2 id="h-dim"><span class="step">2</span><span class="steplabel">Describe its dimensions</span></h2>
+    <p class="helper">Type new numbers or keep ours. Sizes are in metres (1 m is about 3.3 ft) and weights in kilograms.</p>
     <div class="bench">
       <form class="spec" id="spec" autocomplete="off"></form>
       <div class="bay">
@@ -559,7 +632,8 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
   </section>
 
   <section aria-labelledby="h-launch">
-    <h2 id="h-launch"><span class="step">03</span><span class="steplabel">Choose where to launch it</span></h2>
+    <h2 id="h-launch"><span class="step">3</span><span class="steplabel">Choose where to launch it</span></h2>
+    <p class="helper">RViz only shows your robot. Gazebo lets it move in a world with real physics. Then pick the world it lives in.</p>
     <div class="launch">
       <div class="launchleft">
       <div class="targets" role="radiogroup" aria-label="Launch target">
@@ -589,7 +663,8 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
   </section>
 
   <section aria-labelledby="h-rl">
-    <h2 id="h-rl"><span class="step">04</span><span class="steplabel">Train it with reinforcement learning</span></h2>
+    <h2 id="h-rl"><span class="step">4</span><span class="steplabel">Train it with reinforcement learning</span></h2>
+    <p class="helper">Your robot can learn by practising. Keep the box ticked to get a training kit with your download.</p>
     <div class="rl">
       <div class="rlleft">
         <label class="check rlon"><input type="checkbox" id="rlOn">Add an RL training kit to the download <small>Gymnasium + Stable-Baselines3 · fast trainer + Gazebo</small></label>
@@ -611,7 +686,8 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
   </section>
 
   <section aria-labelledby="h-pkg">
-    <h2 id="h-pkg"><span class="step">05</span><span class="steplabel">Download the package</span></h2>
+    <h2 id="h-pkg"><span class="step">5</span><span class="steplabel">Download the package</span></h2>
+    <p class="helper">This is your robot, ready to take home. Unzip it and follow README.md one step at a time.</p>
     <div class="actions">
       <button class="btn primary" type="button" id="zipBtn">Download package (.zip)</button>
       <span class="toast" id="toast" role="status"></span>
@@ -4739,7 +4815,7 @@ $('rlSteps').addEventListener('change', e => { const v = Math.round(+e.target.va
 $('rlEp').addEventListener('change', e => { const v = +e.target.value; if (v >= 2 && v <= 600) rlSet('ep', v); else e.target.value = rlOpts(rlTask()).ep; });
 $('rlSpeed').addEventListener('change', e => { state.rl.speed = +e.target.value; schedule(); });
 if ('ResizeObserver' in window) new ResizeObserver(() => lastModel && drawRL(lastModel)).observe($('rlCanvas'));
-/* Simulator view: the hero shows each robot moving on a sim floor with live joint readouts, in the visitor's colors. */
+/* Hero robot: each robot moves on screen and introduces itself, in the visitor's colors. */
 function modelFor(t) {
   const p = {};
   TYPES[t].groups.forEach(([, fs]) => fs.forEach(f => p[f.k] = f.def));
@@ -4753,10 +4829,18 @@ function showroom() {
   const host = $('showroom'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const keys = Object.keys(TYPES);
   let cur = TYPES[state.type] ? state.type : keys[0];
-  $('srPager').innerHTML = keys.map(k => `<button type="button" role="tab" data-sr="${k}" aria-selected="${k === cur}">${TYPES[k].label}</button>`).join('');
+  const HELLO = {
+    diff2: 'Hi! I’m a 2-wheel rover. I can learn to drive around your room.',
+    diff4: 'I’m a 4-wheel rover, strong enough to carry boxes in a warehouse.',
+    arm6: 'I’m a robot arm. I can learn to reach, grab and place things.',
+    humanoid: 'I walk on two legs, just like you. Want to design me?',
+    semi: 'I’m half rover, half human. I drive around and use my arms.',
+  };
+  $('srPager').innerHTML = keys.map(k => `<button type="button" role="tab" data-sr="${k}" aria-selected="${k === cur}">${GLYPHS[k]}${TYPES[k].label}</button>`).join('');
   const caption = () => {
-    $('srName').textContent = TYPES[cur].label; $('srSub').textContent = TYPES[cur].sub;
-    $('srBuild').textContent = 'Build this one →';
+    $('srName').textContent = TYPES[cur].label; $('srSub').textContent = HELLO[cur];
+    $('srBuild').textContent = 'Build me →';
+    const bub = $('srName').parentElement; bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop');
     document.querySelectorAll('#srPager button').forEach(b => b.setAttribute('aria-selected', b.dataset.sr === cur));
   };
   caption();
@@ -4769,16 +4853,14 @@ function showroom() {
   host.prepend(r.domElement);
   const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(28, 2, 0.01, 100);
   cam.position.set(0, 1.45, 4.1); cam.lookAt(0, 0.45, 0);
-  sc.add(new THREE.HemisphereLight(0xffffff, 0x1a1a1c, 0.6));
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x8a94a6, 0.85));
   const key = new THREE.SpotLight(0xffffff, 1.35, 0, 0.55, 0.65);
   key.position.set(2.2, 5.2, 3.4); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0004;
   sc.add(key, key.target);
   const rim = new THREE.DirectionalLight(0x9cc8ff, 0.7); rim.position.set(-3, 2.2, -3.2); sc.add(rim);
-  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.45 }));
+  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.18 }));
   catcher.rotation.x = -H; catcher.receiveShadow = true; sc.add(catcher);
-  const floor = new THREE.GridHelper(8, 32, 0x2f8f80, 0x1b2a33);
-  floor.position.y = 0.001; floor.material.transparent = true; floor.material.opacity = 0.7; sc.add(floor);
-  const axes = new THREE.AxesHelper(0.4); axes.position.y = 0.003; sc.add(axes);
+
   const turn = new THREE.Group(); sc.add(turn);
   let anim = [], hudAt = 0, simT = 0;
   let holder = null, pop = 1, angle = 0.65, last = performance.now(), visible = true, raf = 0, timer = 0, held = 0;
@@ -4814,7 +4896,7 @@ function showroom() {
     holder = new THREE.Group(); holder.add(zup);
     holder.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(holder), size = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-    const s = Math.min(1.15 / Math.max(size.x, size.z, 1e-3), 1.25 / Math.max(size.y, 1e-3));
+    const s = Math.min(0.95 / Math.max(size.x, size.z, 1e-3), 1.2 / Math.max(size.y, 1e-3));
     zup.position.set(-c.x, -b.min.y, -c.z);
     holder.scale.setScalar(s);
     turn.add(holder);
@@ -4841,13 +4923,6 @@ function showroom() {
         a.mg.quaternion.setFromAxisAngle(a.ax, q);
         a.q = q;
       });
-      if (now - hudAt > 120) {
-        hudAt = now;
-        $('srHud').innerHTML = `SIM t ${simT.toFixed(1)} s<br>${Math.round(1 / Math.max(dt, 1e-3))} FPS · LIVE`;
-        $('srJoints').textContent = anim.slice(0, 3).map(a => a.wheel
-          ? `${a.name.replace('_joint', '').padEnd(21)} ω ${a.sp.toFixed(1)} rad/s`
-          : `${a.name.replace('_joint', '').padEnd(21)} ${(a.q >= 0 ? '+' : '') + a.q.toFixed(2)} rad`).join('\n');
-      }
     }
     turn.position.y = (1 - e) * -0.08;
     r.render(sc, cam);
@@ -4868,10 +4943,12 @@ function showroom() {
   window.__showroomRecolor = () => { build(cur); go(); };
   size(); build(cur); go(); auto();
 }
-$('tileWorlds').innerHTML = ['factory', 'warehouse', 'office'].map(k => WORLD_GLYPHS[k]).join('');
-$('tileArm6').innerHTML = GLYPHS.arm6;
+$('tileWorlds').innerHTML = ['factory', 'warehouse', 'office', 'custom'].map(k => WORLD_GLYPHS[k]).join('');
 $('tileScan').addEventListener('click', () => $('heroScan').click());
-$('tileArm').addEventListener('click', () => { state.type = 'arm6'; renderTypes(); renderForm(); rebuild(); $('h-type').scrollIntoView({ behavior: 'smooth' }); });
+document.querySelectorAll('[data-glyph]').forEach(el => { el.innerHTML = GLYPHS[el.dataset.glyph]; });
+document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => {
+  state.type = b.dataset.pick; renderTypes(); renderForm(); rebuild(); $('h-type').scrollIntoView({ behavior: 'smooth' });
+}));
 $('heroScan').addEventListener('click', () => {
   if (state.target === 'rviz') { state.target = 'both'; syncControls(); rebuild(); }
   openScanner();
