@@ -8,49 +8,52 @@
 <title>Robot URDF Studio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: a showroom. A black stage up top turns each robot like a product on a stand, feature tiles
-   follow, then a quiet grey configurator. One blue marks every action; big, tight, confident type. */
+/* Layout: a robot simulation lab. A slate control-room hero with a live simulator window and telemetry,
+   a four-stage pipeline of what the download does, then the builder on cool light panels.
+   Signal orange is the only action colour; cyan is reserved for simulation readouts. */
 :root {
-  --stage-black: #000000; --stage-ink: #F5F5F7; --stage-muted: #A1A1A6; --stage-link: #2997FF;
-  --nav-bg: rgba(22, 22, 23, .82); --nav-solid: #161617; --tile-dark: #000000;
-  --bg: #F5F5F7;
+  --night: #0D1117; --night-2: #141A22; --night-deep: #090D12; --night-ink: #E9EEF3; --night-muted: #8C96A3;
+  --night-line: rgba(255, 255, 255, .1); --night-grid: rgba(255, 255, 255, .035);
+  --signal: #FF6A2B; --signal-hover: #FF8550; --hud: #3FE0C5;
+  --bg: #EEF1F4;
   --panel: #FFFFFF;
-  --ink: #1D1D1F;
-  --muted: #6E6E73;
-  --line: #D2D2D7;
-  --accent: #0071E3;      /* the one blue: selection, focus, actions */
-  --accent-text: #0066CC;
-  --accent-soft: #EAF3FD;
-  --on-accent: #FFFFFF;
-  --action: #0071E3;
-  --action-hover: #0077ED;
-  --stage: #161617;
-  --view: #161617;
-  --grid1: #3A3A3C;
-  --grid2: #242426;
-  --code: #F5F5F7;
+  --ink: #0D1117;
+  --muted: #56616D;
+  --line: #D5DBE2;
+  --accent: #E8541A;      /* signal orange on light surfaces: selection, focus */
+  --accent-text: #B83F0C;
+  --accent-soft: #FFF0E7;
+  --on-accent: #0D1117;
+  --action: #FF6A2B;
+  --action-hover: #FF8550;
+  --stage: #10161D;
+  --stage-ink: #E9EEF3;
+  --view: #10161D;
+  --grid1: #2B4A52;
+  --grid2: #1A262E;
+  --code: #F3F5F7;
   --ok: #1F7A45;
   --warn: #B3471F;
   --tag: #1F5FA8;
   --attr: #7A4BB0;
   --str: #2E7A4C;
-  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Archivo", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000; --panel: #1C1C1E; --ink: #F5F5F7; --muted: #A1A1A6; --line: #38383A; --tile-dark: #111113;
-    --accent: #2997FF; --accent-text: #2997FF; --accent-soft: #0B2541; --on-accent: #FFFFFF;
-    --code: #111113; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+    --bg: #0B0F14; --panel: #141A22; --ink: #E9EEF3; --muted: #8C96A3; --line: #263040;
+    --accent: #FF7A3D; --accent-text: #FF905E; --accent-soft: #2A1A10; --on-accent: #0D1117;
+    --code: #0F141A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #000000; --panel: #1C1C1E; --ink: #F5F5F7; --muted: #A1A1A6; --line: #38383A; --tile-dark: #111113;
-  --accent: #2997FF; --accent-text: #2997FF; --accent-soft: #0B2541; --on-accent: #FFFFFF;
-  --code: #111113; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+  --bg: #0B0F14; --panel: #141A22; --ink: #E9EEF3; --muted: #8C96A3; --line: #263040;
+  --accent: #FF7A3D; --accent-text: #FF905E; --accent-soft: #2A1A10; --on-accent: #0D1117;
+  --code: #0F141A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -270,168 +273,165 @@ pre.cmd .c { color: var(--muted); }
   h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-/* ===== Showroom layer ===== */
+/* ===== Lab layer ===== */
 body { margin: 0; padding-block: 0 64px; font-size: 15px; -webkit-font-smoothing: antialiased; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--nav-solid); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--night); }
 html { overflow-x: clip; scroll-behavior: smooth; }
-.wrap { gap: 72px; max-width: 1200px; }
-h1, h2, h3 { letter-spacing: -0.02em; }
-section, [id^="h-"] { scroll-margin-top: 92px; }
+.wrap { gap: 80px; max-width: 1240px; }
+h1, h2, h3 { letter-spacing: -0.01em; }
+section, [id^="h-"] { scroll-margin-top: 84px; }
+.kicker { margin: 0; display: inline-flex; align-items: center; gap: 10px; font: 500 12px/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--hud); }
+.kicker .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hud); box-shadow: 0 0 0 4px rgba(63, 224, 197, .16); }
+.disp { font-family: var(--font-display); font-stretch: 118%; font-weight: 800; text-transform: uppercase; }
 
-/* Global nav: slim, dark, translucent */
-.gnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-inline: calc(50% - 50vw); margin-bottom: -72px;
-  background: var(--nav-bg); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
-.gnav-in { max-width: 1024px; height: 48px; margin: 0 auto; display: flex; align-items: center; gap: 28px;
+/* Nav: a solid control bar */
+.gnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-inline: calc(50% - 50vw); margin-bottom: -80px; background: var(--night); border-bottom: 1px solid var(--night-line); }
+.gnav-in { max-width: 1240px; height: 56px; margin: 0 auto; display: flex; align-items: center; gap: 28px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.brand { margin-right: auto; color: var(--stage-ink); text-decoration: none; font: 600 15px/1 var(--font-display); letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 8px; }
-.brand svg { width: 22px; height: 22px; }
-.gnav-links { display: flex; gap: 26px; }
-.gnav-links a { color: var(--stage-muted); text-decoration: none; font-size: 12.5px; letter-spacing: .01em; transition: color .2s; }
-.gnav-links a:hover { color: var(--stage-ink); }
+.brand { margin-right: auto; display: inline-flex; align-items: center; gap: 10px; color: var(--night-ink); text-decoration: none;
+  font: 800 15px/1 var(--font-display); font-stretch: 120%; letter-spacing: .04em; text-transform: uppercase; }
+.brand svg { width: 24px; height: 24px; color: var(--signal); }
+.gnav-links { display: flex; gap: 24px; }
+.gnav-links a { color: var(--night-muted); text-decoration: none; font: 500 11.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; transition: color .2s; }
+.gnav-links a:hover { color: var(--night-ink); }
 
-/* Rounded call-to-action buttons */
-.cta { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 980px; border: 1px solid var(--action);
-  background: var(--action); color: var(--on-accent); padding: 11px 22px; font: 500 17px/1.1 var(--font-body); text-decoration: none; cursor: pointer;
-  transition: background .2s, color .2s, border-color .2s; }
-.cta:hover { background: var(--action-hover); border-color: var(--action-hover); }
-.cta.sm { padding: 8px 16px; font-size: 14px; }
-.cta.xs { padding: 5px 12px; font-size: 12px; }
-.cta.ghost { background: transparent; color: var(--stage-link); border-color: var(--stage-link); }
-.cta.ghost:hover { background: var(--stage-link); color: var(--stage-black); }
-.tile.light .cta.ghost { color: var(--accent-text); border-color: var(--accent-text); }
-.tile.light .cta.ghost:hover { background: var(--accent-text); color: var(--panel); }
+/* Buttons: squared, uppercase, an arrow that nudges */
+.cta { display: inline-flex; align-items: center; gap: 10px; border-radius: 6px; border: 1px solid var(--signal); background: var(--signal); color: var(--night);
+  padding: 14px 20px; font: 750 14px/1 var(--font-display); font-stretch: 112%; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s; }
+.cta::after { content: "→"; font-family: var(--font-mono); transition: transform .2s; }
+.cta:hover { background: var(--signal-hover); border-color: var(--signal-hover); }
+.cta:hover::after { transform: translateX(3px); }
+.cta.ghost { background: transparent; color: var(--night-ink); border-color: rgba(255, 255, 255, .3); }
+.cta.ghost::after { content: none; }
+.cta.ghost:hover { border-color: var(--night-ink); }
+.cta.xs { padding: 9px 13px; font-size: 11.5px; }
 
-/* Hero: a product launch stage that fits the first screen */
-.hero { margin-inline: calc(50% - 50vw); background: var(--stage-black); color: var(--stage-ink); text-align: center; overflow: hidden;
-  min-height: clamp(640px, 100svh, 980px); padding-top: 76px; display: flex; flex-direction: column; }
-.hero-in { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.launch-pill { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: 980px; text-decoration: none;
-  color: var(--stage-ink); font-size: 13.5px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); transition: background .2s; }
-.launch-pill:hover { background: rgba(255, 255, 255, .14); }
-.launch-pill span { background: var(--stage-link); color: var(--stage-black); font-weight: 600; font-size: 12px; padding: 3px 9px; border-radius: 980px; }
-.eyebrow-name { margin: 8px 0 0; color: var(--stage-muted); font: 600 clamp(17px, 1.8vw, 21px)/1.2 var(--font-display); letter-spacing: -.01em; }
-.hero h1 { margin: 0; font: 700 clamp(40px, 6.6vw, 80px)/1.04 var(--font-display); letter-spacing: -.04em;
-  background: linear-gradient(180deg, #FFFFFF 30%, #B9C6D6); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.tagline { margin: 2px 0 0; max-width: 34ch; color: var(--stage-muted); font: 500 clamp(17px, 1.9vw, 22px)/1.35 var(--font-body); letter-spacing: -.01em; }
-.hero-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 12px; }
-.showroom { position: relative; flex: 1 1 auto; width: 100%; max-width: 1180px; min-height: 280px; margin: 4px auto 0; }
-.showroom::before { content: ""; position: absolute; inset: 8% 18% 12%; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 62%, rgba(41, 151, 255, .30), rgba(41, 151, 255, .08) 45%, transparent 70%); filter: blur(10px); }
+/* Hero: words on the left, a live simulator window on the right, the pipeline underneath */
+.hero { margin-inline: calc(50% - 50vw); color: var(--night-ink); background-color: var(--night); overflow: hidden;
+  background-image: linear-gradient(var(--night-grid) 1px, transparent 1px), linear-gradient(90deg, var(--night-grid) 1px, transparent 1px);
+  background-size: 48px 48px; background-position: center top;
+  display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); grid-template-rows: minmax(0, 1fr) auto; gap: 26px 48px; align-items: center;
+  height: clamp(600px, calc(100svh - 56px), 900px); padding: 36px max(24px, calc((100vw - 1240px) / 2)) 0; }
+.hero-in { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; min-width: 0; }
+.hero h1 { margin: 0; font: 800 clamp(40px, 4.3vw, 70px)/.95 var(--font-display); font-stretch: 118%; letter-spacing: -.01em; text-transform: uppercase; }
+.hero h1 .hl { color: var(--signal); }
+.tagline { margin: 0; max-width: 36ch; color: var(--night-muted); font-size: clamp(16px, 1.45vw, 19px); line-height: 1.5; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.simwin { align-self: stretch; min-width: 0; display: flex; flex-direction: column; margin-block: 6px; border: 1px solid var(--night-line); border-radius: 10px;
+  background: var(--night-deep); overflow: hidden; box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .9); }
+.simbar { display: flex; align-items: center; gap: 14px; padding: 7px 10px; border-bottom: 1px solid var(--night-line); background: var(--night-2); }
+.lights { display: flex; gap: 6px; flex: none; }
+.lights i { width: 9px; height: 9px; border-radius: 50%; background: #2A333F; }
+.lights i:first-child { background: var(--signal); }
+.sr-pager { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.sr-pager button { flex: none; border: 0; border-radius: 4px; background: none; color: var(--night-muted); padding: 6px 10px; font: 500 12px var(--font-mono); white-space: nowrap; cursor: pointer; transition: color .2s, background .2s; }
+.sr-pager button:hover { color: var(--night-ink); }
+.sr-pager button[aria-selected="true"] { background: rgba(255, 255, 255, .07); color: var(--night-ink); box-shadow: inset 0 -2px 0 var(--signal); }
+.showroom { position: relative; flex: 1 1 auto; min-height: 300px; }
+.showroom::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 58%, rgba(63, 224, 197, .12), transparent 62%); }
 .showroom canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-.sr-cap { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 12px; }
-.sr-cap b { font: 600 clamp(18px, 1.8vw, 22px)/1.2 var(--font-display); letter-spacing: -.015em; }
-.sr-cap span { color: var(--stage-muted); font-size: 14px; }
-.sr-cap a { color: var(--stage-link); font-size: 14px; text-decoration: none; }
-.sr-cap a:hover { text-decoration: underline; }
-.sr-pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 14px 16px 0; }
-.sr-pager button { border: 0; border-radius: 980px; padding: 6px 13px; background: rgba(255, 255, 255, .09); color: var(--stage-muted); font: 500 13px var(--font-body); cursor: pointer; transition: background .2s, color .2s; }
-.sr-pager button:hover { color: var(--stage-ink); }
-.sr-pager button[aria-selected="true"] { background: var(--stage-ink); color: var(--stage-black); }
-.journey { list-style: none; margin: 22px auto 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 30px max(16px, env(safe-area-inset-left, 0px));
-  width: 100%; max-width: 1000px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; border-top: 1px solid rgba(255, 255, 255, .12); counter-reset: step; }
-.journey li { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; text-align: left; align-items: center; min-width: 0; }
-.journey svg { grid-row: 1 / 3; width: 30px; height: 30px; fill: none; stroke: var(--stage-link); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.journey b { font: 600 16px/1.2 var(--font-display); letter-spacing: -.01em; }
-.journey span { color: var(--stage-muted); font-size: 13px; line-height: 1.3; }
-.spec-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; }
-.spec-tools .btn { background: none; border: 0; padding: 4px 2px; color: var(--accent-text); font-size: 14px; font-weight: 400; }
+.simhud { position: absolute; z-index: 1; font: 500 11.5px/1.55 var(--font-mono); color: var(--hud); letter-spacing: .02em; pointer-events: none; }
+.simhud.tl { top: 14px; left: 16px; display: flex; flex-direction: column; max-width: 60%; }
+.simhud.tl b { color: var(--night-ink); font: 800 16px/1.2 var(--font-display); font-stretch: 116%; letter-spacing: .03em; text-transform: uppercase; }
+.simhud.tl span { color: var(--night-muted); }
+.simhud.tr { top: 14px; right: 16px; text-align: right; }
+.simhud.bl { bottom: 14px; left: 16px; white-space: pre; }
+.simhud.br { bottom: 12px; right: 14px; pointer-events: auto; color: var(--signal); font-weight: 600; text-decoration: none; }
+.simhud.br:hover { text-decoration: underline; }
+.journey { grid-column: 1 / -1; list-style: none; margin: 0; padding: 18px 0 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--night-line); counter-reset: stage; }
+.journey li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; align-items: baseline; padding: 0 18px; border-left: 1px solid var(--night-line); counter-increment: stage; min-width: 0; }
+.journey li:first-child { border-left: 0; padding-left: 0; }
+.journey li::before { content: counter(stage, decimal-leading-zero); grid-row: 1 / 3; color: var(--signal); font: 500 12px var(--font-mono); }
+.journey svg { display: none; }
+.journey b { font: 800 15px/1.2 var(--font-display); font-stretch: 116%; letter-spacing: .04em; text-transform: uppercase; }
+.journey span { color: var(--night-muted); font-size: 13px; line-height: 1.35; }
+
+/* Pipeline: what the download does */
+.pipe { display: flex; flex-direction: column; gap: 26px; }
+.pipe .kicker, .buildhead .kicker { color: var(--accent-text); }
+.pipe-head h2, .buildhead h2 { margin: 10px 0 0; max-width: 22ch; font: 800 clamp(30px, 3.6vw, 50px)/1.02 var(--font-display); font-stretch: 120%; letter-spacing: -.01em; text-transform: uppercase; }
+.stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stage { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: var(--panel); min-width: 0; }
+.stage .idx { font: 500 12px var(--font-mono); color: var(--accent-text); letter-spacing: .08em; }
+.stage-art { height: 150px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 6px; color: var(--ink);
+  background-color: var(--bg); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 20px 20px; background-position: center; }
+.stage-art svg { max-height: 118px; max-width: 100%; width: auto; height: auto; }
+.stage-art.worlds svg { width: 30%; }
+.stage-art .hl { stroke: var(--accent); }
+.stage h3 { margin: 6px 0 0; font: 800 18px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
+.stage p { margin: 0; color: var(--muted); line-height: 1.45; }
+.stage a, .stage .linkish { margin-top: auto; padding: 4px 0 0; border: 0; background: none; color: var(--accent-text); text-align: left; font: 600 14px var(--font-body); text-decoration: none; cursor: pointer; }
+.stage a:hover, .stage .linkish:hover { text-decoration: underline; }
+
+/* Builder heading */
+.buildhead { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 40px; border-top: 1px solid var(--line); }
+.buildhead h2 { margin: 0; }
+.buildhead p { margin: 0; max-width: 52ch; color: var(--muted); font-size: 17px; line-height: 1.5; }
+.spec-tools { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.spec-tools .btn { background: none; border: 0; padding: 4px 0; color: var(--accent-text); font-size: 14px; font-weight: 500; }
 .spec-tools .btn:hover { text-decoration: underline; }
-.sr-cap { padding-inline: 16px; }
-/* Wide screens: words on the left, the robot big on the right, the four-step strip underneath, all in one view */
-@media (min-width: 1000px) {
-  .hero { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-rows: minmax(0, 1fr) auto auto; column-gap: 8px;
-    height: clamp(580px, calc(100svh - 48px), 880px); min-height: 0; padding-top: 20px; text-align: left;
-    padding-left: max(24px, calc((100vw - 1240px) / 2)); padding-right: max(24px, calc((100vw - 1240px) / 2)); }
-  .hero-in { grid-column: 1; grid-row: 1 / 3; align-self: center; align-items: flex-start; margin: 0; padding: 0; }
-  .hero h1 { font-size: clamp(44px, 4.7vw, 70px); }
-  .eyebrow-name { margin-top: 2px; }
-  .journey { padding-bottom: 22px; }
-  .hero-cta { justify-content: flex-start; }
-  .showroom { grid-column: 2; grid-row: 1; height: auto; min-height: 0; margin: 0; max-width: none; }
-  .sr-pager { grid-column: 2; grid-row: 2; padding-top: 8px; }
-  .journey { grid-column: 1 / -1; grid-row: 3; max-width: none; padding-left: 0; padding-right: 0; margin-top: 18px; }
-}
-@media (max-width: 720px) {
-  .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero { min-height: 0; }
-  .showroom { flex: none; height: 350px; }
-}
-
-/* Feature tiles */
-.tiles { margin-inline: calc(50% - 50vw); margin-top: -60px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
-  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
-.tile { min-height: 500px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 52px 24px 0; text-align: center; overflow: hidden; }
-.tile.dark { background: var(--tile-dark); color: var(--stage-ink); }
-.tile.light { background: var(--panel); color: var(--ink); }
-.tile h3 { margin: 0; font: 700 clamp(30px, 3.6vw, 46px)/1.06 var(--font-display); letter-spacing: -.03em; }
-.tile p { margin: 0; max-width: 32ch; font-size: clamp(17px, 1.6vw, 21px); line-height: 1.35; }
-.tile-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 14px; }
-.tile-art { margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: flex-end; gap: 18px; padding: 32px 0 0; transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
-.tile:hover .tile-art { transform: translateY(-6px); }
-.tile-art.worlds { padding-bottom: 44px; }
-.tile-art.worlds svg { width: min(30%, 150px); height: auto; }
-.tile-art.worlds svg .hl { stroke: var(--stage-link); }
-.tile-art.arm svg { width: min(80%, 300px); height: auto; margin-bottom: 24px; }
-.tile-art.arm svg .hl { stroke: var(--accent); }
-.tile-art.phone svg { width: 150px; height: auto; }
-.tile-art.learn svg { width: min(90%, 340px); height: auto; margin-bottom: 30px; }
-
-/* "Build yours" heading */
-.buildhead { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding-top: 24px; }
-.buildhead h2 { margin: 0; font: 700 clamp(36px, 5.4vw, 64px)/1.05 var(--font-display); letter-spacing: -.035em; }
-.buildhead p { margin: 0; max-width: 46ch; color: var(--muted); font-size: clamp(17px, 1.7vw, 21px); line-height: 1.4; }
 
 /* Steps */
-section > h2 { flex-direction: column; align-items: flex-start; gap: 6px; }
-h2 .step { font: 600 13px/1 var(--font-body); color: var(--accent-text); letter-spacing: .02em; background: none; border: 0; padding: 0; }
-h2 .step::before { content: "Step "; }
-h2 .steplabel { font: 700 clamp(28px, 3.4vw, 40px)/1.1 var(--font-display); letter-spacing: -.03em; }
+section > h2 { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h2 .step { font: 500 12px/1 var(--font-mono); color: var(--accent-text); letter-spacing: .12em; background: none; border: 0; padding: 0; }
+h2 .step::before { content: "STEP "; }
+h2 .step::after { content: " / 05"; color: var(--muted); }
+h2 .steplabel { font: 800 clamp(24px, 2.8vw, 36px)/1.1 var(--font-display); font-stretch: 118%; letter-spacing: 0; text-transform: uppercase; }
 
-/* Configurator surfaces: white cards on grey, a blue ring for the choice */
-.btn { border-radius: 980px; border-width: 1px; font-weight: 500; padding: 7px 16px; text-decoration: none; color: inherit; transition: background .2s, border-color .2s; }
+/* Builder surfaces: white panels with hairlines, a solid orange edge on the choice */
+.btn { border-radius: 6px; border-width: 1px; font-weight: 600; padding: 7px 14px; text-decoration: none; color: inherit; transition: background .2s, border-color .2s; }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--action); border-color: var(--action); color: var(--on-accent); }
 .btn.primary:hover { filter: none; background: var(--action-hover); border-color: var(--action-hover); }
-.btn.big, #zipBtn { font: 500 17px/1.1 var(--font-body); padding: 12px 26px; }
-.types { gap: 14px; }
-.type { padding: 20px; border-radius: 18px; border: 2px solid transparent; background: var(--panel); gap: 8px; transition: border-color .2s, box-shadow .25s; }
-.type:hover { border-color: transparent; box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .25); }
+.btn.big, #zipBtn { font: 750 15px/1 var(--font-display); font-stretch: 112%; letter-spacing: .06em; text-transform: uppercase; padding: 15px 22px; }
+.types { gap: 12px; }
+.type { padding: 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); gap: 8px; transition: border-color .2s, box-shadow .2s; }
+.type:hover { border-color: var(--muted); }
 .type svg { width: 76px; height: 48px; }
-.type b { font: 600 19px/1.15 var(--font-display); letter-spacing: -.015em; }
-.type[aria-pressed="true"] { border-color: var(--accent); background: var(--panel); box-shadow: none; }
+.type b { font: 800 16px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
+.type[aria-pressed="true"] { border-color: var(--accent); background: var(--panel); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
 .type[aria-pressed="true"] svg .hl { stroke: var(--accent); }
-.spec { border-radius: 18px; border: 0; }
+.spec { border-radius: 10px; border: 1px solid var(--line); }
 legend { color: var(--ink); font-weight: 600; }
-.row input[type="number"], .text input, select { border-radius: 10px; }
-.row input[type="number"]:focus, .text input:focus, select:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 0; }
-.viewport { background: var(--stage); border: 0; border-radius: 18px; color: #F5F5F7; }
-.chip { background: rgba(22, 22, 23, .78); border-color: #3A3A3C; color: #F5F5F7; border-radius: 980px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.chip i { color: #2997FF; }
-.viewtools .btn { background: rgba(22, 22, 23, .78); border-color: #3A3A3C; color: #F5F5F7; }
-.viewtools .btn:hover { border-color: #2997FF; }
-.legendkey { color: #86868B; }
-.box { border-radius: 18px; border: 0; padding: 18px 20px; }
-.box h3 { font-weight: 600; font-size: 19px; }
-.target label, .world { border-radius: 16px; border: 2px solid transparent; background: var(--panel); transition: border-color .2s; }
-.target label b, .world b { font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
-.target input:checked + label, .world[aria-checked="true"] { background: var(--panel); border-color: var(--accent); box-shadow: none; }
+.row input[type="number"], .text input, select { border-radius: 6px; }
+.row input[type="number"]:focus, .text input:focus, select:focus { border-color: var(--accent); outline: 3px solid var(--accent-soft); outline-offset: 0; }
+.viewport { background: var(--stage); border: 1px solid #1E2A33; border-radius: 10px; color: var(--stage-ink); }
+.chip { background: rgba(13, 17, 23, .82); border-color: #26323C; color: #E9EEF3; border-radius: 4px; }
+.chip i { color: #3FE0C5; }
+.viewtools .btn { background: rgba(13, 17, 23, .82); border-color: #26323C; color: #E9EEF3; }
+.viewtools .btn:hover { border-color: #FF6A2B; }
+.legendkey { color: #7C8794; }
+.box { border-radius: 10px; border: 1px solid var(--line); padding: 16px 18px; }
+.box h3 { font: 800 16px/1.2 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
+.target label, .world { border-radius: 10px; border: 1px solid var(--line); background: var(--panel); transition: border-color .2s; }
+.target label b, .world b { font: 800 15px/1.15 var(--font-display); font-stretch: 114%; letter-spacing: .03em; text-transform: uppercase; }
+.target input:checked + label, .world[aria-checked="true"] { background: var(--panel); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
 .world[aria-checked="true"] svg .hl { stroke: var(--accent); }
-pre.cmd { border-radius: 16px; background: #1D1D1F; color: #F5F5F7; border: 0; }
-pre.cmd .c { color: #2997FF; }
-.cmdwrap .btn { background: #2C2C2E; border-color: #3A3A3C; color: #F5F5F7; }
-.pkg { border-radius: 18px; border: 0; }
+pre.cmd { border-radius: 10px; background: #0A0E13; color: #E9EEF3; border: 1px solid #1E2A33; }
+pre.cmd .c { color: #3FE0C5; }
+.cmdwrap .btn { background: #18202A; border-color: #2A3542; color: #E9EEF3; }
+.pkg { border-radius: 10px; border: 1px solid var(--line); }
 .tree .root { font-weight: 600; }
 .tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent); }
-dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
-.rlspec, .rlarena canvas { border-radius: 18px; }
-.rlspec { border: 0; }
+dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 12px; }
+.rlspec { border: 1px solid var(--line); border-radius: 10px; }
+.rlarena canvas { border-radius: 10px; }
 .foot { padding-top: 16px; border-top: 1px solid var(--line); }
 
-@media (max-width: 860px) {
-  .gnav-links { display: none; }
-  .tiles { grid-template-columns: minmax(0, 1fr); }
-  .tile { min-height: 420px; padding-top: 44px; }
+@media (max-width: 1000px) {
+  .hero { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; height: auto; padding-top: 40px; gap: 28px; }
+  .simwin { height: 440px; }
+  .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
+  .journey li:nth-child(3) { border-left: 0; padding-left: 0; }
+  .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) { .gnav-links { display: none; } .brand { font-size: 13px; } }
+@media (max-width: 560px) {
+  .simwin { height: 380px; }
+  .stages { grid-template-columns: minmax(0, 1fr); }
+  .simhud.bl { display: none; }
 }
 
 /* ===== RL step ===== */
@@ -456,15 +456,16 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 @media (max-width: 720px) { .rltasks, .rlgrid { grid-template-columns: minmax(0, 1fr); } .rlspec div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* ===== Motion ===== */
-.motion .reveal { opacity: 0; transform: translateY(18px); transition: opacity .9s cubic-bezier(.2, .7, .2, 1), transform .9s cubic-bezier(.2, .7, .2, 1); }
+.motion .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1); }
 .motion .reveal.in { opacity: 1; transform: none; }
-.tile-art.learn .route { stroke-dasharray: 7 9; animation: march 1.6s linear infinite; }
+.kicker .dot { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(63, 224, 197, 0); } }
+.stage-art.learn .route { stroke-dasharray: 7 9; animation: march 1.6s linear infinite; }
 @keyframes march { to { stroke-dashoffset: -32; } }
-.tile-art.phone .sweep { animation: sweep 2.8s ease-in-out infinite; }
+.stage-art.phone .sweep { animation: sweep 2.8s ease-in-out infinite; }
 @keyframes sweep { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(120px); } }
 @media (prefers-reduced-motion: reduce) {
-  .tile-art.learn .route, .tile-art.phone .sweep { animation: none; }
-  .tile:hover .tile-art { transform: none; }
+  .kicker .dot, .stage-art.learn .route, .stage-art.phone .sweep { animation: none; }
   html { scroll-behavior: auto; }
 }
 </style>
@@ -472,7 +473,7 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 <div class="wrap">
   <nav class="gnav" aria-label="Sections">
     <div class="gnav-in">
-      <a class="brand" href="#top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="10" rx="3"/><circle cx="9.5" cy="13" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.5" cy="13" r="1.3" fill="currentColor" stroke="none"/><path d="M12 8V5M12 4.2v.01M3 12v3M21 12v3"/></svg>Robot URDF Studio</a>
+      <a class="brand" href="#top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h7M7.5 20v-5l5-6 6 2.5"/><circle cx="12.5" cy="9" r="1.6"/><path d="M18.5 11.5l1.5 2.5M18.5 11.5l2.5-1"/></svg>Robot URDF Studio</a>
       <div class="gnav-links"><a href="#h-type">Robots</a><a href="#h-dim">Size</a><a href="#h-launch">Worlds</a><a href="#h-rl">Train</a><a href="#h-pkg">Download</a></div>
       <a class="cta xs" href="#h-type">Build</a>
     </div>
@@ -480,56 +481,44 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 
   <header class="hero" id="top">
     <div class="hero-in">
-      <a class="launch-pill" href="#h-rl"><span>New</span>Robots that teach themselves to drive ›</a>
-      <p class="eyebrow-name">Robot URDF Studio</p>
-      <h1>Your robot, ready to simulate.</h1>
-      <p class="tagline">Pick a robot, set its size, and download a package that runs in Gazebo.</p>
+      <p class="kicker"><span class="dot" aria-hidden="true"></span>Free · runs in your browser</p>
+      <h1>Build it.<br><span class="hl">Simulate it.</span><br>Teach it.</h1>
+      <p class="tagline">Set your robot’s size here, then download a ROS 2 package that runs in Gazebo and learns to drive by itself.</p>
       <div class="hero-cta">
-        <a class="cta" href="#h-type">Start building. It’s free.</a>
+        <a class="cta" href="#h-type">Start building</a>
         <button class="cta ghost" id="heroScan" type="button">Scan your room</button>
       </div>
     </div>
-    <div class="showroom" id="showroom" role="img" aria-label="A robot turning on a stand and moving its joints">
-      <div class="sr-cap" aria-live="polite"><b id="srName">2-Wheel Drive</b><span id="srSub">Differential drive with a front caster</span><a href="#h-type" id="srBuild">Build this one ›</a></div>
+    <div class="simwin">
+      <div class="simbar"><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span><div class="sr-pager" id="srPager" role="tablist" aria-label="Robots in the simulator"></div></div>
+      <div class="showroom" id="showroom" role="img" aria-label="A robot moving in a live simulator view">
+        <div class="simhud tl" aria-live="polite"><b id="srName">2-Wheel Drive</b><span id="srSub">Differential drive with a front caster</span></div>
+        <div class="simhud tr" id="srHud">SIM t 0.0 s<br>LIVE</div>
+        <div class="simhud bl" id="srJoints"></div>
+        <a class="simhud br" href="#h-type" id="srBuild">Build this one →</a>
+      </div>
     </div>
-    <div class="sr-pager" id="srPager" role="tablist" aria-label="Robots in the showroom"></div>
     <ol class="journey" aria-label="What you get">
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 L4 8 L12 4 L20 8 L20 18 L12 22 Z M4 8 L12 12 L20 8 M12 12 V22"/></svg><b>Design</b><span>5 robots, your sizes</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20 H21 M5 20 V12 H10 V20 M12 20 V6 H19 V20 M7 9 L9 7"/></svg><b>Simulate</b><span>Gazebo worlds or your room</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20 H11 M8 20 V15 L13 8 L19 11 M13 8 a1.5 1.5 0 1 0 0.01 0"/></svg><b>Plan</b><span>MoveIt 2 for arms</span></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 C8 18 9 16 10 12 C11 8 14 6 19 6 M16 3 L19 6 L16 9"/><circle cx="4.5" cy="18" r="1.6"/></svg><b>Train</b><span>It learns by itself</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Design</b><span>5 robots, your sizes</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Simulate</b><span>Gazebo worlds or your room</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Plan</b><span>MoveIt 2 for arms</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"></svg><b>Train</b><span>It learns by itself</span></li>
     </ol>
   </header>
 
-  <section class="tiles" aria-label="What the studio does">
-    <article class="tile dark">
-      <h3>Worlds, ready to go.</h3>
-      <p>A factory, a warehouse and an office, built into every Gazebo package.</p>
-      <div class="tile-links"><a class="cta sm" href="#h-launch">Choose a world</a></div>
-      <div class="tile-art worlds" id="tileWorlds"></div>
-    </article>
-    <article class="tile light">
-      <h3>Your room. Scanned.</h3>
-      <p>Scan any room with your phone and drive your robot through it.</p>
-      <div class="tile-links"><button class="cta sm" id="tileScan" type="button">Scan your room</button><a class="cta sm ghost" href="#h-launch">How it works</a></div>
-      <div class="tile-art phone"><svg viewBox="0 0 150 250" fill="none" aria-hidden="true"><rect x="4" y="4" width="142" height="242" rx="26" stroke="currentColor" stroke-width="4"/><rect x="56" y="14" width="38" height="8" rx="4" fill="currentColor" opacity=".25"/><g stroke="currentColor" stroke-width="2" opacity=".55"><path d="M22 190 L60 160 L128 172 L128 70 L60 58 L22 88 Z"/><path d="M60 58 V160"/><path d="M78 172 l12 -9 l20 4 l-12 9 z M78 172 v10 M110 167 v10"/></g><g class="sweep"><rect x="16" y="52" width="118" height="3" rx="1.5" fill="var(--accent)"/></g></svg></div>
-    </article>
-    <article class="tile light">
-      <h3>MoveIt 2, set up.</h3>
-      <p>Planning groups, inverse kinematics and controllers for arms and humanoids.</p>
-      <div class="tile-links"><button class="cta sm" id="tileArm" type="button">Build an arm</button></div>
-      <div class="tile-art arm" id="tileArm6"></div>
-    </article>
-    <article class="tile dark">
-      <h3>It teaches itself.</h3>
-      <p>Reinforcement learning that trains in minutes, then drives in Gazebo.</p>
-      <div class="tile-links"><a class="cta sm" href="#h-rl">Train a robot</a></div>
-      <div class="tile-art learn"><svg viewBox="0 0 240 140" fill="none" aria-hidden="true"><rect x="88" y="28" width="62" height="62" rx="8" fill="currentColor" opacity=".16"/><rect x="176" y="70" width="40" height="22" rx="5" fill="currentColor" opacity=".16"/><path class="route" d="M22 112 H150 Q166 112 166 96 V52 Q166 32 186 32 H206" stroke="var(--stage-link)" stroke-width="3.5" stroke-linecap="round"/><circle cx="22" cy="112" r="10" fill="currentColor"/><path d="M14 112 h10" stroke="var(--tile-dark)" stroke-width="3" stroke-linecap="round"/><path d="M212 18 l4.4 8.9 9.8 1.4 -7.1 6.9 1.7 9.8 -8.8 -4.6 -8.8 4.6 1.7 -9.8 -7.1 -6.9 9.8 -1.4z" fill="var(--stage-link)"/></svg></div>
-    </article>
+  <section class="pipe" aria-labelledby="pipe-h">
+    <div class="pipe-head"><p class="kicker">What’s in the download</p><h2 id="pipe-h">One zip. Four things your robot can do.</h2></div>
+    <div class="stages">
+      <article class="stage"><span class="idx">01</span><div class="stage-art worlds" id="tileWorlds"></div><h3>Drive in real places</h3><p>Factory, warehouse and office worlds, ready for Gazebo.</p><a href="#h-launch">Choose a world →</a></article>
+      <article class="stage"><span class="idx">02</span><div class="stage-art phone"><svg viewBox="0 0 150 250" fill="none" aria-hidden="true"><rect x="4" y="4" width="142" height="242" rx="22" stroke="currentColor" stroke-width="5"/><rect x="56" y="14" width="38" height="8" rx="4" fill="currentColor" opacity=".3"/><g stroke="currentColor" stroke-width="2.5" opacity=".6"><path d="M22 190 L60 160 L128 172 L128 70 L60 58 L22 88 Z"/><path d="M60 58 V160"/><path d="M78 172 l12 -9 l20 4 l-12 9 z M78 172 v10 M110 167 v10"/></g><g class="sweep"><rect x="16" y="52" width="118" height="4" rx="2" fill="var(--accent)"/></g></svg></div><h3>Use your own room</h3><p>Scan it with your phone, then drive your robot through it.</p><button class="linkish" id="tileScan" type="button">Scan your room →</button></article>
+      <article class="stage"><span class="idx">03</span><div class="stage-art arm" id="tileArm6"></div><h3>Plan arm moves</h3><p>MoveIt 2 set up for arms and humanoids.</p><button class="linkish" id="tileArm" type="button">Build an arm →</button></article>
+      <article class="stage"><span class="idx">04</span><div class="stage-art learn"><svg viewBox="0 0 240 140" fill="none" aria-hidden="true"><rect x="88" y="28" width="62" height="62" rx="4" fill="currentColor" opacity=".14"/><rect x="176" y="70" width="40" height="22" rx="3" fill="currentColor" opacity=".14"/><path class="route" d="M22 112 H150 Q166 112 166 96 V52 Q166 32 186 32 H206" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/><circle cx="22" cy="112" r="11" fill="currentColor"/><path d="M212 16 l4.4 8.9 9.8 1.4 -7.1 6.9 1.7 9.8 -8.8 -4.6 -8.8 4.6 1.7 -9.8 -7.1 -6.9 9.8 -1.4z" fill="var(--accent)"/></svg></div><h3>Let it learn</h3><p>Reinforcement learning teaches it to drive or reach by itself.</p><a href="#h-rl">Train a robot →</a></article>
+    </div>
   </section>
 
   <div class="buildhead">
-    <h2>Build yours.</h2>
+    <p class="kicker">The builder</p>
+    <h2>Build yours in five steps.</h2>
     <p>Pick a body, size it, choose a world, teach it, download. Everything updates live.</p>
     <div class="spec-tools">
       <button class="btn quiet" id="importBtn" type="button">Import a saved spec</button>
@@ -4750,7 +4739,7 @@ $('rlSteps').addEventListener('change', e => { const v = Math.round(+e.target.va
 $('rlEp').addEventListener('change', e => { const v = +e.target.value; if (v >= 2 && v <= 600) rlSet('ep', v); else e.target.value = rlOpts(rlTask()).ep; });
 $('rlSpeed').addEventListener('change', e => { state.rl.speed = +e.target.value; schedule(); });
 if ('ResizeObserver' in window) new ResizeObserver(() => lastModel && drawRL(lastModel)).observe($('rlCanvas'));
-/* Showroom: the hero turns each robot on a stand like a product shot, in the visitor's chosen colors. */
+/* Simulator view: the hero shows each robot moving on a sim floor with live joint readouts, in the visitor's colors. */
 function modelFor(t) {
   const p = {};
   TYPES[t].groups.forEach(([, fs]) => fs.forEach(f => p[f.k] = f.def));
@@ -4767,7 +4756,7 @@ function showroom() {
   $('srPager').innerHTML = keys.map(k => `<button type="button" role="tab" data-sr="${k}" aria-selected="${k === cur}">${TYPES[k].label}</button>`).join('');
   const caption = () => {
     $('srName').textContent = TYPES[cur].label; $('srSub').textContent = TYPES[cur].sub;
-    $('srBuild').textContent = 'Build this one ›';
+    $('srBuild').textContent = 'Build this one →';
     document.querySelectorAll('#srPager button').forEach(b => b.setAttribute('aria-selected', b.dataset.sr === cur));
   };
   caption();
@@ -4779,19 +4768,19 @@ function showroom() {
   r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
   host.prepend(r.domElement);
   const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(28, 2, 0.01, 100);
-  cam.position.set(0, 1.2, 4.3); cam.lookAt(0, 0.52, 0);
+  cam.position.set(0, 1.45, 4.1); cam.lookAt(0, 0.45, 0);
   sc.add(new THREE.HemisphereLight(0xffffff, 0x1a1a1c, 0.6));
   const key = new THREE.SpotLight(0xffffff, 1.35, 0, 0.55, 0.65);
   key.position.set(2.2, 5.2, 3.4); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0004;
   sc.add(key, key.target);
   const rim = new THREE.DirectionalLight(0x9cc8ff, 0.7); rim.position.set(-3, 2.2, -3.2); sc.add(rim);
-  const stand = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.08, 0.05, 120),
-    new THREE.MeshStandardMaterial({ color: lin('#1d1d1f'), roughness: 0.28, metalness: 0.65 }));
-  stand.position.y = -0.025; stand.receiveShadow = true; sc.add(stand);
-  const floor = new THREE.PolarGridHelper(3.2, 24, 7, 96, 0x2a5a8f, 0x1d3550);
-  floor.position.y = -0.052; floor.material.transparent = true; floor.material.opacity = 0.45; sc.add(floor);
+  const catcher = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.45 }));
+  catcher.rotation.x = -H; catcher.receiveShadow = true; sc.add(catcher);
+  const floor = new THREE.GridHelper(8, 32, 0x2f8f80, 0x1b2a33);
+  floor.position.y = 0.001; floor.material.transparent = true; floor.material.opacity = 0.7; sc.add(floor);
+  const axes = new THREE.AxesHelper(0.4); axes.position.y = 0.003; sc.add(axes);
   const turn = new THREE.Group(); sc.add(turn);
-  let anim = [];
+  let anim = [], hudAt = 0, simT = 0;
   let holder = null, pop = 1, angle = 0.65, last = performance.now(), visible = true, raf = 0, timer = 0, held = 0;
   const SWAY = {
     arm6: { joint1: [0.6, 0.35, 0], joint2: [0.25, 0.5, 1], joint3: [0.3, 0.5, 2], joint5: [0.4, 0.7, 0.5] },
@@ -4814,10 +4803,10 @@ function showroom() {
       const ax = new THREE.Vector3(...j.axis).normalize();
       if (q && j.type === 'revolute') mg.quaternion.setFromAxisAngle(ax, Math.min(j.lim.hi, Math.max(j.lim.lo, q)));
       // A little life: wheels roll, the arm works, a humanoid waves and looks around
-      if (j.type === 'continuous') anim.push({ mg, ax, wheel: true, sp: 3.2 });
+      if (j.type === 'continuous') anim.push({ mg, ax, wheel: true, sp: 3.2, name: j.name });
       else if (j.type === 'revolute' && SWAY[t] && SWAY[t][j.name]) {
         const [amp, f, ph] = SWAY[t][j.name];
-        anim.push({ mg, ax, base: q || 0, amp, f, ph, lo: j.lim.lo, hi: j.lim.hi });
+        anim.push({ mg, ax, base: q || 0, amp, f, ph, lo: j.lim.lo, hi: j.lim.hi, name: j.name });
       }
     });
     root.position.z = M.previewZ;
@@ -4846,10 +4835,19 @@ function showroom() {
     turn.rotation.y = angle; turn.scale.setScalar(0.82 + 0.18 * e);
     if (!still) {
       const ts = now / 1000;
+      simT += dt;
       anim.forEach(a => {
         const q = a.wheel ? ts * a.sp : Math.min(a.hi, Math.max(a.lo, a.base + a.amp * Math.sin(ts * a.f * 2 * PI / 2 + a.ph)));
         a.mg.quaternion.setFromAxisAngle(a.ax, q);
+        a.q = q;
       });
+      if (now - hudAt > 120) {
+        hudAt = now;
+        $('srHud').innerHTML = `SIM t ${simT.toFixed(1)} s<br>${Math.round(1 / Math.max(dt, 1e-3))} FPS · LIVE`;
+        $('srJoints').textContent = anim.slice(0, 3).map(a => a.wheel
+          ? `${a.name.replace('_joint', '').padEnd(21)} ω ${a.sp.toFixed(1)} rad/s`
+          : `${a.name.replace('_joint', '').padEnd(21)} ${(a.q >= 0 ? '+' : '') + a.q.toFixed(2)} rad`).join('\n');
+      }
     }
     turn.position.y = (1 - e) * -0.08;
     r.render(sc, cam);
