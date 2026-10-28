@@ -10,31 +10,31 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: a friendly first-robot guide. Light, airy sections with soft tints (sun, mint, sky, lilac),
+/* Layout: a friendly first-robot guide. Light, airy sections in an ocean palette (sky, ice, cyan tints),
    a robot that talks to you in the hero, plain-language explanations before the builder.
-   One warm orange for every action, matching the robots themselves. Type chosen for easy reading. */
+   One deep blue for every action. Type chosen for easy reading. */
 :root {
-  --bg: #F6F8FB;
+  --bg: #F8FAFC;
   --panel: #FFFFFF;
-  --ink: #1B2333;
-  --ink-soft: #2E384A;
-  --muted: #586377;
-  --line: #E2E7EF;
-  --accent: #F2611D;      /* robot orange: selection, highlights */
-  --accent-text: #C2410C;
-  --accent-soft: #FFEDE3;
+  --ink: #0F172A;
+  --ink-soft: #1E293B;
+  --muted: #526077;
+  --line: #E2E8F0;
+  --accent: #2563EB;      /* ocean blue: selection, highlights */
+  --accent-text: #1D4ED8;
+  --accent-soft: #E0EDFF;
   --on-accent: #FFFFFF;
-  --action: #D9480F;      /* buttons: white text stays readable */
-  --action-hover: #C23F0B;
-  --mint: #E3F6EE; --mint-ink: #0F6B4A;
-  --sky: #E6F0FD; --sky-ink: #2456A6;
-  --sun: #FFF3D6; --lilac: #EFEAFD;
-  --stage: #1E2738;
-  --stage-ink: #EEF2F7;
-  --view: #1E2738;
-  --grid1: #3A4659;
-  --grid2: #283244;
-  --code: #F3F5F9;
+  --action: #1D4ED8;      /* buttons */
+  --action-hover: #1E40AF;
+  --mint: #E0F7FA; --mint-ink: #0E7490;
+  --sky: #EFF6FF; --sky-ink: #1D4ED8;
+  --sun: #E0F2FE; --lilac: #EEF2FF;
+  --stage: #0F1B2D;
+  --stage-ink: #E2E8F0;
+  --view: #0F1B2D;
+  --grid1: #2C3E5A;
+  --grid2: #1C2A40;
+  --code: #F1F5F9;
   --ok: #1F7A45;
   --warn: #B3471F;
   --tag: #1F5FA8;
@@ -46,17 +46,17 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0F141C; --panel: #171D28; --ink: #EEF2F7; --ink-soft: #D5DCE6; --muted: #9AA5B5; --line: #273142;
-    --accent: #FF7A45; --accent-text: #FF9A6B; --accent-soft: #33201A; --on-accent: #FFFFFF;
-    --mint: #12302A; --mint-ink: #7FE0B8; --sky: #16263D; --sky-ink: #8DB8F5; --sun: #2E2716; --lilac: #241E3A;
-    --code: #121822; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+    --bg: #0B1220; --panel: #121A2B; --ink: #E2E8F0; --ink-soft: #CBD5E1; --muted: #94A3B8; --line: #22304A;
+    --accent: #60A5FA; --accent-text: #93C5FD; --accent-soft: #172554; --on-accent: #FFFFFF; --action: #2563EB; --action-hover: #1D4ED8;
+    --mint: #0B2E35; --mint-ink: #67E8F9; --sky: #0F1F3D; --sky-ink: #93C5FD; --sun: #0C2340; --lilac: #1A1F3D;
+    --code: #0F172A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0F141C; --panel: #171D28; --ink: #EEF2F7; --ink-soft: #D5DCE6; --muted: #9AA5B5; --line: #273142;
-  --accent: #FF7A45; --accent-text: #FF9A6B; --accent-soft: #33201A; --on-accent: #FFFFFF;
-  --mint: #12302A; --mint-ink: #7FE0B8; --sky: #16263D; --sky-ink: #8DB8F5; --sun: #2E2716; --lilac: #241E3A;
-  --code: #121822; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
+  --bg: #0B1220; --panel: #121A2B; --ink: #E2E8F0; --ink-soft: #CBD5E1; --muted: #94A3B8; --line: #22304A;
+  --accent: #60A5FA; --accent-text: #93C5FD; --accent-soft: #172554; --on-accent: #FFFFFF; --action: #2563EB; --action-hover: #1D4ED8;
+  --mint: #0B2E35; --mint-ink: #67E8F9; --sky: #0F1F3D; --sky-ink: #93C5FD; --sun: #0C2340; --lilac: #1A1F3D;
+  --code: #0F172A; --ok: #5FD08E; --warn: #FF9A80; --tag: #7DB4F0; --attr: #C59BF0; --str: #8FD6A6; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -314,18 +314,18 @@ section, [id^="h-"] { scroll-margin-top: 88px; }
 .hero-in { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; min-width: 0; }
 .hello { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--mint); color: var(--mint-ink); font-weight: 700; font-size: 15px; }
 .hero h1 { margin: 0; font: 800 clamp(42px, 5.4vw, 74px)/1.02 var(--font-display); letter-spacing: -.04em; text-wrap: balance; }
-.hero h1 .hl { padding-bottom: .12em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cpath d='M2 8 C 20 2, 40 2, 60 7 S 100 11, 118 4' fill='none' stroke='%23FF7A45' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") bottom / 100% .28em no-repeat; }
+.hero h1 .hl { padding-bottom: .12em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cpath d='M2 8 C 20 2, 40 2, 60 7 S 100 11, 118 4' fill='none' stroke='%2338BDF8' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") bottom / 100% .28em no-repeat; }
 .tagline { margin: 0; max-width: 44ch; color: var(--muted); font-size: clamp(17px, 1.55vw, 20px); line-height: 1.55; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
 .ticks { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--ink-soft); font-size: 15.5px; }
 .ticks li { display: inline-flex; align-items: center; gap: 8px; }
-.ticks li::before { content: ""; width: 20px; height: 20px; border-radius: 50%; background: var(--mint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-5' fill='none' stroke='%230F6B4A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; flex: none; }
+.ticks li::before { content: ""; width: 20px; height: 20px; border-radius: 50%; background: var(--mint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-5' fill='none' stroke='%230E7490' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; flex: none; }
 .stagebox { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .showroom { position: relative; height: clamp(320px, 36vw, 460px); border-radius: 28px; border: 1px solid var(--line); overflow: hidden;
   background: radial-gradient(ellipse 60% 45% at 50% 78%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%), linear-gradient(180deg, var(--sky), var(--panel)); }
 .showroom canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .bubble { position: absolute; z-index: 1; top: 16px; left: 16px; max-width: min(80%, 330px); padding: 12px 16px; background: var(--panel); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; box-shadow: 0 12px 26px -16px rgba(27, 35, 51, .45); font-size: 15.5px; line-height: 1.45; }
+  border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; box-shadow: 0 12px 26px -16px rgba(15, 23, 42, .45); font-size: 15.5px; line-height: 1.45; }
 .bubble b { display: block; font: 750 17px/1.3 var(--font-display); }
 .bubble a { display: inline-block; margin-top: 6px; color: var(--accent-text); font-weight: 700; text-decoration: none; }
 .bubble a:hover { text-decoration: underline; }
@@ -420,10 +420,10 @@ legend { color: var(--ink); font-weight: 700; }
 .row input[type="number"], .text input, select { border-radius: 8px; }
 .row input[type="number"]:focus, .text input:focus, select:focus { border-color: var(--accent); outline: 3px solid var(--accent-soft); outline-offset: 0; }
 .viewport { background: var(--stage); border: 0; border-radius: 18px; color: var(--stage-ink); }
-.chip { background: rgba(27, 35, 51, .8); border-color: #3A4659; color: #EEF2F7; border-radius: 999px; }
-.chip i { color: #FFB38F; }
-.viewtools .btn { background: rgba(27, 35, 51, .8); border-color: #3A4659; color: #EEF2F7; }
-.viewtools .btn:hover { border-color: #FF7A45; }
+.chip { background: rgba(15, 27, 45, .8); border-color: #2C3E5A; color: #EEF2F7; border-radius: 999px; }
+.chip i { color: #7DD3FC; }
+.viewtools .btn { background: rgba(15, 27, 45, .8); border-color: #2C3E5A; color: #EEF2F7; }
+.viewtools .btn:hover { border-color: #38BDF8; }
 .legendkey { color: #8D98AA; }
 .box { border-radius: 18px; border: 1px solid var(--line); padding: 18px 20px; }
 .box h3 { font: 750 19px/1.2 var(--font-display); }
@@ -431,9 +431,9 @@ legend { color: var(--ink); font-weight: 700; }
 .target label b, .world b { font: 750 17px/1.2 var(--font-display); }
 .target input:checked + label, .world[aria-checked="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: none; }
 .world[aria-checked="true"] svg .hl { stroke: var(--accent); }
-pre.cmd { border-radius: 14px; background: #1B2333; color: #EEF2F7; border: 0; }
-pre.cmd .c { color: #FFB38F; }
-.cmdwrap .btn { background: #2A3446; border-color: #3A4659; color: #EEF2F7; }
+pre.cmd { border-radius: 14px; background: #0F1B2D; color: #EEF2F7; border: 0; }
+pre.cmd .c { color: #7DD3FC; }
+.cmdwrap .btn { background: #1C2A40; border-color: #2C3E5A; color: #EEF2F7; }
 .pkg { border-radius: 18px; border: 1px solid var(--line); }
 .tree .root { font-weight: 700; }
 .tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent); }
@@ -491,7 +491,7 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 <div class="wrap">
   <nav class="gnav" aria-label="Sections">
     <div class="gnav-in">
-      <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="22" height="17" rx="7" fill="#FF7A45"/><circle cx="12" cy="17.5" r="2.4" fill="#fff"/><circle cx="20" cy="17.5" r="2.4" fill="#fff"/><path d="M12.5 22.2c2 1.3 5 1.3 7 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M16 9V5" stroke="#FF7A45" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="4" r="2" fill="#FF7A45"/></svg>Robot URDF Studio</a>
+      <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="22" height="17" rx="7" fill="#2563EB"/><circle cx="12" cy="17.5" r="2.4" fill="#fff"/><circle cx="20" cy="17.5" r="2.4" fill="#fff"/><path d="M12.5 22.2c2 1.3 5 1.3 7 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M16 9V5" stroke="#2563EB" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="4" r="2" fill="#2563EB"/></svg>Robot URDF Studio</a>
       <div class="gnav-links"><a href="#how">How it works</a><a href="#why">Why robotics</a><a href="#words">Robot words</a><a href="#help">Help</a></div>
       <a class="cta sm" href="#h-type">Make my robot</a>
     </div>
