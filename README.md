@@ -76,6 +76,11 @@ ros2 launch <package> display.launch.py   # RViz
 ros2 launch <package> gazebo.launch.py    # Gazebo
 ```
 
+Move the robot with the keyboard (in a new terminal, while Gazebo runs):
+
+- **2-wheel / 4-wheel drive:** `ros2 run teleop_twist_keyboard teleop_twist_keyboard`
+- **6-DOF arm, humanoid, semi-humanoid:** `ros2 run <package> joint_teleop`. Keys: `w`/`s` pick a joint, `a`/`d` move it, `q`/`e` change the step size, `z` zeroes the joint, `h` sends every joint home. The semi-humanoid also drives its base with `i` `,` `j` `l` and stops with `k`. It works with the plain Gazebo package (joint position controllers) and with the MoveIt package (trajectory controllers).
+
 ## Colors
 
 The colors you pick in the app are written into every `<visual>` of the URDF, so RViz and Gazebo show the same colors as the preview. If a part shows up plain white in RViz, RViz has no transform for that link yet: check that the joint states are being published (the joint slider window for RViz, or the Gazebo bridge for simulation).
