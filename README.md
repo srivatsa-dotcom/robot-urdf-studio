@@ -39,40 +39,22 @@ Gazebo worlds included in every package (pick the default in the app, switch at 
 
 Worlds are built from simple shapes, so they load offline with no model downloads.
 
-### Custom map from your phone
+### Your own world (.sdf)
 
-Pick **Custom map** in Step 3. There are two ways to get a map:
+Pick **Your own world** in Step 3 (or drag a file onto the world picker) and upload:
 
-**Import a 3D scan (any phone, including iPhone).** Scan the room with a free app such as Scaniverse (exports OBJ, PLY or STL for free, no LiDAR needed; its OBJ comes as a .zip, which the app opens directly) or Polycam (free plan exports GLB). Keep people and pets out of view, since imported files are not filtered. Then either:
+- a Gazebo world file (`.sdf` or `.world`), or
+- a `.zip` that holds the world file together with the models and meshes it uses (keep the folder layout the world expects).
 
-- open the **From your phone (QR)** tab and pick **iPhone**: it lists the Scaniverse steps and shows a QR code. Scan it (same Wi-Fi), tap **Send scan file** and pick the scan; it opens on the computer straight away, or
-- copy the file to the computer and choose it in the **Import a 3D scan** tab.
+The app then:
 
-Click the map where the robot starts and rotate until its forward direction points up. Up axis, units and upside-down are detected automatically and can be corrected.
+- shows the world's boxes, cylinders and spheres in the 3D preview and uses them for the RL training map (meshes and `<include>` models still load in Gazebo, they just are not drawn in the browser);
+- renames the world to `default` inside the file, so the launch files, bridges and RL kit find it;
+- adds any Gazebo systems the robot needs that the file is missing (physics, user commands, scene broadcaster, sensors, IMU), using the right names for Harmonic or Fortress;
+- packs the zip's other files into `worlds/custom_assets/`, rewrites relative mesh paths to point there, and adds that folder (and `custom_assets/models`) to the Gazebo resource path so `model://` URIs resolve;
+- lets you set where the robot starts (x, y and heading), which become the defaults of the launch file's `x`, `y` and `yaw` arguments.
 
-**Scan live with an Android phone** (pick **Android** in the QR tab):
-
-1. A QR code appears. Scan it with your phone (same Wi-Fi as the computer).
-2. On the phone, stand where the robot should start, face its forward direction and tap **Start scan**.
-3. Walk slowly and sweep over walls and furniture. The computer shows the map growing live.
-4. Tap **Finish**, then **Use this map**.
-
-The package then also contains `worlds/custom.sdf` and `maps/custom_map.pgm/.yaml` (a 5 cm Nav2 occupancy map). The scan start point is the map origin and the robot spawn point.
-
-For imported scans in OBJ or STL (and GLB on Jazzy), the Gazebo world shows the **real scanned mesh with its textures** (`worlds/custom_scan/`), so simulated cameras and lidar see your actual room; the ceiling is cut off above 2.3 m. Collisions use simplified invisible blocks so physics stays fast.
-
-Imported meshes are cleaned when you click **Use this map**: the floor plane is found and the scan is levelled (tilt corrected), the floor height is set so wheels sit on top of small bumps, the ceiling is cut, and loose scraps (tiny pieces or pieces outside the room's footprint) are removed. The Nav2 map drops obstacle specks smaller than 0.02 m², closes one-cell gaps in walls, and ignores anything lower than 10 cm above the floor. Live Android scans and PLY point clouds use visible blocks instead.
-
-How it works and what it needs:
-
-- **Same Wi-Fi only.** Phone and computer connect peer-to-peer over WebRTC with no STUN/TURN servers, so the connection only succeeds on the same local network. A public PeerJS server is used for a few seconds to pair the devices; the scan data never passes through it. Guest networks with client isolation block the connection.
-- **Phone:** Chrome on Android with ARCore (Google Play Services for AR). The scan uses WebXR depth sensing, detected planes, or hit-testing on phones without a depth API.
-- **iPhone:** browsers on iPhone have no WebXR, so iPhones scan with Scaniverse and send the file (pick **iPhone** in the QR tab for the steps).
-- **People and animals are left out.** Each sampled camera frame runs through an on-device DeepLab v3 segmenter (MediaPipe); depth points on a person, cat, dog, bird, horse, cow or sheep (plus a small margin) are dropped before they reach the map. If a phone cannot give the browser camera frames during AR, the scan stops and offers to continue without the filter.
-- **Privacy:** only 3D points leave the phone, never camera images.
-- **HTTPS:** the phone page must come from an HTTPS site (GitHub Pages), because browsers only allow the camera on secure pages. Scanning does not work inside the Claude artifact viewer.
-
-Supports ROS 2 Jazzy (Gazebo Harmonic) and Humble (Gazebo Fortress).
+Launch it with `world:=custom`. Files with absolute paths (`file:///home/...`) only work on the computer they point to.
 
 ## Reinforcement learning (Step 4)
 
@@ -80,7 +62,7 @@ Tick **Add an RL training kit** and the download gets a `<robot>_rl/` folder nex
 
 | Robot | Task | What the policy learns |
 |---|---|---|
-| 2-wheel and 4-wheel drive | Drive to goals | Reach random goals anywhere in the chosen world (factory, warehouse, office or your scanned room) without touching anything, steering by lidar |
+| 2-wheel and 4-wheel drive | Drive to goals | Reach random goals anywhere in the chosen world (factory, warehouse, office or your own .sdf world) without touching anything, steering by lidar |
 | 6-DOF arm, humanoid | Reach targets | Move the tool or right hand to random points in its workspace |
 | Semi-humanoid | Either | Drive its base to goals, or reach with its right arm |
 
@@ -104,32 +86,13 @@ The Step 4 panel previews the training arena (map, start and goal spots, or the 
 
 ## Run locally (optional)
 
+`index.html` is a single file: open it in a browser, or serve the folder with any static server, for example
+
 ```bash
-python3 serve.py
+python3 -m http.server 8000
 ```
 
-It prints an address like `http://192.168.1.23:8000/`. Open that on your computer (not `localhost`), so a phone on the same Wi-Fi can open the QR link and send scan files. Live Android scanning needs HTTPS, so it only works from GitHub Pages.
-
 It loads three.js and JSZip from public CDNs, so it needs internet access.
-
-## Shared scans (customers share custom maps with you)
-
-Customers can click **Share this map with the app owner** under the world picker. After ticking a consent box, their cleaned scan (3D shape, textures and map) is uploaded to your Firebase Storage. They need no account: their browser gets an anonymous ID, so they can delete what they shared. You open **Owner: shared scans** at the bottom of the page, sign in with Google, and can open any shared scan as your custom map or delete it. Only the Google account named in `storage.rules` can see other people's scans.
-
-Sharing works on the GitHub Pages site (and `serve.py`), not inside the Claude artifact viewer.
-
-### One-time setup (on your existing Google Cloud project)
-
-1. Go to <https://console.firebase.google.com>, click **Add project**, and pick your existing Google Cloud project.
-2. Switch the project to the **Blaze** (pay-as-you-go) plan. Firebase needs it for file storage on new projects; it bills your Google Cloud account, and small use stays within the free quota (about 5 GB stored). Set a budget alert in Google Cloud > Billing > Budgets so you're warned of any charges.
-3. **Build > Authentication > Get started > Sign-in method:** enable **Anonymous** and **Google**. Under **Settings > Authorized domains**, add `srivatsa-dotcom.github.io` (and your computer's IP if you use `serve.py`).
-4. **Build > Storage > Get started:** choose production mode and a location near you.
-5. **Storage > Rules:** paste [`storage.rules`](storage.rules), replace `OWNER_EMAIL` with your Google email, and click **Publish**. Customers can only upload `.zip` scans under 60 MB into their own folder.
-6. **Project settings > General > Your apps > Add app > Web:** register the app and copy the `firebaseConfig` values into [`firebase-config.js`](firebase-config.js). These values are public by design; the rules protect the data.
-7. Allow the owner page to download scans: open **Cloud Shell** in the Google Cloud console, create `cors.json` with the contents of [`cors.json`](cors.json), and run
-   ```bash
-   gcloud storage buckets update gs://YOUR_PROJECT_ID.firebasestorage.app --cors-file=cors.json
-   ```
 
 ## Build a generated package
 

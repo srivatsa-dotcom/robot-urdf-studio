@@ -185,8 +185,6 @@ dialog#shareDlg::backdrop, dialog#ownerDlg::backdrop { background: rgba(10, 14, 
 .owntable th { text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .owntable td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
 .ownact { white-space: nowrap; display: flex; gap: 6px; }
-dialog#scanDlg { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
-dialog#scanDlg::backdrop { background: rgba(10, 14, 13, .55); }
 .dlghead, .dlgfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; }
 .dlghead { border-bottom: 1px solid var(--line); } .dlgfoot { border-top: 1px solid var(--line); justify-content: flex-end; }
 .dlghead h3 { font-size: 17px; }
@@ -437,7 +435,6 @@ pre.cmd .c { color: #7DD3FC; }
 .pkg { border-radius: 18px; border: 1px solid var(--line); }
 .tree .root { font-weight: 700; }
 .tree button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent); }
-dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 .rlspec { border: 1px solid var(--line); border-radius: 18px; }
 .rlarena canvas { border-radius: 18px; }
 .foot { padding-top: 16px; border-top: 1px solid var(--line); }
@@ -476,6 +473,14 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
 @media (max-width: 1080px) { .rl { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 720px) { .rltasks, .rlgrid { grid-template-columns: minmax(0, 1fr); } .rlspec div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
+/* ===== Your own world ===== */
+.customworld { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 14px; background: var(--panel); }
+.cw-status { margin: 0; font-size: 15px; color: var(--ink-soft); }
+.cw-spawn { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14.5px; color: var(--muted); }
+.cw-spawn label { display: inline-flex; align-items: center; gap: 6px; }
+.cw-spawn input { width: 76px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-family: var(--font-mono); font-size: 13px; color: inherit; }
+.worldpick.over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 12px; }
+
 /* ===== Motion ===== */
 .motion .reveal { opacity: 0; transform: translateY(20px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1); }
 .motion .reveal.in { opacity: 1; transform: none; }
@@ -508,7 +513,6 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
       </div>
       <ul class="ticks"><li>Free</li><li>Nothing to install to start</li><li>Every word explained</li></ul>
     </div>
-    <button id="heroScan" type="button" hidden>Scan your room</button>
     <div class="stagebox">
       <div class="showroom" id="showroom" role="img" aria-label="A friendly robot moving on screen">
         <div class="bubble" aria-live="polite"><b id="srName">2-Wheel Drive</b><span id="srSub"></span><br><a href="#h-type" id="srBuild">Build me →</a></div>
@@ -527,7 +531,7 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
     <ol class="steps4">
       <li><h3>Pick a robot</h3><p>Wheels, an arm, or a body like ours. Not sure? Start with the 2-wheel rover.</p><div class="mini"><button class="linkish" type="button" data-pick="diff2">Start with the rover →</button></div></li>
       <li><h3>Make it yours</h3><p>Change its size with simple number boxes. You’ll see it change in 3D right away.</p><div class="mini"><a class="linkish" href="#h-dim">Try it →</a></div></li>
-      <li><h3>Give it a world</h3><p>A factory, a warehouse, an office, or your own room scanned with your phone.</p><div class="mini" id="tileWorlds"></div><div class="mini"><button class="linkish" id="tileScan" type="button">Scan my room →</button></div></li>
+      <li><h3>Give it a world</h3><p>A factory, a warehouse, an office, or a world of your own: upload any Gazebo .sdf file.</p><div class="mini" id="tileWorlds"></div><div class="mini"><button class="linkish" id="tileScan" type="button">Add my own world →</button></div></li>
       <li><h3>Teach it</h3><p>It practises thousands of times and gets better, the way you learned to ride a bike.</p><div class="mini"><a class="linkish" href="#h-rl">See how →</a></div></li>
     </ol>
     <div class="after"><p><b>Then take it home.</b> You download one folder that runs on your computer, with a guide that tells you exactly what to type.</p><a class="cta sm" href="#h-type">Let’s start</a></div>
@@ -645,7 +649,16 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
         <div class="eyebrow">Gazebo world</div>
         <div class="worlds" id="worlds" role="radiogroup" aria-label="Gazebo world"></div>
         <p class="muted" id="worldNote" hidden>Worlds are for Gazebo. Pick Gazebo or Gazebo + RViz to choose one.</p>
-        <div class="actions" id="customActs"><button class="btn" type="button" id="rescan" hidden>Rescan custom map</button><button class="btn" type="button" id="shareScan" hidden>Share this map with the app owner</button></div>
+        <div class="customworld" id="customActs" hidden>
+          <p class="cw-status" id="cwStatus"></p>
+          <div class="cw-spawn"><span>Robot starts at</span>
+            <label>x <input id="cwX" type="number" step="0.1" value="0"> m</label>
+            <label>y <input id="cwY" type="number" step="0.1" value="0"> m</label>
+            <label>facing <input id="cwYaw" type="number" step="15" value="0"> °</label>
+          </div>
+          <div class="actions"><button class="btn" type="button" id="cwReplace">Use a different file</button><button class="btn" type="button" id="cwRemove">Remove my world</button></div>
+        </div>
+        <input type="file" id="worldFile" accept=".sdf,.world,.zip,application/zip,application/xml,text/xml" hidden>
       </div>
       </div>
       <div class="distro">
@@ -700,104 +713,12 @@ dialog#scanDlg, dialog#shareDlg, dialog#ownerDlg { border-radius: 20px; }
       </div>
     </div>
   </section>
-  <footer class="foot"><button class="linkbtn" type="button" id="ownerBtn">Owner: shared scans</button></footer>
+  <footer class="foot"><p class="muted">Robot URDF Studio · free for everyone learning robotics</p></footer>
 </div>
-
-<dialog id="shareDlg" aria-labelledby="shareTitle">
-  <div class="dlghead"><h3 id="shareTitle">Share this map with the app owner</h3><button class="btn" type="button" id="shareClose">Close</button></div>
-  <div class="dlgbody one">
-    <p>The app owner will receive your scanned room: its 3D shape, its textures (photos of the surfaces) and the map. Nothing else from this page is sent.</p>
-    <div class="text"><label for="shareName">Your name</label><input id="shareName" placeholder="Optional" maxlength="80"></div>
-    <div class="text"><label for="shareNote">Note</label><input id="shareNote" placeholder="Optional, e.g. what the room is" maxlength="300"></div>
-    <label class="check"><input type="checkbox" id="shareConsent">I agree to share this scan with the app owner, and it shows no one who hasn't agreed.</label>
-    <p class="muted small">You can delete what you shared from this browser at any time with the button below.</p>
-    <div class="status small" id="shareStatus" role="status"></div>
-  </div>
-  <div class="dlgfoot"><button class="btn" type="button" id="shareMine" hidden>Delete my shared scans</button><button class="btn primary" type="button" id="shareSend" disabled>Share</button></div>
-</dialog>
-
-<dialog id="ownerDlg" aria-labelledby="ownerTitle">
-  <div class="dlghead"><h3 id="ownerTitle">Shared scans</h3><button class="btn" type="button" id="ownerClose">Close</button></div>
-  <div class="dlgbody one">
-    <div class="status small" id="ownerStatus" role="status"></div>
-    <button class="btn primary" type="button" id="ownerSignIn" hidden>Sign in with Google</button>
-    <div class="tablewrap"><table class="owntable"><thead><tr><th>Shared</th><th>From</th><th>Size</th><th>Robot</th><th>File</th><th></th></tr></thead><tbody id="ownerList"></tbody></table></div>
-  </div>
-</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<dialog id="scanDlg" aria-labelledby="scanTitle">
-  <div class="dlghead"><h3 id="scanTitle">Custom map</h3><button class="btn" type="button" id="scanClose" aria-label="Close">Close</button></div>
-  <div class="dlgbody">
-    <div class="qrside">
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" id="tabImport" aria-selected="true">Import a 3D scan</button>
-        <button type="button" role="tab" id="tabPhone" aria-selected="false">From your phone (QR)</button>
-      </div>
-      <div id="paneImport" class="pane">
-        <label class="drop" id="dropZone" for="scanFile"><b>Choose or drop a scan file</b><span>OBJ, PLY, STL, GLB, or a .zip containing one</span></label>
-        <input type="file" id="scanFile" accept=".obj,.ply,.stl,.glb,.gltf,.zip" hidden>
-        <div class="impopts" id="impOpts" hidden>
-          <div class="text"><label for="impUp">Up axis</label><select id="impUp"><option value="y">Y (most apps)</option><option value="z">Z</option></select></div>
-          <div class="text"><label for="impUnit">Units</label><select id="impUnit"><option value="m">meters</option><option value="cm">centimeters</option><option value="mm">millimeters</option></select></div>
-          <label class="check"><input type="checkbox" id="impFlip">Upside down</label>
-          <div class="actions"><button class="btn" type="button" id="rotL">Rotate −15°</button><button class="btn" type="button" id="rotR">Rotate +15°</button><button class="btn" type="button" id="rot90">+90°</button></div>
-          <p class="muted small">Click the map where the robot should start. Rotate until the robot's forward direction points up the map. If the map looks like a wall instead of a floor plan, change the up axis.</p>
-        </div>
-        <ol class="scansteps">
-          <li>On your iPhone, install <b>Scaniverse</b> (free) from the App Store.</li>
-          <li>Start a new scan as a <b>mesh</b>, not a splat, and walk slowly around the room. Keep people and pets out of view; imported files are not filtered.</li>
-          <li>Export the scan as <b>OBJ</b> or <b>PLY</b> and send it to this computer (AirDrop, iCloud Drive or email).</li>
-          <li>Choose the file here. Polycam's free <b>GLB</b> export works too.</li>
-        </ol>
-      </div>
-      <div id="panePhone" class="pane" data-device="android" hidden>
-      <div class="devpick" role="radiogroup" aria-label="Phone type">
-        <button type="button" role="radio" data-device="android" aria-checked="true">Android</button>
-        <button type="button" role="radio" data-device="iphone" aria-checked="false">iPhone</button>
-      </div>
-      <ol class="scansteps devsteps" id="stepsIphone">
-        <li>Install <b>Scaniverse</b> (free) from the App Store.</li>
-        <li>Open it and start a <b>new scan</b>. Pick a <b>mesh</b> scan for a room or large area, not a splat.</li>
-        <li>Start where the robot will start. Walk slowly around the room and point the phone at every wall and piece of furniture. Keep people and pets out of view.</li>
-        <li>Stop the scan and let Scaniverse finish processing it.</li>
-        <li>Tap the share or export button, choose <b>OBJ</b> (or PLY), then <b>Save to Files</b>. Scaniverse saves OBJ as a <b>.zip</b>; send it as it is, no need to unzip.</li>
-        <li>Connect the iPhone to the <b>same Wi-Fi</b> as this computer and scan the QR code below with the Camera app.</li>
-        <li>On the page that opens, tap <b>Send scan file</b> and pick the file you saved. It appears on this screen.</li>
-        <li>Click the map where the robot starts, rotate it to face forward, then click <b>Use this map</b>.</li>
-      </ol>
-      <div class="qrblock">
-        <div id="qr" class="qr"></div>
-        <code id="scanUrl" class="scanurl"></code>
-      </div>
-      <p class="devsteps" id="stepsAndroid">Connect the phone to the <b>same Wi-Fi</b> as this computer and scan the QR code. Tap <b>Start scan</b> on the phone and the map builds here live.</p>
-      <p class="muted small" id="localHint" hidden>This page is open as <b>localhost</b>, which your phone can't reach. If the link doesn't open on the phone, start the app with <code>python3 serve.py</code> and open the address it prints.</p>
-      <p class="muted small" id="androidNote">Needs Chrome on an Android phone with ARCore. People and animals are recognised on the phone and left out of the map. Only 3D points travel to this computer, directly over your Wi-Fi; no camera images leave the phone.</p>
-      </div>
-    </div>
-    <div class="liveside">
-      <div class="status"><span class="dot" id="scanDot"></span><span id="scanStatus"></span></div>
-      <canvas id="scanMap" width="440" height="440" aria-label="Live top-down map of the scan"></canvas>
-      <div class="muted small" id="scanStats"></div>
-    </div>
-  </div>
-  <div class="dlgfoot"><button class="btn" type="button" id="scanStop" hidden>Finish phone scan</button><button class="btn" type="button" id="scanCancel">Cancel</button><button class="btn primary" type="button" id="scanUse" disabled>Use this map</button></div>
-</dialog>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-storage-compat.js"></script>
-<script src="firebase-config.js"></script>
 <script>
 (() => {
 'use strict';
@@ -874,7 +795,7 @@ const state = {
   params: {}, sensors: {}, names: {},
   pkgAuto: {}, pkg: {},
   colors: { body: '#C8CEC9', accent: '#E0601A' },
-  distro: 'jazzy', target: 'both', moveit: true, world: 'warehouse', scan: null,
+  distro: 'jazzy', target: 'both', moveit: true, world: 'warehouse', custom: null,
   rl: { on: true, task: {}, opts: {}, speed: 1 },
   q: {},
 };
@@ -1257,10 +1178,10 @@ const WORLDS = {
   factory: { label: 'Factory', sub: 'Conveyors, CNC machines and a marked robot cell.' },
   warehouse: { label: 'Warehouse', sub: 'Pallet racks, 2 m aisles and a loading dock.' },
   office: { label: 'Office', sub: 'Desk clusters, chairs and a meeting room.' },
-  custom: { label: 'Custom map', sub: 'Import a phone scan (any phone) or scan live with Android.' },
+  custom: { label: 'Your own world', sub: 'Upload a Gazebo .sdf world, or a .zip with its models.' },
 };
 const WORLD_GLYPHS = {
-  custom: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="22" y="3" width="16" height="26" rx="3"/><path class="hl" d="M6 10 V5 H11 M58 10 V5 H53 M6 22 V27 H11 M58 22 V27 H53"/></svg>',
+  custom: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M24 3h12l6 6v20H24z"/><path d="M36 3v6h6"/><path class="hl" d="M28 23l4-5 3 3 4-6"/></svg>',
   empty: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 26 L60 26"/><path d="M14 20 L50 20" stroke-width="1" opacity=".5"/></svg>',
   factory: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 28 V14 L16 8 V14 L28 8 V14 L40 8 V4 H48 V28 Z"/><path class="hl" d="M10 22 H34"/></svg>',
   warehouse: '<svg viewBox="0 0 64 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 28 V12 L32 3 L60 12 V28"/><path class="hl" d="M12 28 V16 H26 V28 M12 22 H26 M38 28 V16 H52 V28 M38 22 H52"/></svg>',
@@ -1383,7 +1304,7 @@ function buildEnv(key) {
     [[-7.4, 5.4], [7.4, 1.4], [2.4, -5.4], [-7.4, -5.4], [0.9, 5.4]].forEach(([x, y], i) => o.push(plant(`plant_${i}`, x, y)));
     return { floor: '#B9A88E', W, D, objects: o };
   }
-  if (key === 'custom' && state.scan) return scanEnv();
+  if (key === 'custom' && state.custom) return customEnv();
   return { floor: '#B4B7B2', W: 0, D: 0, objects: [] };
 }
 
@@ -1395,6 +1316,7 @@ function geomSdf(g) {
 }
 
 function worldSdf(M, key) {
+  if (key === 'custom') return customWorldSdf(M);
   const g = gzNames(), S = M.sensors, env = buildEnv(key);
   const sys = [['physics', 'Physics'], ['user-commands', 'UserCommands'], ['scene-broadcaster', 'SceneBroadcaster']];
   const L = ['<?xml version="1.0"?>', `<!-- ${WORLDS[key].label} world, generated by Robot URDF Studio. The robot spawns at the origin. -->`, '<sdf version="1.8">', `  <world name="${WORLD_NAME}">`,
@@ -1408,10 +1330,10 @@ function worldSdf(M, key) {
     '      <diffuse>0.8 0.8 0.8 1</diffuse>', '      <specular>0.2 0.2 0.2 1</specular>', '      <direction>-0.5 0.1 -0.9</direction>', '    </light>', '',
     '    <model name="ground_plane">', '      <static>true</static>', `      <pose>${n(env.cx || 0)} ${n(env.cy || 0)} 0 0 0 0</pose>`, '      <link name="link">',
     '        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>',
-    ...(key === 'custom' && scanMeshSdf() ? [] : ['        <visual name="visual">', `          <geometry><plane><normal>0 0 1</normal><size>${size}</size></plane></geometry>`,
+    ...(['        <visual name="visual">', `          <geometry><plane><normal>0 0 1</normal><size>${size}</size></plane></geometry>`,
     `          <material><ambient>${fc}</ambient><diffuse>${fc}</diffuse></material>`, '        </visual>']),
     '      </link>', '    </model>');
-  const meshSdf = key === 'custom' ? scanMeshSdf() : null;
+  const meshSdf = null;
   if (meshSdf) L.push(...meshSdf);
   env.objects.forEach(ob => {
     L.push('', `    <model name="${ob.name}">`, '      <static>true</static>', `      <pose>${n(ob.x)} ${n(ob.y)} 0 0 0 ${n(ob.yaw)}</pose>`, '      <link name="link">');
@@ -1543,7 +1465,8 @@ def generate_launch_description():
     spawn = Node(
         package='ros_gz_sim',
         executable='create',
-        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}'],
+        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}',
+                   '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'), '-Y', LaunchConfiguration('yaw')],
         output='screen')
 
     bridge = Node(
@@ -1572,7 +1495,8 @@ ${args}
             'world', default_value='${state.world}',
             description='${worldKeys().join(', ')}'),
         DeclareLaunchArgument('gz_flags', default_value='-r', description='Gazebo flags; "-r -s" runs without the window (headless), faster for RL training'),
-        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
+        ${spawnArgs()}
+        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', os.pathsep.join([worlds_dir, os.path.join(worlds_dir, 'custom_assets'), os.path.join(worlds_dir, 'custom_assets', 'models')]) + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -1612,7 +1536,7 @@ project(${pkg})
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY urdf launch rviz${gz ? ' worlds' : ''}${state.scan ? ' maps' : ''}
+  DIRECTORY urdf launch rviz${gz ? ' worlds' : ''}
   DESTINATION share/\${PROJECT_NAME}
 )
 
@@ -1664,7 +1588,6 @@ function runCommands(pkg, M, forReadme) {
     if (gz) L.push('python train.py --backend gazebo --resume $(cat runs/LATEST)/best_model.zip   # fine-tune with the simulation running');
   }
   if (gz) L.push('', `# Other worlds: world:=${worldKeys().join(' | ')}`);
-  if (state.scan) L.push('', '# Nav2 map of your scanned space', `ros2 run nav2_map_server map_server --ros-args -p yaml_filename:=$(ros2 pkg prefix ${pkg})/share/${pkg}/maps/custom_map.yaml`);
   if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
   return L.join('\n');
 }
@@ -1679,7 +1602,7 @@ function readme(pkg, M, bbox, stats) {
   ];
   if (gz && !mi) fileRows.push([`${pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`)`]);
   if (gz) fileRows.push([`${pkg}/worlds/*.sdf`, `Gazebo worlds: ${worldKeys().join(', ')} (default: ${state.world}). Switch with \`world:=<name>\``]);
-  if (state.scan) fileRows.push([`${pkg}/maps/custom_map.pgm` + ' + .yaml', '2D occupancy map of your phone scan (5 cm cells) for Nav2 map_server; the robot start is the map origin']);
+  if (gz && state.custom) fileRows.push([`${pkg}/worlds/custom.sdf`, `Your own world (${state.custom.name}), renamed to "default" inside so the launch files and bridges find it${worldAssets && worldAssets.id === state.custom.id ? '; its models and meshes are in worlds/custom_assets/' : ''}`]);
   if (M.rl) fileRows.push([`${M.name}_rl/`, `Reinforcement learning kit: ${RL_INFO[M.rl.task].label.toLowerCase()} with ${M.rl.algo}, a fast trainer and a Gazebo environment. See its README.md`]);
   fileRows.push([`${pkg}/rviz/*.rviz`, 'Saved RViz layouts'], [`${pkg}/robot_spec.json`, 'The inputs used to generate this package. Import it back into the studio to edit.']);
   if (mi) {
@@ -1989,7 +1912,8 @@ ${builder(`
     spawn = Node(
         package='ros_gz_sim',
         executable='create',
-        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}'],
+        arguments=['-name', '${M.name}', '-topic', 'robot_description', '-z', '${n(M.spawnZ)}',
+                   '-x', LaunchConfiguration('x'), '-y', LaunchConfiguration('y'), '-Y', LaunchConfiguration('yaw')],
         output='screen')
 
     bridge = Node(
@@ -2039,7 +1963,8 @@ ${bridgeArgs(M).map(a => `            '${a}',`).join('\n')}
         DeclareLaunchArgument('rviz', default_value='true', description='Open RViz with the MotionPlanning panel'),
         DeclareLaunchArgument('world', default_value='${state.world}', description='${worldKeys().join(', ')}'),
         DeclareLaunchArgument('gz_flags', default_value='-r', description='Gazebo flags; "-r -s" runs without the window (headless), faster for RL training'),
-        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', worlds_dir + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
+        ${spawnArgs()}
+        SetEnvironmentVariable('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', os.pathsep.join([worlds_dir, os.path.join(worlds_dir, 'custom_assets'), os.path.join(worlds_dir, 'custom_assets', 'models')]) + os.pathsep + os.environ.get('${state.distro === 'humble' ? 'IGN_GAZEBO_RESOURCE_PATH' : 'GZ_SIM_RESOURCE_PATH'}', '')),
         gazebo,
         robot_state_publisher,
         spawn,
@@ -2161,32 +2086,9 @@ function rlNavSpec(M) {
 const rlMapCache = {};
 function rlMap(M) {
   const res = 0.05;
-  if (state.world === 'custom' && state.scan) {
-    const a = analyzeScan(state.scan), key = 'custom:' + a.nx + 'x' + a.ny + ':' + a.boxes.length;
-    if (rlMapCache.key === key) return rlMapCache.map;
-    const W = a.nx, Hh = a.ny, data = new Uint8Array(W * Hh);
-    for (let i = 0; i < data.length; i++) data[i] = a.occ[i] === 2 ? 0 : a.occ[i] === 1 ? 254 : 205;
-    // A scan only marks floor where it caught floor points; close gaps up to 30 cm between seen floor
-    // so the trainer has room to place the robot, but never paint over an obstacle.
-    const rc = Math.round(0.3 / (a.R / 100)), seen = data.slice();
-    for (let iy = 0; iy < Hh; iy++) for (let ix = 0; ix < W; ix++) {
-      if (seen[iy * W + ix] !== 205) continue;
-      let l = 0, r = 0, d = 0, u = 0;
-      for (let k = 1; k <= rc; k++) {
-        if (!l && ix - k >= 0 && seen[iy * W + ix - k] !== 205) l = seen[iy * W + ix - k];
-        if (!r && ix + k < W && seen[iy * W + ix + k] !== 205) r = seen[iy * W + ix + k];
-        if (!d && iy - k >= 0 && seen[(iy - k) * W + ix] !== 205) d = seen[(iy - k) * W + ix];
-        if (!u && iy + k < Hh && seen[(iy + k) * W + ix] !== 205) u = seen[(iy + k) * W + ix];
-      }
-      if ((l === 254 && r === 254) || (d === 254 && u === 254)) data[iy * W + ix] = 254;
-    }
-    const map = { name: 'custom', w: W, h: Hh, res: a.R / 100, ox: (a.minX - a.R / 2) / 100, oy: (a.minY - a.R / 2) / 100, data };
-    Object.assign(rlMapCache, { key, map });
-    return map;
-  }
-  const world = state.world === 'custom' ? 'empty' : state.world;
+  const world = state.world === 'custom' && !state.custom ? 'empty' : state.world;
   const nav = rlNavSpec(M), lo = 0.03, hi = nav.lidarZ + 0.03;
-  const key = world + ':' + hi.toFixed(3);
+  const key = world + (world === 'custom' ? ':' + state.custom.id : '') + ':' + hi.toFixed(3);
   if (rlMapCache.key === key) return rlMapCache.map;
   const env = buildEnv(world), bounded = env.W > 0;
   const W = bounded ? env.W : 12, D = bounded ? env.D : 12, pad = 0.5;
@@ -2448,7 +2350,7 @@ function drawRL(M) {
       ctx.fillStyle = '#6EA0FF'; ctx.beginPath(); ctx.arc(ax, ay, 3.5, 0, 2 * PI); ctx.fill();
       ctx.fillStyle = '#FF8A3D'; ctx.beginPath(); ctx.arc(bx, by, 4, 0, 2 * PI); ctx.fill();
     }
-    $('rlCap').textContent = `Training arena: ${state.world === 'custom' && state.scan ? 'your scanned room' : WORLDS[state.world === 'custom' ? 'empty' : state.world].label.toLowerCase() + ' world'} at lidar height, ${(map.w * map.res).toFixed(1)} × ${(map.h * map.res).toFixed(1)} m. Blue: random starts. Orange: goals.`;
+    $('rlCap').textContent = `Training arena: ${state.world === 'custom' && state.custom ? 'your own world' : WORLDS[state.world === 'custom' ? 'empty' : state.world].label.toLowerCase() + ' world'} at lidar height, ${(map.w * map.res).toFixed(1)} × ${(map.h * map.res).toFixed(1)} m. Blue: random starts. Orange: goals.`;
   } else {
     const s = rlReachSpec(M), chain = s.chain, nq = chain.filter(e => e.type !== 'fixed');
     const lo = nq.map(e => e.lower), hi = nq.map(e => e.upper), mid = lo.map((l, i) => (l + hi[i]) / 2), half = lo.map((l, i) => (hi[i] - l) / 2);
@@ -3492,506 +3394,11 @@ if __name__ == '__main__':
 };
 /* RL-KIT-END */
 
-/* ---------- Custom map from a phone scan ---------- */
-const SCAN_PAGE = 'https://srivatsa-dotcom.github.io/robot-urdf-studio/scan.html';
-const worldKeys = () => Object.keys(WORLDS).filter(k => k !== 'custom' || state.scan);
-let scanCache = { id: null, r: null };
-
-// Voxels (cm, ROS frame) -> floor height, 5 cm occupancy grid, merged obstacle boxes
-function analyzeScan(scan) {
-  if (scanCache.id === scan.id) return scanCache.r;
-  const V = scan.v, N = V.length / 3, hist = new Map();
-  // floor = densest level from 2 m below the start to 0.6 m above (scans without a floor reference start at hand height)
-  for (let i = 0; i < N; i++) { const z = V[i * 3 + 2]; if (z >= -200 && z <= 60) hist.set(z, (hist.get(z) || 0) + 1); }
-  let floorZ = 0, best = -1;
-  hist.forEach((c, z) => { if (c > best) { best = c; floorZ = z; } });
-  const lo = floorZ + 10, hi = floorZ + 220, R = 5;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (let i = 0; i < N; i++) {
-    const x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
-    if (z < floorZ - 8 || z > hi) continue;
-    minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-  }
-  if (!isFinite(minX)) { minX = maxX = minY = maxY = 0; }
-  minX = Math.min(minX, -50); minY = Math.min(minY, -50); maxX = Math.max(maxX, 50); maxY = Math.max(maxY, 50);
-  const nx = Math.round((maxX - minX) / R) + 1, ny = Math.round((maxY - minY) / R) + 1;
-  const occ = new Uint8Array(nx * ny), top = new Int16Array(nx * ny);
-  for (let i = 0; i < N; i++) {
-    const x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
-    const gx = Math.round((x - minX) / R), gy = Math.round((y - minY) / R);
-    if (gx < 0 || gy < 0 || gx >= nx || gy >= ny) continue;
-    const k = gy * nx + gx;
-    if (z >= lo && z <= hi) { occ[k] = 2; top[k] = Math.max(top[k], z - floorZ); }
-    else if (Math.abs(z - floorZ) < 8 && occ[k] !== 2) occ[k] = 1;
-  }
-  // tidy the grid: drop obstacle specks under 8 cells (0.02 m²), then close 1-cell gaps in walls
-  {
-    const lab = new Int32Array(nx * ny).fill(-1), stack = [];
-    for (let k0 = 0; k0 < nx * ny; k0++) {
-      if (occ[k0] !== 2 || lab[k0] >= 0) continue;
-      const comp = []; lab[k0] = k0; stack.push(k0);
-      while (stack.length) {
-        const k = stack.pop(); comp.push(k);
-        const gx = k % nx, gy = (k / nx) | 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const xx = gx + dx, yy = gy + dy; if (xx < 0 || yy < 0 || xx >= nx || yy >= ny) continue;
-          const kk = yy * nx + xx; if (occ[kk] === 2 && lab[kk] < 0) { lab[kk] = k0; stack.push(kk); }
-        }
-      }
-      if (comp.length < 8) comp.forEach(k => { occ[k] = 1; top[k] = 0; });
-    }
-    const add = [];
-    for (let gy = 1; gy < ny - 1; gy++) for (let gx = 1; gx < nx - 1; gx++) {
-      const k = gy * nx + gx; if (occ[k] === 2) continue;
-      const h = occ[k - 1] === 2 && occ[k + 1] === 2, v = occ[k - nx] === 2 && occ[k + nx] === 2;
-      if (h || v) add.push([k, h ? Math.min(top[k - 1], top[k + 1]) : Math.min(top[k - nx], top[k + nx])]);
-    }
-    add.forEach(([k, t]) => { occ[k] = 2; top[k] = t; });
-  }
-  // 10 cm columns, merged into runs along x, then stacked runs along y
-  const B = 2, bx = Math.ceil(nx / B), by = Math.ceil(ny / B), Hc = new Int16Array(bx * by);
-  for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
-    const k = gy * nx + gx; if (occ[k] !== 2) continue;
-    const c = Math.floor(gy / B) * bx + Math.floor(gx / B); Hc[c] = Math.max(Hc[c], top[k] + 5);
-  }
-  const boxes = [], open = new Map();
-  for (let y = 0; y < by; y++) {
-    const runs = [];
-    for (let x = 0; x < bx; x++) {
-      const h = Hc[y * bx + x];
-      const last = runs[runs.length - 1];
-      if (h > 0 && last && last.x1 === x - 1 && Math.abs(last.h - h) <= 15) { last.x1 = x; last.h = Math.max(last.h, h); }
-      else if (h > 0) runs.push({ x0: x, x1: x, h });
-    }
-    const next = new Map();
-    runs.forEach(r => {
-      const key = r.x0 + ',' + r.x1, prev = open.get(key);
-      if (prev && Math.abs(prev.h - r.h) <= 15) { prev.y1 = y; prev.h = Math.max(prev.h, r.h); next.set(key, prev); open.delete(key); }
-      else { const b = { ...r, y0: y, y1: y }; boxes.push(b); next.set(key, b); }
-    });
-    open.clear(); next.forEach((v, k) => open.set(k, v));
-  }
-  const cell = R * B;
-  const out = boxes.map(b => ({
-    x: (minX + (b.x0 + b.x1 + 1) / 2 * cell - R / 2) / 100, y: (minY + (b.y0 + b.y1 + 1) / 2 * cell - R / 2) / 100,
-    w: (b.x1 - b.x0 + 1) * cell / 100, d: (b.y1 - b.y0 + 1) * cell / 100, h: Math.min(b.h, 220) / 100,
-  }));
-  let blocked = false;
-  for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
-    if (occ[gy * nx + gx] === 2 && Math.hypot(minX + gx * R, minY + gy * R) < 35) blocked = true;
-  }
-  const r = { floorZ, minX, minY, nx, ny, R, occ, boxes: out, blocked, W: (maxX - minX) / 100, D: (maxY - minY) / 100, cx: (minX + maxX) / 200, cy: (minY + maxY) / 200, points: N };
-  scanCache = { id: scan.id, r };
-  return r;
-}
-
-function scanEnv() {
-  const a = analyzeScan(state.scan);
-  const tone = h => h < 0.5 ? '#8796A3' : h < 1.2 ? '#62768A' : '#475A6E';
-  return { floor: '#9DA39E', W: a.W + 1, D: a.D + 1, cx: a.cx, cy: a.cy, objects: a.boxes.length ? [{ name: 'scanned_obstacles', x: 0, y: 0, yaw: 0, parts: a.boxes.map(b => EP(['box', b.w, b.d, b.h], [b.x, b.y, b.h / 2], tone(b.h))) }] : [] };
-}
-
-function mapFiles() {
-  const a = analyzeScan(state.scan), rows = [];
-  for (let gy = a.ny - 1; gy >= 0; gy--) {
-    const row = [];
-    for (let gx = 0; gx < a.nx; gx++) { const o = a.occ[gy * a.nx + gx]; row.push(o === 2 ? 0 : o === 1 ? 254 : 205); }
-    for (let i = 0; i < row.length; i += 32) rows.push(row.slice(i, i + 32).join(' '));
-  }
-  return {
-    'maps/custom_map.pgm': `P2\n# Occupancy grid from a phone scan (Robot URDF Studio). 0 occupied, 254 free, 205 unknown.\n${a.nx} ${a.ny}\n255\n${rows.join('\n')}\n`,
-    'maps/custom_map.yaml': `image: custom_map.pgm\nmode: trinary\nresolution: 0.05\norigin: [${n((a.minX - a.R / 2) / 100)}, ${n((a.minY - a.R / 2) / 100)}, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n`,
-  };
-}
-
-/* Scanner dialog: this page hosts a WebRTC peer with no STUN/TURN servers,
-   so the phone can only connect when both devices share a local network. */
-let scanPeer = null, scanConn = null, live = null;
-function scanStatus(text, kind) { $('scanStatus').textContent = text; $('scanDot').className = 'dot ' + (kind || ''); }
-function openScanner() {
-  const dlg = $('scanDlg');
-  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
-  showScanTab(scanTab);
-}
-function startPairing() {
-  $('qr').innerHTML = ''; $('scanUrl').textContent = '';
-  if (window.claude || typeof Peer === 'undefined' || typeof RTCPeerConnection === 'undefined') {
-    scanStatus('Phone scanning can\'t run inside this viewer.', 'warn');
-    $('qr').innerHTML = `<p class="muted">Open the app from GitHub Pages to scan:<br><a href="https://srivatsa-dotcom.github.io/robot-urdf-studio/" target="_blank" rel="noopener">srivatsa-dotcom.github.io/robot-urdf-studio</a></p>`;
-    return;
-  }
-  const id = 'urdfstudio-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 14);
-  const opts = { config: { iceServers: [] }, debug: 0 };
-  const ph = (new URLSearchParams(location.search).get('peerhost') || '').match(/^(localhost|127\.0\.0\.1):\d+$/) ? new URLSearchParams(location.search).get('peerhost') : null;   // local test server only
-  if (ph) { const [h, p] = ph.split(':'); Object.assign(opts, { host: h, port: +p || 9000, path: '/', secure: false }); }
-  scanStatus('Getting a QR code ready…', 'wait');
-  scanPeer = new Peer(id, opts);
-  scanPeer.on('open', () => {
-    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-    $('localHint').hidden = !local;
-    const base = !local && /^https?:$/.test(location.protocol) ? new URL('scan.html', location.href).href.split('?')[0] : SCAN_PAGE;
-    const url = `${base}?id=${id}${ph ? '&peerhost=' + ph : ''}`;
-    const q = qrcode(0, 'M'); q.addData(url); q.make();
-    $('qr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
-    $('scanUrl').textContent = url;
-    scanStatus(waitingText(), 'wait');
-  });
-  scanPeer.on('connection', c => {
-    if (scanConn) { c.close(); return; }
-    scanConn = c;
-    c.on('open', () => { scanStatus('Phone connected over Wi-Fi. Send a scan file, or tap Start scan on the phone.', 'ok'); $('scanStop').hidden = false; });
-    c.on('data', onScanMsg);
-    c.on('close', () => { scanConn = null; $('scanStop').hidden = true; if (!live.done) scanStatus('Phone disconnected.', live.v.length ? 'ok' : 'warn'); });
-  });
-  scanPeer.on('error', e => {
-    if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed') scanStatus('Can\'t reach the connection service. This computer needs internet for a few seconds to pair with the phone.', 'warn');
-    else if (e.type === 'unavailable-id') { scanPeer.destroy(); openScanner(); }
-    else scanStatus('Connection problem: ' + e.type, 'warn');
-  });
-}
-function closeScanner() {
-  try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {}
-  if (scanPeer) scanPeer.destroy();
-  scanPeer = scanConn = null; imp = null; $('scanStop').hidden = true;
-  const dlg = $('scanDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
-}
-let liveTimer = null;
-function onScanMsg(m) {
-  if (!m || typeof m !== 'object') return;
-  if (m.t === 'pts' && Array.isArray(m.v)) {
-    for (let i = 0; i + 2 < m.v.length; i += 3) {
-      const x = m.v[i] | 0, y = m.v[i + 1] | 0, z = m.v[i + 2] | 0, k = x + ',' + y + ',' + z;
-      if (live.keys.has(k) || live.keys.size >= 300000) continue;
-      live.keys.add(k); live.v.push(x, y, z);
-    }
-    $('scanUse').disabled = live.v.length < 300;
-    if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250);
-  } else if (m.t === 'pose') { live.pose = m; if (!liveTimer) liveTimer = setTimeout(() => { liveTimer = null; drawLive(); }, 250); }
-  else if (m.t === 'status' && typeof m.msg === 'string') scanStatus('Phone: ' + m.msg.slice(0, 120), m.level === 'warn' ? 'warn' : 'ok');
-  else if (m.t === 'file-start') {
-    const size = m.size | 0;
-    if (size <= 0 || size > 300e6) { scanStatus('The phone tried to send a file over 300 MB. Export a lighter scan.', 'warn'); return; }
-    live.file = { name: String(m.name || 'scan').replace(/[^\w.\- ]/g, '_').slice(0, 120), size, n: m.chunks | 0, parts: [], got: 0 };
-    scanStatus(`Receiving ${live.file.name} from the phone…`, 'wait');
-  } else if (m.t === 'file-chunk' && live.file && typeof m.d === 'string') {
-    const F = live.file;
-    const i = m.i | 0;
-    if (i >= 0 && i < F.n && typeof F.parts[i] !== 'string') { F.parts[i] = m.d; F.got++; }
-    if (F.got % 20 === 0 || F.got === F.n) scanStatus(`Receiving ${F.name}: ${Math.round(F.got / Math.max(1, F.n) * 100)}%`, 'wait');
-  } else if (m.t === 'file-end' && live.file) {
-    const F = live.file; live.file = null;
-    try {
-      if (F.got !== F.n) throw new Error('missing pieces');
-      const chunks = [];
-      for (let i = 0; i < F.n; i++) {
-        if (typeof F.parts[i] !== 'string') throw new Error('missing pieces');
-        chunks.push(Uint8Array.from(atob(F.parts[i]), c => c.charCodeAt(0)));
-      }
-      if (chunks.reduce((a, c) => a + c.length, 0) !== F.size) throw new Error('size mismatch');
-      const file = new File(chunks, F.name);
-      showScanTab('import', true);
-      onScanFile(file);
-    } catch (e) { scanStatus('The file arrived incomplete. Send it again from the phone.', 'warn'); }
-  }
-  else if (m.t === 'done') { live.done = true; drawLive(); scanStatus(live.v.length >= 300 ? 'Scan finished. Click "Use this map".' : 'Scan ended with too few points. Scan again and sweep more slowly.', live.v.length >= 300 ? 'ok' : 'warn'); }
-}
-function drawLive() {
-  const cv = $('scanMap'), ctx = cv.getContext('2d'), W = cv.width;
-  ctx.fillStyle = css('--code'); ctx.fillRect(0, 0, W, W);
-  const V = live ? live.v : [];
-  let ext = 200, x0 = 0, x1 = 0, y0 = 0, y1 = 0;
-  for (let i = 0; i < V.length; i += 3) {
-    ext = Math.max(ext, Math.abs(V[i]) + 50, Math.abs(V[i + 1]) + 50);
-    x0 = Math.min(x0, V[i]); x1 = Math.max(x1, V[i]); y0 = Math.min(y0, V[i + 1]); y1 = Math.max(y1, V[i + 1]);
-  }
-  const s = W / 2 / ext, c = W / 2;
-  // ROS top-down: +x (forward) up the canvas, +y (left) to the left
-  ctx.strokeStyle = css('--line'); ctx.lineWidth = 1;
-  for (let m = -Math.floor(ext / 100) * 100; m <= ext; m += 100) {
-    ctx.beginPath(); ctx.moveTo(c - m * s, 0); ctx.lineTo(c - m * s, W); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, c - m * s); ctx.lineTo(W, c - m * s); ctx.stroke();
-  }
-  let fz = 0;
-  if (V.length) { const h = new Map(); for (let i = 2; i < V.length; i += 3) if (V[i] > -200 && V[i] < 60) h.set(V[i], (h.get(V[i]) || 0) + 1); let b = -1; h.forEach((n2, z) => { if (n2 > b) { b = n2; fz = z; } }); }
-  for (let i = 0; i < V.length; i += 3) {
-    const dz = V[i + 2] - fz;
-    if (dz > 220) continue;
-    ctx.fillStyle = dz > 8 ? css('--accent') : css('--muted');
-    ctx.fillRect(c - V[i + 1] * s - 1.5, c - V[i] * s - 1.5, 3, 3);
-  }
-  ctx.fillStyle = css('--ok'); ctx.beginPath(); ctx.arc(c, c, 6, 0, 2 * PI); ctx.fill();
-  ctx.strokeStyle = css('--ok'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(c, c - 22); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(c - 6, c - 15); ctx.lineTo(c, c - 23); ctx.lineTo(c + 6, c - 15); ctx.stroke();
-  drawLive.view = { c, s };
-  if (live && live.pose) {
-    const p = live.pose, px = c - p.y * s, py = c - p.x * s;
-    ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 6, 0, 2 * PI); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - Math.sin(p.yaw) * 16, py - Math.cos(p.yaw) * 16); ctx.stroke();
-  }
-  const n3 = V.length / 3;
-  $('scanStats').textContent = n3 ? `${n3.toLocaleString()} points · ${((x1 - x0) / 100).toFixed(1)} × ${((y1 - y0) / 100).toFixed(1)} m · green arrow = robot start and heading${scanTab === 'phone' ? ', ring = phone' : ''}` : 'No points yet';
-}
-async function useScan() {
-  if (!live || live.v.length < 300) return;
-  state.scan = { id: Date.now(), v: live.v.slice() };
-  let note = '';
-  if (imp && scanTab === 'import' && imp.files) {
-    const cleanable = imp.ext === 'obj' || imp.ext === 'stl' || (imp.ext === 'ply' && !!imp.files[imp.main] && /element face [1-9]/.test(new TextDecoder().decode(imp.files[imp.main].slice(0, 4096))));
-    let clean = null;
-    if (cleanable) {
-      $('scanUse').disabled = true; scanStatus('Levelling the floor and removing loose scraps…', 'wait');
-      await new Promise(r => setTimeout(r, 30));
-      try { clean = await cleanScanMesh(imp); } catch (e) { clean = null; }
-    }
-    if (clean) {
-      state.scan.v = clean.pts;
-      state.scan.mesh = { ext: 'obj', matrix: new THREE.Matrix4().toArray(), name: imp.name, clean: true, format: 2 };
-      meshFiles = { id: state.scan.id, files: clean.files, main: 'scan_model.obj' };
-      note = ` Floor levelled${imp.tilt > 0.3 ? ` (${imp.tilt.toFixed(1)}° tilt corrected)` : ''}, ${clean.dropped.toLocaleString()} loose triangles removed${clean.simplified ? `, simplified to about ${(clean.total - clean.dropped - clean.simplified).toLocaleString()} triangles for Gazebo` : ''}.`;
-    } else {
-      state.scan.mesh = { ext: imp.ext, matrix: meshMatrix(imp), name: imp.name };
-      meshFiles = { id: state.scan.id, files: imp.files, main: imp.main };
-    }
-    idbPut(meshFiles);
-  } else meshFiles = null;
-  state.world = 'custom';
-  saveScan();
-  closeScanner();
-  rebuild(); overview();
-  const a = analyzeScan(state.scan);
-  toast(`Custom map ready: ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.${note}${a.blocked ? ' Something was detected at the robot start; clear that spot or rescan from an open area.' : ''}`, a.blocked);
-}
-/* ---------- Import a 3D scan file (Scaniverse, Polycam, …) ----------
-   Mesh triangles are sampled into points, turned z-up with the floor at 0, then the
-   viewer picks the robot start and heading on the top-down map. */
-const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/';
-let imp = null;     // { raw, pts, start: [x, y], heading, name }
-let scanTab = 'import';
-try { scanTab = localStorage.getItem('urdf-studio-scantab') || 'import'; } catch (e) {}
-
-const SCAN_EXTS = ['obj', 'ply', 'stl', 'glb', 'gltf'];
-// Scaniverse and others ship OBJ inside a .zip with its .mtl and textures: use the largest model file in it
-async function unzipScan(file) {
-  if (typeof JSZip === 'undefined') throw new Error('The zip reader did not load. Check your internet connection and reload.');
-  let zip;
-  try { zip = await JSZip.loadAsync(await file.arrayBuffer()); } catch (e) { throw new Error(`${file.name} isn't a readable zip file.`); }
-  const models = Object.values(zip.files).filter(z => !z.dir && !/(^|\/)__MACOSX\//.test(z.name) && SCAN_EXTS.includes((z.name.split('.').pop() || '').toLowerCase()));
-  if (!models.length) throw new Error(`${file.name} has no OBJ, PLY, STL or GLB file inside.`);
-  const data = await Promise.all(models.map(z => z.async('arraybuffer')));
-  const sizes = data.map(d => d.byteLength), i = sizes.indexOf(Math.max(...sizes));
-  const extras = {};
-  for (const z of Object.values(zip.files)) {
-    if (z.dir || /(^|\/)__MACOSX\//.test(z.name) || z === models[i]) continue;
-    if (/\.(mtl|jpe?g|png|webp|bmp|tga)$/i.test(z.name)) extras[z.name.split('/').pop()] = await z.async('arraybuffer');
-  }
-  const main = new File([data[i]], models[i].name.split('/').pop());
-  main.extras = extras;
-  return main;
-}
-
-async function parseScanFile(file) {
-  if (/\.zip$/i.test(file.name)) file = await unzipScan(file);
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  const buf = await file.arrayBuffer();
-  const files = { ...(file.extras || {}), [file.name]: buf };
-  if (typeof THREE === 'undefined' || !THREE.OBJLoader) throw new Error('The 3D file readers did not load. Check your internet connection and reload.');
-  let obj;
-  if (ext === 'obj') obj = new THREE.OBJLoader().parse(new TextDecoder().decode(buf));
-  else if (ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf));
-  else if (ext === 'ply') {
-    const head = new TextDecoder().decode(buf.slice(0, 4096));
-    const g = new THREE.PLYLoader().parse(buf);
-    obj = /element face [1-9]/.test(head) ? new THREE.Mesh(g) : new THREE.Points(g);
-  } else if (ext === 'glb' || ext === 'gltf') {
-    obj = await new Promise((res, rej) => {
-      const l = new THREE.GLTFLoader();
-      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
-      l.parse(buf, '', g => res(g.scene), e => rej(new Error('Could not read this glTF file' + (ext === 'gltf' ? '. Export as .glb (a single file) instead.' : '.'))));
-    });
-  } else throw new Error(`.${ext} files aren't supported. Export the scan as OBJ, PLY, STL or GLB (a .zip of one works too).`);
-  obj.updateMatrixWorld(true);
-  const out = [], r = rng(1), MAX = 3e6;
-  const A = new THREE.Vector3(), Bv = new THREE.Vector3(), C = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
-  obj.traverse(o => {
-    const g = o.geometry; if (!g || !g.attributes || !g.attributes.position) return;
-    const pos = g.attributes.position, M = o.matrixWorld, idx = g.index;
-    if (o.isPoints || (!idx && pos.count % 3)) {
-      for (let i = 0; i < pos.count && out.length < MAX * 3; i++) { A.fromBufferAttribute(pos, i).applyMatrix4(M); out.push(A.x, A.y, A.z); }
-      return;
-    }
-    const nt = (idx ? idx.count : pos.count) / 3;
-    for (let t = 0; t < nt && out.length < MAX * 3; t++) {
-      const ia = idx ? idx.getX(t * 3) : t * 3, ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
-      A.fromBufferAttribute(pos, ia).applyMatrix4(M); Bv.fromBufferAttribute(pos, ib).applyMatrix4(M); C.fromBufferAttribute(pos, ic).applyMatrix4(M);
-      out.push(A.x, A.y, A.z);
-      const area = e1.subVectors(Bv, A).cross(e2.subVectors(C, A)).length() / 2;
-      const k = Math.min(50000, Math.floor(area / 9e-4));   // about one sample per 3 cm × 3 cm (file units; rescaled below if not meters)
-      for (let s = 0; s < k; s++) {
-        let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
-        out.push(A.x + (Bv.x - A.x) * u + (C.x - A.x) * v, A.y + (Bv.y - A.y) * u + (C.y - A.y) * v, A.z + (Bv.z - A.z) * u + (C.z - A.z) * v);
-      }
-    }
-  });
-  if (out.length < 300) throw new Error('This file has almost no geometry. Export the full scan as a mesh or point cloud.');
-  return { raw: Float32Array.from(out), ext, files, main: file.name };
-}
-
-function guessUnit(raw) {
-  let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-  for (let i = 0; i < raw.length; i += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], raw[i + a]); hi[a] = Math.max(hi[a], raw[i + a]); }
-  const d = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
-  return d > 1500 ? 'mm' : d > 80 ? 'cm' : 'm';
-}
-
-// Rotate to z-up, scale to meters, pick the floor (denser end), voxelize to 5 cm
-function orientScan(raw, up, unit, flipOpt) {
-  const s = { m: 1, cm: 0.01, mm: 0.001 }[unit];
-  const N = raw.length / 3, P = new Float32Array(raw.length);
-  for (let i = 0; i < N; i++) {
-    const x = raw[i * 3] * s, y = raw[i * 3 + 1] * s, z = raw[i * 3 + 2] * s;
-    if (up === 'y') { P[i * 3] = x; P[i * 3 + 1] = -z; P[i * 3 + 2] = y; } else { P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; }
-  }
-  const slab = sign => {   // densest 5 cm slab within 1 m of the low (sign 1) or high (sign -1) end
-    let ext = Infinity; for (let i = 2; i < P.length; i += 3) ext = Math.min(ext, sign * P[i]);
-    const h = new Map(); let best = 0;
-    for (let i = 2; i < P.length; i += 3) { const d = sign * P[i] - ext; if (d <= 1) { const b = Math.floor(d / 0.05); const c = (h.get(b) || 0) + 1; h.set(b, c); if (c > best) best = c; } }
-    return best;
-  };
-  let flip = slab(-1) > slab(1) * 1.3;               // floor usually has more points than the ceiling
-  if (flipOpt) flip = !flip;
-  if (flip) for (let i = 0; i < N; i++) { P[i * 3 + 1] = -P[i * 3 + 1]; P[i * 3 + 2] = -P[i * 3 + 2]; }
-  // floor plane: RANSAC on the lowest 60 cm (above the 1st percentile, so stray points below the floor don't count)
-  const zs = []; for (let i = 2; i < P.length; i += 3 * Math.max(1, Math.floor(N / 50000))) zs.push(P[i]);
-  zs.sort((a, b) => a - b);
-  const base = zs[Math.floor(zs.length * 0.01)] || 0, low = [];
-  for (let i = 0; i < N; i++) if (P[i * 3 + 2] <= base + 0.6) low.push(i);
-  const sample = low.length > 20000 ? Array.from({ length: 20000 }, (_, k) => low[Math.floor(k * low.length / 20000)]) : low;
-  const r = rng(9), at = k => [P[k * 3], P[k * 3 + 1], P[k * 3 + 2]];
-  let best = null, bestN = 0;
-  for (let it = 0; it < 300 && sample.length >= 3; it++) {
-    const a = at(sample[Math.floor(r() * sample.length)]), b = at(sample[Math.floor(r() * sample.length)]), c = at(sample[Math.floor(r() * sample.length)]);
-    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    let nrm = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-    const len = Math.hypot(...nrm); if (len < 1e-9) continue;
-    nrm = nrm.map(q => q / len); if (nrm[2] < 0) nrm = nrm.map(q => -q);
-    if (nrm[2] < 0.95) continue;                                    // floor tilts less than ~18°
-    const d = -(nrm[0] * a[0] + nrm[1] * a[1] + nrm[2] * a[2]);
-    let cnt = 0; for (const k of sample) { const p = at(k); if (Math.abs(nrm[0] * p[0] + nrm[1] * p[1] + nrm[2] * p[2] + d) < 0.03) cnt++; }
-    if (cnt > bestN) { bestN = cnt; best = nrm; }
-  }
-  // rotation taking the floor normal to +z
-  const n0 = best || [0, 0, 1], q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(...n0), new THREE.Vector3(0, 0, 1));
-  const L = new THREE.Matrix4().makeRotationFromQuaternion(q), e = L.elements, v3t = new THREE.Vector3();
-  for (let i = 0; i < N; i++) { v3t.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).applyMatrix4(L); P[i * 3] = v3t.x; P[i * 3 + 1] = v3t.y; P[i * 3 + 2] = v3t.z; }
-  // floor height: 80th percentile of points within 4 cm of the levelled floor, so wheels sit on top of the bumps
-  const lz = []; for (const k of sample) lz.push(P[k * 3 + 2]);
-  lz.sort((a, b) => a - b);
-  let mode = lz[Math.floor(lz.length * 0.05)] || 0, bestC = 0;
-  for (let j = 0; j < lz.length; j += Math.max(1, Math.floor(lz.length / 400))) { let c = 0; for (const z of lz) if (Math.abs(z - lz[j]) < 0.03) c++; if (c > bestC) { bestC = c; mode = lz[j]; } }
-  const near = lz.filter(z => Math.abs(z - mode) < 0.04);
-  const floor = near.length ? near[Math.floor(near.length * 0.8)] : mode;
-  const seen = new Set(), pts = [];
-  let fx = 0, fy = 0, fn = 0;
-  for (let i = 0; i < N; i++) {
-    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2] - floor;
-    const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20);
-    if (seen.has(k)) continue; seen.add(k);
-    pts.push(Math.round(x * 20) / 20, Math.round(y * 20) / 20, Math.round(z * 20) / 20);
-    if (Math.abs(z) < 0.06) { fx += x; fy += y; fn++; }
-  }
-  return { pts: Float32Array.from(pts), start: fn ? [fx / fn, fy / fn] : [0, 0], flipped: flip, floor, scale: s, level: Array.from(e),
-    tilt: Math.acos(Math.min(1, n0[2])) * 180 / PI };
-}
-
-// Robot frame: origin at the chosen start, x along the chosen heading
-function applyImport() {
-  if (!imp) return;
-  const [sx, sy] = imp.start, c = Math.cos(imp.heading), s = Math.sin(imp.heading), P = imp.pts;
-  const keys = new Set(), v = [];
-  for (let i = 0; i < P.length; i += 3) {
-    const dx = P[i] - sx, dy = P[i + 1] - sy;
-    const x = Math.round((c * dx + s * dy) * 20) * 5, y = Math.round((-s * dx + c * dy) * 20) * 5, z = Math.round(P[i + 2] * 20) * 5;
-    const k = x + ',' + y + ',' + z; if (keys.has(k)) continue; keys.add(k); v.push(x, y, z);
-  }
-  live.v = v; live.keys = keys; live.pose = null; live.done = true;
-  $('scanUse').disabled = v.length < 300;
-  drawLive();
-}
-
-async function onScanFile(file) {
-  if (!file) return;
-  scanStatus(`Reading ${file.name}…`, 'wait');
-  $('impOpts').hidden = true;
-  try {
-    const { raw, ext, files, main } = await parseScanFile(file);
-    imp = { raw, name: file.name, heading: 0, ext, files, main };
-    $('impUp').value = 'y';               // glTF is always Y-up; most phone apps export OBJ/PLY Y-up too
-    $('impUnit').value = guessUnit(raw);
-    $('impFlip').checked = false;
-    reorient();
-    $('impOpts').hidden = false;
-    scanStatus(`Loaded ${file.name}. Click the map where the robot should start, then rotate so it faces up the map.`, 'ok');
-  } catch (e) {
-    imp = null;
-    scanStatus(e.message || 'Could not read that file.', 'warn');
-  }
-}
-function reorient() {
-  if (!imp) return;
-  const o = orientScan(imp.raw, $('impUp').value, $('impUnit').value, $('impFlip').checked);
-  imp.pts = o.pts; imp.start = o.start; imp.heading = 0;
-  Object.assign(imp, { up: $('impUp').value, scale: o.scale, floor: o.floor, flipped: o.flipped, level: o.level, tilt: o.tilt });
-  applyImport();
-}
-function rotateImport(deg) { if (!imp) return; imp.heading += deg * PI / 180; applyImport(); }
-function clickImportMap(e) {
-  if (!imp || scanTab !== 'import' || !drawLive.view) return;
-  const cv = $('scanMap'), rect = cv.getBoundingClientRect();
-  const px = (e.clientX - rect.left) * cv.width / rect.width, py = (e.clientY - rect.top) * cv.height / rect.height;
-  const { c, s } = drawLive.view;
-  const rx = (c - py) / s / 100, ry = (c - px) / s / 100;      // meters in the current robot frame
-  const ch = Math.cos(imp.heading), sh = Math.sin(imp.heading);
-  imp.start = [imp.start[0] + ch * rx - sh * ry, imp.start[1] + sh * rx + ch * ry];
-  applyImport();
-}
-
-let phoneDevice = 'android';
-try { phoneDevice = localStorage.getItem('urdf-studio-device') || 'android'; } catch (e) {}
-function showDevice(d) {
-  phoneDevice = d;
-  try { localStorage.setItem('urdf-studio-device', d); } catch (e) {}
-  $('panePhone').dataset.device = d;
-  document.querySelectorAll('.devpick button').forEach(b => b.setAttribute('aria-checked', b.dataset.device === d));
-  if (scanPeer && !scanConn && $('scanUrl').textContent) scanStatus(waitingText(), 'wait');
-}
-const waitingText = () => phoneDevice === 'iphone' ? 'Waiting for the iPhone. Follow the steps, then scan the QR code to send the file.' : 'Scan the QR code with your Android phone. Both devices must be on the same Wi-Fi.';
-function showScanTab(tab, keepPeer) {
-  scanTab = tab;
-  try { localStorage.setItem('urdf-studio-scantab', tab); } catch (e) {}
-  $('tabImport').setAttribute('aria-selected', tab === 'import');
-  $('tabPhone').setAttribute('aria-selected', tab === 'phone');
-  $('paneImport').hidden = tab !== 'import';
-  $('panePhone').hidden = tab !== 'phone';
-  live = { v: [], keys: new Set(), pose: null, done: false };
-  $('scanUse').disabled = true;
-  if (tab === 'phone') { imp = null; $('impOpts').hidden = true; showDevice(phoneDevice); if (!scanPeer) startPairing(); }
-  else {
-    if (scanPeer && !keepPeer) { scanPeer.destroy(); scanPeer = scanConn = null; $('scanStop').hidden = true; }
-    if (!keepPeer) scanStatus('Choose a scan file, or use the QR tab to send one straight from your phone.', '');
-  }
-  drawLive();
-}
-
-function saveScan() {
-  try { localStorage.setItem('urdf-studio-scan', state.scan ? JSON.stringify(state.scan) : ''); } catch (e) {}
-}
-
-/* ---------- The scanned mesh itself (preview, Gazebo visual, download) ----------
-   Points from the scan still drive the Nav2 map and the invisible collision blocks;
-   the original model is what people and simulated cameras see. */
-let meshFiles = null;          // { id, files: { name: ArrayBuffer }, main }
-const CEILING_CUT = 2.3;       // m above the floor: hide scanned ceilings so rooms are visible from above
-const hasMesh = () => !!(state.scan && state.scan.mesh && meshFiles && meshFiles.id === state.scan.id);
+/* ---------- Your own Gazebo world: a .sdf/.world file, or a .zip with the world and its models ---------- */
+const worldKeys = () => Object.keys(WORLDS).filter(k => k !== 'custom' || state.custom);
+let worldAssets = null;              // { id, files: { 'path/relative/to/the/world': Uint8Array } }
+let envCache = { id: null, env: null };
+const WORLD_LIMIT = 60;              // m: the preview and the RL map cover at most this much ground
 
 const idb = (() => {
   let p = null;
@@ -4002,396 +3409,165 @@ const idb = (() => {
   }));
 })();
 async function idbPut(v) {
-  try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('meshes', 'readwrite'); tx.objectStore('meshes').put(v, 'scan'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {}
+  try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('meshes', 'readwrite'); tx.objectStore('meshes').put(v, 'world'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {}
 }
 async function idbGet() {
-  try { const db = await idb(); return await new Promise((res, rej) => { const r = db.transaction('meshes').objectStore('meshes').get('scan'); r.onsuccess = () => res(r.result || null); r.onerror = () => rej(r.error); }); } catch (e) { return null; }
+  try { const db = await idb(); return await new Promise((res, rej) => { const r = db.transaction('meshes').objectStore('meshes').get('world'); r.onsuccess = () => res(r.result || null); r.onerror = () => rej(r.error); }); } catch (e) { return null; }
 }
 
-// File coordinates -> robot frame (meters, z up, floor at 0, origin at the chosen start)
-function meshMatrix(i) {
-  const M = new THREE.Matrix4(), t = new THREE.Matrix4();
-  M.makeRotationZ(-i.heading);
-  M.multiply(t.makeTranslation(-i.start[0], -i.start[1], 0));
-  M.multiply(t.makeTranslation(0, 0, -i.floor));
-  if (i.level) M.multiply(t.fromArray(i.level));
-  if (i.flipped) M.multiply(t.makeRotationX(PI));
-  if (i.up === 'y') M.multiply(t.makeRotationX(H));
-  M.multiply(t.makeScale(i.scale, i.scale, i.scale));
-  return M.toArray();
+const kid = (el, name) => el && [...el.children].find(c => c.localName === name);
+const kidsOf = (el, name) => el ? [...el.children].filter(c => c.localName === name) : [];
+const nums = (t, k) => { const v = (t || '').trim().split(/\s+/).map(Number); return Array.from({ length: k }, (_, i) => isFinite(v[i]) ? v[i] : 0); };
+const poseOf = el => nums(kid(el, 'pose')?.textContent, 6);
+
+function parseWorldXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('This file is not valid XML. Open it in a text editor and check that it is a complete .sdf file.');
+  const root = doc.documentElement;
+  if (root.localName !== 'sdf') throw new Error('The file has no <sdf> root element, so it is not an SDF world.');
+  const wd = kid(root, 'world');
+  if (!wd) throw new Error('The .sdf has no <world> inside. It may describe a single model; upload a world file instead.');
+  return { doc, wd };
+}
+function sdfColor(el) {
+  const m = kid(el, 'material'), d = m && (kid(m, 'diffuse') || kid(m, 'ambient'));
+  if (!d) return '#9AA5B5';
+  return '#' + nums(d.textContent, 3).map(x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join('');
+}
+function sdfGeom(el) {
+  const g = kid(el, 'geometry'); if (!g) return null;
+  const b = kid(g, 'box'); if (b) { const v = nums(kid(b, 'size')?.textContent, 3); return ['box', v[0] || 1, v[1] || 1, v[2] || 1]; }
+  const c = kid(g, 'cylinder'); if (c) return ['cyl', +kid(c, 'radius')?.textContent || 0.5, +kid(c, 'length')?.textContent || 1];
+  const sp = kid(g, 'sphere'); if (sp) return ['sph', +kid(sp, 'radius')?.textContent || 0.5];
+  if (kid(g, 'mesh')) return 'mesh';
+  return null;
 }
 
-async function buildScanMesh(mf, mesh) {
-  const obj = await loadScanObject(mf.files, mf.main, mesh.ext);
-  const clip = mesh.clean ? [] : [new THREE.Plane(new THREE.Vector3(0, -1, 0), CEILING_CUT)];   // three.js world is y-up
-  obj.traverse(o => {
-    if (!o.material) return;
-    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
-      m.side = THREE.DoubleSide; m.clippingPlanes = clip;
-      if (m.map) m.map.encoding = THREE.sRGBEncoding;
-      m.needsUpdate = true;
+// The world's simple shapes, in the same form as the built-in worlds: drawn in the preview, rasterised for RL
+function customEnv() {
+  const c = state.custom;
+  if (envCache.id === c.id) return envCache.env;
+  const { wd } = parseWorldXml(c.sdf);
+  const objects = [], stats = { models: 0, shapes: 0, meshes: 0, includes: kidsOf(wd, 'include').length };
+  const rot = (x, y, a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+  let ext = 3;
+  kidsOf(wd, 'model').forEach((m, mi) => {
+    stats.models++;
+    const mp = poseOf(m);
+    kidsOf(m, 'link').forEach(l => {
+      const lp = poseOf(l);
+      [['visual', false], ['collision', true]].forEach(([tag, col]) => kidsOf(l, tag).forEach(el => {
+        const g = sdfGeom(el);
+        if (g === 'mesh') { if (!col) stats.meshes++; return; }
+        if (!g) return;
+        const ep = poseOf(el);
+        const [ex, ey] = rot(ep[0], ep[1], lp[5]);
+        const [wx, wy] = rot(lp[0] + ex, lp[1] + ey, mp[5]);
+        const x = mp[0] + wx, y = mp[1] + wy, z = mp[2] + lp[2] + ep[2], yaw = mp[5] + lp[5] + ep[5];
+        const hz = g[0] === 'box' ? g[3] / 2 : g[0] === 'cyl' ? g[2] / 2 : g[1];
+        // a thin, wide slab at ground level is a floor, not an obstacle
+        const floorish = g[0] === 'box' && g[3] <= 0.12 && z + hz <= 0.12 && g[1] * g[2] >= 4;
+        if (!col) stats.shapes++;
+        if (!floorish) ext = Math.max(ext, Math.abs(x) + (g[0] === 'box' ? Math.hypot(g[1], g[2]) / 2 : g[1]), Math.abs(y) + (g[0] === 'box' ? Math.hypot(g[1], g[2]) / 2 : g[1]));
+        objects.push({ name: `m${mi}`, x, y, yaw, parts: [{ g, xyz: [0, 0, z], color: col ? '#808080' : sdfColor(el), col: col && !floorish, hidden: col }] });
+      }));
     });
-    o.receiveShadow = true;
   });
-  obj.matrixAutoUpdate = false;
-  obj.matrix.fromArray(mesh.matrix);
-  setTimeout(() => (obj.userData.urls || []).forEach(u => URL.revokeObjectURL(u)), 20000);
-  return obj;
+  const W = Math.min(WORLD_LIMIT, Math.ceil(ext * 2 + 1));
+  envCache = { id: c.id, env: { floor: '#B4B7B2', W, D: W, objects, stats } };
+  return envCache.env;
 }
 
-/* ---------- Clean a scanned mesh once, at "Use this map" ----------
-   Bakes the scan -> robot transform into the vertices, drops ceiling triangles and
-   small detached scraps, and writes a tidy OBJ that both the preview and Gazebo use.
-   The map points are re-sampled from the same cleaned surfaces. */
-async function loadScanObject(files, main, ext) {
-  const buf = files[main], dec = b => new TextDecoder().decode(b);
-  const urls = [], mgr = new THREE.LoadingManager();
-  mgr.setURLModifier(u => {
-    const k = decodeURIComponent(u.split(/[\\/]/).pop());
-    if (!files[k]) return u;
-    const url = URL.createObjectURL(new Blob([files[k]])); urls.push(url); return url;
+// The uploaded world as it ships: renamed to the name the launch files and bridges use, with the systems the robot needs
+function customWorldSdf(M) {
+  const g = gzNames(), S = M.sensors, { doc, wd } = parseWorldXml(state.custom.sdf);
+  wd.setAttribute('name', WORLD_NAME);
+  const have = kidsOf(wd, 'plugin').map(p => (p.getAttribute('name') || '') + ' ' + (p.getAttribute('filename') || ''));
+  const need = [['physics', 'Physics'], ['user-commands', 'UserCommands'], ['scene-broadcaster', 'SceneBroadcaster']];
+  if (S.lidar || S.camera) need.push(['sensors', 'Sensors']);
+  if (S.imu) need.push(['imu', 'Imu']);
+  const first = wd.firstChild;
+  need.forEach(([lib, cls]) => {
+    if (have.some(h => new RegExp(`::${cls}\\b|-${lib}-system`).test(h))) return;
+    const p = doc.createElement('plugin');
+    p.setAttribute('filename', g.lib(lib)); p.setAttribute('name', g.cls(cls));
+    if (lib === 'sensors') { const r = doc.createElement('render_engine'); r.textContent = 'ogre2'; p.appendChild(r); }
+    wd.insertBefore(doc.createTextNode('\n    '), first); wd.insertBefore(p, first);
   });
-  let obj;
-  if (ext === 'obj') {
-    const text = typeof buf === 'string' ? buf : dec(buf), loader = new THREE.OBJLoader(mgr), lib = text.match(/^mtllib\s+(.+?)\s*$/m);
-    const mtlKey = lib && Object.keys(files).find(k => k === lib[1].split(/[\\/]/).pop());
-    if (mtlKey && THREE.MTLLoader) {
-      const mtl = typeof files[mtlKey] === 'string' ? files[mtlKey] : dec(files[mtlKey]);
-      const mats = new THREE.MTLLoader(mgr).setResourcePath('').parse(mtl, '');
-      mats.preload(); loader.setMaterials(mats);
-    }
-    obj = loader.parse(text);
-  } else if (ext === 'stl') obj = new THREE.Mesh(new THREE.STLLoader().parse(buf), new THREE.MeshStandardMaterial({ color: 0xb8bcbf }));
-  else if (ext === 'ply') {
-    const g = new THREE.PLYLoader().parse(buf), vc = !!g.attributes.color;
-    obj = /element face [1-9]/.test(dec(buf.slice(0, 4096)))
-      ? new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: vc ? 0xffffff : 0xb8bcbf, vertexColors: vc }))
-      : new THREE.Points(g, new THREE.PointsMaterial({ size: 0.025, color: vc ? 0xffffff : 0x8796a3, vertexColors: vc }));
-  } else {
-    obj = await new Promise((res, rej) => {
-      const l = new THREE.GLTFLoader(mgr);
-      if (THREE.DRACOLoader) { const d = new THREE.DRACOLoader(); d.setDecoderPath(DRACO_PATH); l.setDRACOLoader(d); }
-      l.parse(buf, '', g => res(g.scene), rej);
-    });
-  }
-  obj.userData.urls = urls;
-  return obj;
+  if (worldAssets && worldAssets.id === state.custom.id) [...doc.getElementsByTagName('uri')].forEach(u => {
+    const t = u.textContent.trim();
+    if (t && !/^[a-z][\w+.-]*:\/\//i.test(t) && !t.startsWith('/')) u.textContent = 'custom_assets/' + t.replace(/^\.\//, '');
+  });
+  const label = state.custom.name.replace(/--+/g, '-');
+  return `<?xml version="1.0"?>\n<!-- Your own world (${label}), prepared by Robot URDF Studio: renamed to "${WORLD_NAME}" and given the systems this robot needs. -->\n`
+    + new XMLSerializer().serializeToString(doc.documentElement) + '\n';
+}
+function customWorldAssets() {
+  if (!state.custom || !worldAssets || worldAssets.id !== state.custom.id) return {};
+  return Object.fromEntries(Object.entries(worldAssets.files).map(([p, bin]) => [`worlds/custom_assets/${p}`, { bin }]));
+}
+function spawnArgs() {
+  const sp = state.world === 'custom' && state.custom ? state.custom.spawn : { x: 0, y: 0, yaw: 0 };
+  return [`DeclareLaunchArgument('x', default_value='${n(sp.x)}', description='Robot start x (m)'),`,
+    `DeclareLaunchArgument('y', default_value='${n(sp.y)}', description='Robot start y (m)'),`,
+    `DeclareLaunchArgument('yaw', default_value='${n(sp.yaw * PI / 180)}', description='Robot start heading (rad)'),`].join('\n        ');
 }
 
-async function cleanScanMesh(i) {
-  const obj = await loadScanObject(i.files, i.main, i.ext);
-  obj.updateMatrixWorld(true);
-  const M = new THREE.Matrix4().fromArray(meshMatrix(i));
-  // gather triangles in the robot frame, grouped by material
-  const parts = [];
-  obj.traverse(o => {
-    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
-    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
-    const W = new THREE.Matrix4().multiplyMatrices(M, o.matrixWorld);
-    const pos = g.attributes.position.clone().applyMatrix4(W).array, uv = g.attributes.uv ? g.attributes.uv.array : null;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    const groups = g.groups && g.groups.length ? g.groups : [{ start: 0, count: pos.length / 3, materialIndex: 0 }];
-    groups.forEach(gr => parts.push({ pos, uv, start: gr.start, count: gr.count, mat: (mats[gr.materialIndex] || mats[0] || {}).name || '' }));
-  });
-  if (!parts.length) return null;
-  // connected pieces: weld vertices at 1 cm, union triangles that share one
-  const ids = new Map(), parent = [], find = x => { while (parent[x] !== x) x = parent[x] = parent[parent[x]]; return x; };
-  const tris = [];
-  parts.forEach((p, pi) => {
-    for (let t = p.start; t < p.start + p.count; t += 3) {
-      const a = p.pos, z = Math.min(a[t * 3 + 2], a[t * 3 + 5], a[t * 3 + 8]);
-      if (z > CEILING_CUT) continue;                          // ceiling
-      const v = [0, 1, 2].map(k => {
-        const key = Math.round(a[(t + k) * 3] * 100) + ',' + Math.round(a[(t + k) * 3 + 1] * 100) + ',' + Math.round(a[(t + k) * 3 + 2] * 100);
-        let id = ids.get(key); if (id === undefined) { id = parent.length; parent.push(id); ids.set(key, id); }
-        return id;
-      });
-      const r = find(v[0]); parent[find(v[1])] = r; parent[find(v[2])] = r;
-      tris.push(pi, t, v[0]);
-    }
-  });
-  // per piece: triangle count and centre; the biggest piece is the room itself
-  const size = new Map(), cx = new Map(), cy = new Map();
-  for (let k = 0; k < tris.length; k += 3) {
-    const r = find(tris[k + 2]), p = parts[tris[k]].pos, t = tris[k + 1];
-    size.set(r, (size.get(r) || 0) + 1);
-    cx.set(r, (cx.get(r) || 0) + p[t * 3]); cy.set(r, (cy.get(r) || 0) + p[t * 3 + 1]);
-  }
-  let main = null; size.forEach((n, r) => { if (main === null || n > size.get(main)) main = r; });
-  let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
-  for (let k = 0; k < tris.length; k += 3) {
-    if (find(tris[k + 2]) !== main) continue;
-    const p = parts[tris[k]].pos, t = tris[k + 1];
-    for (let c = 0; c < 3; c++) { const x = p[(t + c) * 3], y = p[(t + c) * 3 + 1]; bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x); by0 = Math.min(by0, y); by1 = Math.max(by1, y); }
-  }
-  // drop a piece only if it is tiny or sits outside the room's footprint (scraps seen through windows, stray bits)
-  const total = tris.length / 3, tiny = Math.max(20, total * 0.002), keep = new Map();
-  size.forEach((n, r) => {
-    const mx = cx.get(r) / n, my = cy.get(r) / n;
-    const inside = mx > bx0 - 0.3 && mx < bx1 + 0.3 && my > by0 - 0.3 && my < by1 + 0.3;
-    keep.set(r, r === main || (n >= tiny && inside));
-  });
-  // Write the cleaned OBJ in a form Gazebo's loader handles well: every vertex has a normal,
-  // every face has the same v/vt/vn layout, groups of at most 50k triangles, and very dense
-  // scans are simplified (vertex clustering) to about 400k triangles.
-  let keptTotal = 0;
-  for (let k = 0; k < tris.length; k += 3) if (keep.get(find(tris[k + 2]))) keptTotal++;
-  const TARGET = 400000, cell = keptTotal > TARGET ? 0.01 * Math.sqrt(keptTotal / TARGET) * 1.6 : 0;
-  const anyUV = parts.some(p => p.uv);
-  const out = ['# Scanned room cleaned by Robot URDF Studio: meters, z up, robot start at the origin.'];
-  const mtlName = i.ext === 'obj' && Object.keys(i.files).some(k => /\.mtl$/i.test(k)) ? 'scan_model.mtl' : null;
-  if (mtlName) out.push('mtllib ' + mtlName);
-  let vBase = 1, kept = 0, chunkNo = 0;
-  const pts = [], seen = new Set(), r = rng(5);
-  const addPt = (x, y, z) => { const k = Math.round(x * 20) + ',' + Math.round(y * 20) + ',' + Math.round(z * 20); if (!seen.has(k)) { seen.add(k); pts.push(Math.round(x * 20) * 5, Math.round(y * 20) * 5, Math.round(z * 20) * 5); } };
-  const flush = (p, ch) => {
-    if (!ch.faces.length) return;
-    const nv = ch.pos.length / 3, nrm = new Float64Array(nv * 3);
-    ch.faces.forEach(([a, b, c]) => {   // area-weighted vertex normals
-      const P = ch.pos, ux = P[b * 3] - P[a * 3], uy = P[b * 3 + 1] - P[a * 3 + 1], uz = P[b * 3 + 2] - P[a * 3 + 2];
-      const vx = P[c * 3] - P[a * 3], vy = P[c * 3 + 1] - P[a * 3 + 1], vz = P[c * 3 + 2] - P[a * 3 + 2];
-      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-      [a, b, c].forEach(q => { nrm[q * 3] += nx; nrm[q * 3 + 1] += ny; nrm[q * 3 + 2] += nz; });
-    });
-    out.push(`g scan_${chunkNo++}`);
-    if (mtlName && p.mat) out.push('usemtl ' + p.mat);
-    for (let q = 0; q < nv; q++) out.push(`v ${ch.pos[q * 3].toFixed(4)} ${ch.pos[q * 3 + 1].toFixed(4)} ${ch.pos[q * 3 + 2].toFixed(4)}`);
-    if (anyUV) for (let q = 0; q < nv; q++) out.push(`vt ${ch.uv[q * 2].toFixed(5)} ${ch.uv[q * 2 + 1].toFixed(5)}`);
-    for (let q = 0; q < nv; q++) {
-      const x = nrm[q * 3], y = nrm[q * 3 + 1], z = nrm[q * 3 + 2], l = Math.hypot(x, y, z) || 1;
-      out.push(l === 1 && !x && !y && !z ? 'vn 0 0 1' : `vn ${(x / l).toFixed(4)} ${(y / l).toFixed(4)} ${(z / l).toFixed(4)}`);
-    }
-    ch.faces.forEach(f => out.push('f ' + f.map(x => anyUV ? `${x + vBase}/${x + vBase}/${x + vBase}` : `${x + vBase}//${x + vBase}`).join(' ')));
-    vBase += nv;
-  };
-  parts.forEach((p, pi) => {
-    let ch = { map: new Map(), pos: [], uv: [], faces: [] };
-    for (let k = 0; k < tris.length; k += 3) {
-      if (tris[k] !== pi || !keep.get(find(tris[k + 2]))) continue;
-      const t = tris[k + 1], a = p.pos, face = [];
-      for (let c = 0; c < 3; c++) {
-        const q = (t + c) * 3, u = p.uv ? p.uv[(t + c) * 2] : 0, w = p.uv ? p.uv[(t + c) * 2 + 1] : 0;
-        const key = cell
-          ? Math.round(a[q] / cell) + ',' + Math.round(a[q + 1] / cell) + ',' + Math.round(a[q + 2] / cell)
-          : a[q].toFixed(4) + ' ' + a[q + 1].toFixed(4) + ' ' + a[q + 2].toFixed(4) + (p.uv ? '|' + u.toFixed(5) + ' ' + w.toFixed(5) : '');
-        let id = ch.map.get(key);
-        if (id === undefined) { id = ch.pos.length / 3; ch.map.set(key, id); ch.pos.push(a[q], a[q + 1], a[q + 2]); ch.uv.push(u, w); }
-        face.push(id);
+async function loadWorldFile(file) {
+  if (!file) return;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  try {
+    let text = null, name = file.name;
+    const assets = {};
+    if (ext === 'zip') {
+      if (typeof JSZip === 'undefined') throw new Error('The zip reader did not load. Upload the .sdf file on its own instead.');
+      const zip = await JSZip.loadAsync(file);
+      const entries = Object.values(zip.files).filter(f => !f.dir && !/(^|\/)(__MACOSX|\.[^/]*)(\/|$)/.test(f.name));
+      const candidates = entries.filter(f => /\.(sdf|world)$/i.test(f.name)).sort((a, b) => a.name.split('/').length - b.name.split('/').length);
+      let main = null;
+      for (const f of candidates) { const t = await f.async('string'); if (/<world[\s>]/.test(t)) { main = f; text = t; break; } }
+      if (!main) throw new Error('The zip has no .sdf or .world file with a <world> inside.');
+      const base = main.name.includes('/') ? main.name.slice(0, main.name.lastIndexOf('/') + 1) : '';
+      let total = 0;
+      for (const f of entries) {
+        if (f === main) continue;
+        const rel = base && f.name.startsWith(base) ? f.name.slice(base.length) : f.name;
+        const bin = await f.async('uint8array');
+        total += bin.length;
+        if (total > 200 * 1048576) throw new Error('The zip holds more than 200 MB of files. Remove files the world does not use and try again.');
+        assets[rel] = bin;
       }
-      // map points: about one per 3 cm × 3 cm of surface (from the full-detail triangle)
-      const A = [a[t * 3], a[t * 3 + 1], a[t * 3 + 2]], B = [a[t * 3 + 3], a[t * 3 + 4], a[t * 3 + 5]], C = [a[t * 3 + 6], a[t * 3 + 7], a[t * 3 + 8]];
-      const e1 = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], e2 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
-      const area = Math.hypot(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]) / 2;
-      addPt(A[0], A[1], A[2]);
-      for (let s2 = 0, ns = Math.min(5000, Math.floor(area / 9e-4)); s2 < ns; s2++) {
-        let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
-        addPt(A[0] + e1[0] * u + e2[0] * v, A[1] + e1[1] * u + e2[1] * v, A[2] + e1[2] * u + e2[2] * v);
-      }
-      if (face[0] === face[1] || face[1] === face[2] || face[0] === face[2]) continue;   // collapsed by simplification
-      ch.faces.push(face); kept++;
-      if (ch.faces.length >= 50000) { flush(p, ch); ch = { map: new Map(), pos: [], uv: [], faces: [] }; }
-    }
-    flush(p, ch);
-  });
-  (obj.userData.urls || []).forEach(u => URL.revokeObjectURL(u));
-  if (!kept) return null;
-  // material file and textures under safe names
-  const files = { 'scan_model.obj': out.join('\n') + '\n' }, rename = {};
-  Object.keys(i.files).forEach(k => { if (k !== i.main) rename[k] = /\.mtl$/i.test(k) ? 'scan_model.mtl' : safeName(k); });
-  Object.entries(i.files).forEach(([k, buf]) => {
-    if (k === i.main) return;
-    if (/\.mtl$/i.test(k)) {
-      let t = typeof buf === 'string' ? buf : new TextDecoder().decode(buf);
-      Object.keys(rename).forEach(o => { if (o !== rename[o] && !/\.mtl$/i.test(o)) t = t.split(o).join(rename[o]); });
-      files['scan_model.mtl'] = t;
-    } else files[rename[k]] = buf;
-  });
-  return { files, pts, dropped: total - keptTotal, total, simplified: cell ? keptTotal - kept : 0 };
-}
-
-// Package copies of the scan: safe file names, ceiling faces removed from OBJ
-const safeName = s => s.replace(/[^\w.-]+/g, '_');
-function gazeboMeshOK(ext) { return ext === 'obj' || ext === 'stl' || (ext === 'glb' && state.distro !== 'humble'); }
-function scanPackageFiles() {
-  if (!hasMesh() || !gazeboMeshOK(state.scan.mesh.ext)) return {};
-  const mf = meshFiles, mesh = state.scan.mesh, out = {}, m = mesh.matrix, dec = b => new TextDecoder().decode(b);
-  if (mesh.clean) {
-    Object.entries(mf.files).forEach(([k, c]) => { out[`worlds/custom_scan/${k}`] = typeof c === 'string' ? c : { bin: c }; });
-    return out;
-  }
-  const mainName = 'scan_model.' + mesh.ext, rename = {};
-  Object.keys(mf.files).forEach(k => { rename[k] = k === mf.main ? mainName : safeName(k); });
-  Object.entries(mf.files).forEach(([k, buf]) => {
-    const ext = (k.split('.').pop() || '').toLowerCase();
-    if (k === mf.main && ext === 'obj') {
-      const lines = dec(buf).split('\n'), vz = [];
-      for (const l of lines) if (l.startsWith('v ')) { const p = l.trim().split(/\s+/); vz.push(m[2] * p[1] + m[6] * p[2] + m[10] * p[3] + m[14]); }
-      let vc = 0;
-      const kept = lines.filter(l => {
-        if (l.startsWith('v ')) { vc++; return true; }
-        if (l.startsWith('mtllib')) return true;
-        if (!l.startsWith('f ')) return true;
-        const idx = l.trim().split(/\s+/).slice(1).map(t => { const i = parseInt(t, 10); return i < 0 ? vc + i : i - 1; });
-        return !idx.every(i => vz[i] > CEILING_CUT);
-      }).map(l => l.startsWith('mtllib') ? l.replace(/^mtllib\s+(.+?)\s*$/, (_, n) => 'mtllib ' + (rename[n.split(/[\\/]/).pop()] || safeName(n))) : l);
-      out[`worlds/custom_scan/${mainName}`] = kept.join('\n');
-    } else if (ext === 'mtl') {
-      let t = dec(buf);
-      Object.keys(mf.files).forEach(o => { if (o !== rename[o]) t = t.split(o).join(rename[o]); });
-      out[`worlds/custom_scan/${rename[k]}`] = t;
-    } else out[`worlds/custom_scan/${rename[k]}`] = { bin: buf };
-  });
-  return out;
-}
-function scanMeshSdf() {
-  if (!hasMesh() || !gazeboMeshOK(state.scan.mesh.ext)) return null;
-  const M = new THREE.Matrix4().fromArray(state.scan.mesh.matrix), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
-  M.decompose(p, q, s);
-  const e = new THREE.Euler().setFromQuaternion(q, 'ZYX');
-  return ['', '    <model name="scanned_room">', '      <static>true</static>', `      <pose>${n(p.x)} ${n(p.y)} ${n(p.z)} ${n(e.x)} ${n(e.y)} ${n(e.z)}</pose>`,
-    '      <link name="link">', '        <visual name="scan">',
-    `          <geometry><mesh><uri>custom_scan/scan_model.${state.scan.mesh.ext}</uri><scale>${n(s.x)} ${n(s.x)} ${n(s.x)}</scale></mesh></geometry>`,
-    '        </visual>', '      </link>', '    </model>'];
-}
-
-/* ---------- Share scans with the app owner (Firebase on the owner's Google Cloud) ----------
-   Customers sign in anonymously and upload one zip (scan points + cleaned mesh) to
-   scans/<their id>/. Storage rules let only the owner's Google account list and read
-   everyone's folder. Nothing is shared without the consent box being ticked. */
-const FB_SDK = typeof firebase !== 'undefined' && firebase.storage && firebase.auth;
-const fbConfigured = () => !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
-const sharingAvailable = () => FB_SDK && fbConfigured() && !window.claude;
-let fbApp = null;
-function fb() {
-  if (!fbApp) {
-    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
-    fbApp = { auth: app.auth(), storage: app.storage() };
-    // ?fbemu=1 on localhost talks to the local Firebase emulators (testing only)
-    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).get('fbemu') === '1') {
-      fbApp.auth.useEmulator('http://127.0.0.1:9099'); fbApp.storage.useEmulator('127.0.0.1', 9199);
-    }
-  }
-  return fbApp;
-}
-const fmtMB = b => (b / 1048576).toFixed(1) + ' MB';
-
-async function buildShareZip() {
-  const zip = new JSZip(), a = analyzeScan(state.scan);
-  zip.file('scan.json', JSON.stringify({ version: 1, v: state.scan.v, mesh: state.scan.mesh || null, meshMain: hasMesh() ? meshFiles.main : null }));
-  if (hasMesh()) Object.entries(meshFiles.files).forEach(([k, c]) => zip.file('mesh/' + k, c));
-  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-  return { blob, a };
-}
-
-function openShare() {
-  $('shareStatus').textContent = ''; $('shareConsent').checked = false; $('shareSend').disabled = true;
-  $('shareMine').hidden = true;
-  const dlg = $('shareDlg'); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
-  if (!sharingAvailable()) {
-    $('shareStatus').textContent = window.claude ? 'Sharing works on the GitHub Pages version of the app, not inside this viewer.' : 'Sharing is not set up yet: the app owner needs to add a Firebase project (see README).';
-    $('shareConsent').disabled = true; return;
-  }
-  $('shareConsent').disabled = false;
-  const u = fb().auth.currentUser; $('shareMine').hidden = !(u && u.isAnonymous);
-}
-async function sendShare() {
-  if (!$('shareConsent').checked || !state.scan) return;
-  $('shareSend').disabled = true;
-  try {
-    const { auth, storage } = fb();
-    if (!auth.currentUser || !auth.currentUser.isAnonymous) await auth.signInAnonymously();
-    $('shareStatus').textContent = 'Packing the scan…';
-    const { blob, a } = await buildShareZip();
-    if (blob.size > 60 * 1048576) throw new Error(`This scan is ${fmtMB(blob.size)}; the limit is 60 MB. Export a lower-detail scan and import it again.`);
-    const uid = auth.currentUser.uid, id = 'scan_' + Date.now();
-    const meta = { customMetadata: {
-      name: ($('shareName').value || '').slice(0, 80), note: ($('shareNote').value || '').slice(0, 300),
-      size: `${a.W.toFixed(1)} x ${a.D.toFixed(1)} m`, robot: TYPES[state.type].label, mesh: hasMesh() ? 'yes' : 'no',
-    }, contentType: 'application/zip' };
-    const task = storage.ref(`scans/${uid}/${id}.zip`).put(blob, meta);
-    task.on('state_changed', s => { $('shareStatus').textContent = `Uploading ${fmtMB(s.bytesTransferred)} of ${fmtMB(s.totalBytes)}…`; });
-    await task;
-    $('shareStatus').textContent = 'Shared. The app owner can now open this map.'; $('shareMine').hidden = false;
+      name = main.name.split('/').pop();
+    } else if (ext === 'sdf' || ext === 'world' || ext === 'xml') {
+      text = await file.text();
+    } else throw new Error('Pick a .sdf or .world file, or a .zip that holds one.');
+    parseWorldXml(text);
+    const id = Date.now();
+    state.custom = { id, name, sdf: text, spawn: { x: 0, y: 0, yaw: 0 } };
+    worldAssets = Object.keys(assets).length ? { id, files: assets } : null;
+    saveWorld();
+    if (state.target === 'rviz') state.target = 'both';
+    state.world = 'custom';
+    syncControls(); envKey = null; rebuild(); overview();
+    toast(`Loaded your world ${name}.`);
   } catch (e) {
-    $('shareStatus').textContent = e.code === 'auth/operation-not-allowed' ? 'Sharing is switched off on the server (anonymous sign-in is disabled).'
-      : e.code === 'storage/unauthorized' ? 'The server refused the upload. The scan may be too large, or sharing is not set up yet.' : (e.message || 'Upload failed.');
-  }
-  $('shareSend').disabled = !$('shareConsent').checked;
-}
-async function deleteMine() {
-  try {
-    const { auth, storage } = fb();
-    if (!auth.currentUser || !auth.currentUser.isAnonymous) { $('shareStatus').textContent = 'No scans shared from this browser.'; return; }
-    const list = await storage.ref(`scans/${auth.currentUser.uid}`).listAll();
-    await Promise.all(list.items.map(r => r.delete()));
-    $('shareStatus').textContent = list.items.length ? `Deleted ${list.items.length} shared scan${list.items.length > 1 ? 's' : ''}.` : 'No scans shared from this browser.';
-  } catch (e) { $('shareStatus').textContent = 'Could not delete: ' + (e.message || e.code); }
-}
-
-/* Owner page */
-function openOwner() {
-  const dlg = $('ownerDlg'); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
-  $('ownerList').innerHTML = '';
-  if (!sharingAvailable()) { $('ownerStatus').textContent = window.claude ? 'Open the GitHub Pages version of the app to see shared scans.' : 'Sharing is not set up yet (see README: Shared scans).'; $('ownerSignIn').hidden = true; return; }
-  const u = fb().auth.currentUser;
-  if (u && !u.isAnonymous) loadOwnerList(); else { $('ownerSignIn').hidden = false; $('ownerStatus').textContent = 'Sign in with the Google account named in your storage rules.'; }
-}
-async function ownerSignIn() {
-  try {
-    await fb().auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-    $('ownerSignIn').hidden = true; loadOwnerList();
-  } catch (e) { $('ownerStatus').textContent = e.code === 'auth/unauthorized-domain' ? 'Add this site to Authentication > Settings > Authorized domains in Firebase.' : 'Sign-in failed: ' + (e.message || e.code); }
-}
-async function loadOwnerList() {
-  const { auth, storage } = fb();
-  $('ownerStatus').textContent = `Signed in as ${auth.currentUser.email || 'owner'}. Loading shared scans…`;
-  try {
-    const top = await storage.ref('scans').listAll(), rows = [];
-    for (const p of top.prefixes) {
-      const l = await p.listAll();
-      for (const r of l.items) { const m = await r.getMetadata(); rows.push({ r, m }); }
-    }
-    rows.sort((a, b) => b.m.timeCreated.localeCompare(a.m.timeCreated));
-    $('ownerStatus').textContent = rows.length ? `${rows.length} shared scan${rows.length > 1 ? 's' : ''}.` : 'No scans shared yet.';
-    $('ownerList').innerHTML = rows.map((x, i) => {
-      const c = x.m.customMetadata || {};
-      return `<tr><td>${esc(new Date(x.m.timeCreated).toLocaleString())}</td><td>${esc(c.name || '—')}<div class="muted small">${esc(c.note || '')}</div></td><td>${esc(c.size || '')}</td><td>${esc(c.robot || '')}</td><td>${fmtMB(x.m.size)}</td>
-        <td class="ownact"><button class="btn" type="button" data-open="${i}">Open</button><button class="btn" type="button" data-del="${i}">Delete</button></td></tr>`;
-    }).join('');
-    loadOwnerList.rows = rows;
-  } catch (e) {
-    $('ownerStatus').textContent = e.code === 'storage/unauthorized' ? `${auth.currentUser.email} is not the owner account in your storage rules.` : 'Could not load: ' + (e.message || e.code);
+    $('cwStatus').textContent = e.message || 'Could not read that file.';
+    toast(e.message || 'Could not read that file.', true);
   }
 }
-async function ownerOpen(i) {
-  const x = loadOwnerList.rows[i];
-  $('ownerStatus').textContent = 'Downloading…';
-  try {
-    const url = await x.r.getDownloadURL(), res = await fetch(url);
-    if (!res.ok) throw new Error('download failed (' + res.status + ')');
-    const zip = await JSZip.loadAsync(await res.blob()), data = JSON.parse(await zip.file('scan.json').async('string'));
-    const files = {};
-    for (const f of Object.values(zip.files)) {
-      if (f.dir || !f.name.startsWith('mesh/')) continue;
-      const k = f.name.slice(5);
-      files[k] = /\.(obj|mtl)$/i.test(k) ? await f.async('string') : await f.async('arraybuffer');
-    }
-    state.scan = { id: Date.now(), v: data.v };
-    if (data.mesh && data.meshMain && files[data.meshMain]) { state.scan.mesh = data.mesh; meshFiles = { id: state.scan.id, files, main: data.meshMain }; idbPut(meshFiles); }
-    else meshFiles = null;
-    state.world = 'custom'; if (state.target === 'rviz') state.target = 'both';
-    saveScan(); syncControls();
-    const dlg = $('ownerDlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
-    envKey = null; rebuild(); overview();
-    toast(`Opened the scan shared ${new Date(x.m.timeCreated).toLocaleString()}. It is now your custom map.`);
-  } catch (e) {
-    $('ownerStatus').textContent = /Failed to fetch|NetworkError/.test(e.message || '') ? 'Download blocked: run the CORS command from the README on your bucket.' : 'Could not open: ' + (e.message || e.code);
-  }
+function saveWorld() {
+  try { localStorage.setItem('urdf-studio-world', state.custom && state.custom.sdf.length < 3e6 ? JSON.stringify(state.custom) : ''); } catch (e) {}
+  idbPut(worldAssets);
 }
-async function ownerDelete(i) {
-  const x = loadOwnerList.rows[i], btn = document.querySelector(`[data-del="${i}"]`);
-  if (btn.dataset.confirm !== '1') { btn.dataset.confirm = '1'; btn.textContent = 'Confirm delete'; return; }
-  try { await x.r.delete(); loadOwnerList(); } catch (e) { $('ownerStatus').textContent = 'Could not delete: ' + (e.message || e.code); }
+function customStatus() {
+  const c = state.custom; if (!c) return '';
+  const st = customEnv().stats, extra = [];
+  if (st.meshes) extra.push(`${st.meshes} mesh part${st.meshes > 1 ? 's' : ''}`);
+  if (st.includes) extra.push(`${st.includes} included model${st.includes > 1 ? 's' : ''}`);
+  const nf = worldAssets && worldAssets.id === c.id ? Object.keys(worldAssets.files).length : 0;
+  const packed = nf ? ` ${nf} file${nf === 1 ? '' : 's'} from your zip (models, meshes) ${nf === 1 ? 'is' : 'are'} packed with it.` : '';
+  return `${c.name}: ${st.models} model${st.models === 1 ? '' : 's'}, ${st.shapes} simple shape${st.shapes === 1 ? '' : 's'} shown in the preview.`
+    + (extra.length ? ` ${extra.join(' and ')} load in Gazebo but are not drawn here or in the RL training map.` : '') + packed;
 }
 
 /* ---------- 3D preview ---------- */
@@ -4507,21 +3683,13 @@ function fitView(bb) {
 }
 
 let envGroup = null, envKey = null;
-const activeWorld = () => state.target !== 'rviz' && (state.world !== 'custom' || state.scan) ? state.world : 'empty';
+const activeWorld = () => state.target !== 'rviz' && (state.world !== 'custom' || state.custom) ? state.world : 'empty';
 function updateEnvPreview() {
-  const key = activeWorld() + (activeWorld() === 'custom' ? ':' + state.scan.id + (hasMesh() ? ':mesh' : '') : '');
+  const key = activeWorld() + (activeWorld() === 'custom' ? ':' + state.custom.id : '');
   if (!world || key === envKey) return;
   if (envGroup) { world.remove(envGroup); disposeTree(envGroup); envGroup = null; }
   envKey = key;
   const env = buildEnv(activeWorld());
-  if (activeWorld() === 'custom' && hasMesh()) {
-    // show the real scan instead of the blocks; the blocks stay as collision shapes for Gazebo
-    envGroup = new THREE.Group(); world.add(envGroup);
-    const g = envGroup;
-    buildScanMesh(meshFiles, state.scan.mesh).then(o => { if (envGroup === g) g.add(o); })
-      .catch(() => toast('Could not draw the scanned mesh; showing blocks instead.', true));
-    return;
-  }
   if (!env.objects.length) return;
   envGroup = new THREE.Group();
   const mats = {};
@@ -4540,7 +3708,7 @@ function updateEnvPreview() {
         ps.forEach((p, i) => { m4.makeScale(p.g[1], p.g[2], p.g[3]); m4.setPosition(p.xyz[0], p.xyz[1], p.xyz[2]); im.setMatrixAt(i, m4); });
         im.receiveShadow = true; g.add(im);
       });
-    } else ob.parts.forEach(p => { const m = meshFor({ g: p.g, xyz: p.xyz, rpy: [0, 0, 0], mat: p.color }, { [p.color]: mat(p.color) }); m.castShadow = false; g.add(m); });
+    } else ob.parts.filter(p => !p.hidden).forEach(p => { const m = meshFor({ g: p.g, xyz: p.xyz, rpy: [0, 0, 0], mat: p.color }, { [p.color]: mat(p.color) }); m.castShadow = false; g.add(m); });
     envGroup.add(g);
   });
   world.add(envGroup);
@@ -4558,15 +3726,18 @@ function overview() {
 function renderWorlds() {
   const off = state.target === 'rviz';
   const sub = k => {
-    if (k !== 'custom' || !state.scan) return WORLDS[k].sub;
-    const a = analyzeScan(state.scan);
-    return `Scanned ${a.W.toFixed(1)} × ${a.D.toFixed(1)} m, ${a.boxes.length} obstacle blocks.`;
+    if (k !== 'custom' || !state.custom) return WORLDS[k].sub;
+    return `${state.custom.name} · click to swap the file below`;
   };
   $('worlds').innerHTML = Object.entries(WORLDS).map(([k, w]) =>
-    `<button type="button" class="world" role="radio" data-world="${k}" aria-checked="${k === state.world && (k !== 'custom' || !!state.scan)}" ${off ? 'disabled' : ''}>${WORLD_GLYPHS[k]}<b>${w.label}</b><span>${sub(k)}</span></button>`).join('');
+    `<button type="button" class="world" role="radio" data-world="${k}" aria-checked="${k === state.world && (k !== 'custom' || !!state.custom)}" ${off ? 'disabled' : ''}>${WORLD_GLYPHS[k]}<b>${w.label}</b><span>${sub(k)}</span></button>`).join('');
   $('worldNote').hidden = !off;
-  $('rescan').hidden = off || !state.scan;
-  $('shareScan').hidden = off || !state.scan;
+  $('customActs').hidden = off || !state.custom;
+  if (state.custom) {
+    $('cwStatus').textContent = customStatus();
+    const sp = state.custom.spawn;
+    [['cwX', sp.x], ['cwY', sp.y], ['cwYaw', sp.yaw]].forEach(([id, v]) => { if (document.activeElement !== $(id)) $(id).value = v; });
+  }
 }
 
 /* ---------- Checks ---------- */
@@ -4725,10 +3896,7 @@ function rebuild() {
     if (!M.moveit) d['rviz/gazebo.rviz'] = rvizCfg(M, M.gzFixedFrame, true, bb);
     worldKeys().forEach(w => d[`worlds/${w}.sdf`] = worldSdf(M, w));
   }
-  if (state.scan) {
-    Object.assign(d, mapFiles());
-    if (gz) Object.assign(d, scanPackageFiles());
-  }
+  if (gz && state.custom) Object.assign(d, customWorldAssets());
   d['package.xml'] = packageXml(pkg, gz && !M.moveit);
   d['CMakeLists.txt'] = cmakeLists(pkg, gz);
   const mf = M.moveit ? moveitFiles(M, pkg) : {};
@@ -4800,10 +3968,25 @@ $('fitBtn').addEventListener('click', () => robotRoot && fitView(measure()));
 document.querySelectorAll('input[name=target]').forEach(r => r.addEventListener('change', () => { state.target = r.value; rebuild(); }));
 $('worlds').addEventListener('click', e => {
   const b = e.target.closest('.world'); if (!b || b.disabled) return;
-  if (b.dataset.world === 'custom' && !state.scan) { openScanner(); return; }
+  if (b.dataset.world === 'custom' && !state.custom) { $('worldFile').click(); return; }
   state.world = b.dataset.world; rebuild(); overview();
 });
-$('rescan').addEventListener('click', openScanner);
+$('worldFile').addEventListener('change', e => { loadWorldFile(e.target.files[0]); e.target.value = ''; });
+$('cwReplace').addEventListener('click', () => $('worldFile').click());
+$('cwRemove').addEventListener('click', () => {
+  state.custom = null; worldAssets = null; saveWorld();
+  if (state.world === 'custom') state.world = 'empty';
+  envKey = null; rebuild(); overview();
+});
+[['cwX', 'x'], ['cwY', 'y'], ['cwYaw', 'yaw']].forEach(([id, k]) => $(id).addEventListener('change', e => {
+  const v = parseFloat(e.target.value);
+  if (!state.custom || !isFinite(v)) return;
+  state.custom.spawn[k] = v; saveWorld(); schedule();
+}));
+const pickZone = $('worldPick');
+['dragenter', 'dragover'].forEach(t => pickZone.addEventListener(t, e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); pickZone.classList.add('over'); } }));
+['dragleave', 'drop'].forEach(t => pickZone.addEventListener(t, e => { pickZone.classList.remove('over'); }));
+pickZone.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files[0]) { e.preventDefault(); loadWorldFile(e.dataTransfer.files[0]); } });
 $('rlOn').addEventListener('change', e => { state.rl.on = e.target.checked; rebuild(); });
 $('rlTasks').addEventListener('click', e => {
   const b = e.target.closest('[data-task]'); if (!b) return;
@@ -4944,41 +4127,11 @@ function showroom() {
   size(); build(cur); go(); auto();
 }
 $('tileWorlds').innerHTML = ['factory', 'warehouse', 'office', 'custom'].map(k => WORLD_GLYPHS[k]).join('');
-$('tileScan').addEventListener('click', () => $('heroScan').click());
+$('tileScan').addEventListener('click', () => { $('h-launch').scrollIntoView({ behavior: 'smooth' }); $('worldFile').click(); });
 document.querySelectorAll('[data-glyph]').forEach(el => { el.innerHTML = GLYPHS[el.dataset.glyph]; });
 document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => {
   state.type = b.dataset.pick; renderTypes(); renderForm(); rebuild(); $('h-type').scrollIntoView({ behavior: 'smooth' });
 }));
-$('heroScan').addEventListener('click', () => {
-  if (state.target === 'rviz') { state.target = 'both'; syncControls(); rebuild(); }
-  openScanner();
-});
-$('shareScan').addEventListener('click', openShare);
-$('shareConsent').addEventListener('change', e => { $('shareSend').disabled = !e.target.checked; });
-$('shareSend').addEventListener('click', sendShare);
-$('shareMine').addEventListener('click', deleteMine);
-$('ownerBtn').addEventListener('click', openOwner);
-$('ownerSignIn').addEventListener('click', ownerSignIn);
-$('ownerList').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.open) ownerOpen(+b.dataset.open); else if (b.dataset.del) ownerDelete(+b.dataset.del); });
-['shareDlg', 'ownerDlg'].forEach(id => $(id.replace('Dlg', 'Close')).addEventListener('click', () => { const d = $(id); if (d.close) d.close(); else d.removeAttribute('open'); }));
-$('scanClose').addEventListener('click', closeScanner);
-$('scanCancel').addEventListener('click', closeScanner);
-$('scanUse').addEventListener('click', useScan);
-$('scanStop').addEventListener('click', () => { try { if (scanConn) scanConn.send({ t: 'stop' }); } catch (e) {} });
-$('tabImport').addEventListener('click', () => showScanTab('import'));
-$('tabPhone').addEventListener('click', () => showScanTab('phone'));
-document.querySelectorAll('.devpick button').forEach(b => b.addEventListener('click', () => showDevice(b.dataset.device)));
-$('scanFile').addEventListener('change', e => { onScanFile(e.target.files[0]); e.target.value = ''; });
-['impUp', 'impUnit', 'impFlip'].forEach(id => $(id).addEventListener('change', reorient));
-$('rotL').addEventListener('click', () => rotateImport(-15));
-$('rotR').addEventListener('click', () => rotateImport(15));
-$('rot90').addEventListener('click', () => rotateImport(90));
-$('scanMap').addEventListener('click', clickImportMap);
-const dropZone = $('dropZone');
-['dragenter', 'dragover'].forEach(t => dropZone.addEventListener(t, e => { e.preventDefault(); dropZone.classList.add('over'); }));
-['dragleave', 'drop'].forEach(t => dropZone.addEventListener(t, e => { e.preventDefault(); dropZone.classList.remove('over'); }));
-dropZone.addEventListener('drop', e => onScanFile(e.dataTransfer.files[0]));
-$('scanDlg').addEventListener('cancel', e => { e.preventDefault(); closeScanner(); });
 $('distro').addEventListener('change', e => { state.distro = e.target.value; rebuild(); });
 $('moveit').addEventListener('change', e => { state.moveit = e.target.checked; rebuild(); });
 $('tree').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showFile(b.dataset.f); });
@@ -5082,27 +4235,12 @@ try {
     }
   }
 } catch (e) {}
-try { const sc = localStorage.getItem('urdf-studio-scan'); if (sc) { const o = JSON.parse(sc); if (o && Array.isArray(o.v)) state.scan = o; } } catch (e) {}
-if (state.scan && state.scan.mesh) idbGet().then(async m => {
-  if (!m || !state.scan || m.id !== state.scan.id) return;
-  meshFiles = m;
-  // Scans cleaned before format 2 have no normals, which makes Gazebo Fortress abort while loading
-  // the mesh. Re-write them in place (the saved OBJ is already in the robot frame).
-  if (state.scan.mesh.clean && !(state.scan.mesh.format >= 2) && typeof THREE !== 'undefined') {
-    try {
-      const obj = m.files['scan_model.obj'];
-      const again = await cleanScanMesh({ files: { ...m.files, 'scan_model.obj': typeof obj === 'string' ? new TextEncoder().encode(obj).buffer : obj },
-        main: 'scan_model.obj', ext: 'obj', heading: 0, start: [0, 0], floor: 0, up: 'z', scale: 1, flipped: false, level: null });
-      if (again) {
-        meshFiles = { id: state.scan.id, files: again.files, main: 'scan_model.obj' };
-        state.scan.mesh.format = 2; saveScan(); idbPut(meshFiles);
-        toast('Updated your saved custom map so Gazebo can load it. Download the package again.');
-      }
-    } catch (e) {}
-  }
-  envKey = null; rebuild();
-});
-if (state.world === 'custom' && !state.scan) state.world = 'empty';
+try {
+  const w = localStorage.getItem('urdf-studio-world');
+  if (w) { const o = JSON.parse(w); if (o && typeof o.sdf === 'string') { parseWorldXml(o.sdf); state.custom = o; } }
+} catch (e) { state.custom = null; }
+if (state.custom) idbGet().then(a => { if (a && state.custom && a.id === state.custom.id) { worldAssets = a; envKey = null; rebuild(); } });
+if (state.world === 'custom' && !state.custom) state.world = 'empty';
 syncControls();
 renderTypes();
 renderForm();
