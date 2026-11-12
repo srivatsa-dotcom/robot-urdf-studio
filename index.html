@@ -1475,6 +1475,7 @@ Start the Gazebo simulation first, then run this in a new terminal:
 import json
 import math
 import select
+import shutil
 import sys
 import termios
 import time
@@ -1707,7 +1708,8 @@ def main():
                 break
             node.tick(time.monotonic())
             node.drive()
-            sys.stdout.write('\r\033[K' + node.status())
+            width = shutil.get_terminal_size((100, 20)).columns - 1   # one line only, or it wraps and repeats
+            sys.stdout.write('\r\033[K' + node.status()[:width])
             sys.stdout.flush()
     finally:
         node.v = node.w = 0.0
@@ -1953,8 +1955,8 @@ function teleopScript(M, pkg) {
     const p = M.p;
     if (canWalk(M)) cfg.walk = { legs: LEG_JOINTS,
       geo: { thigh: p.thighL, shin: p.shinL, hip_y: p.hipW / 2, hip_z: p.pelvisH / 2 + p.legR * 1.2, ankle_h: p.footH } };
-    else cfg.walk_off = p.fixBase ? "Walking is off: the pelvis is pinned to the world. Untick 'Pin pelvis' in the studio and download again."
-      : 'Walking works in the Gazebo package without MoveIt. Turn MoveIt off in the studio and download again.';
+    else cfg.walk_off = p.fixBase ? "Walking off: pelvis is pinned (untick Pin pelvis in the app)"
+      : 'Walking off: needs MoveIt turned off in the app';
   }
   return TELEOP_PY.replace('__CONFIG__', JSON.stringify(cfg, null, 1)).replace(/__ROBOT__/g, M.name).replace(/__PKG__/g, pkg)
     .replace('__WALKER__', cfg.walk ? WALKER_PY : 'Walker = None');
