@@ -19,7 +19,6 @@ Enter the robot's dimensions and masses, check it in the live 3D preview (with j
 - `launch/gazebo.launch.py` (Gazebo + spawn + ros_gz_bridge, optional RViz)
 - `worlds/empty.sdf`, `rviz/*.rviz`, `package.xml`, `CMakeLists.txt`, `README.md`
 - `robot_spec.json` to re-import and edit later
-- optionally `<robot>_rl/`, a reinforcement learning kit (see below)
 
 For the 6-DOF arm, humanoid and semi-humanoid it can also generate a `<robot>_moveit_config` package:
 
@@ -48,41 +47,13 @@ Pick **Your own world** in Step 3 (or drag a file onto the world picker) and upl
 
 The app then:
 
-- shows the world's boxes, cylinders and spheres in the 3D preview and uses them for the RL training map (meshes and `<include>` models still load in Gazebo, they just are not drawn in the browser);
-- renames the world to `default` inside the file, so the launch files, bridges and RL kit find it;
+- shows the world's boxes, cylinders and spheres in the 3D preview (meshes and `<include>` models still load in Gazebo, they just are not drawn in the browser);
+- renames the world to `default` inside the file, so the launch files and bridges find it;
 - adds any Gazebo systems the robot needs that the file is missing (physics, user commands, scene broadcaster, sensors, IMU), using the right names for Harmonic or Fortress;
 - packs the zip's other files into `worlds/custom_assets/`, rewrites relative mesh paths to point there, and adds that folder (and `custom_assets/models`) to the Gazebo resource path so `model://` URIs resolve;
 - lets you set where the robot starts (x, y and heading), which become the defaults of the launch file's `x`, `y` and `yaw` arguments.
 
 Launch it with `world:=custom`. Files with absolute paths (`file:///home/...`) only work on the computer they point to.
-
-## Reinforcement learning (Step 4)
-
-Tick **Add an RL training kit** and the download gets a `<robot>_rl/` folder next to the ROS packages: a [Gymnasium](https://gymnasium.farama.org) task trained with [Stable-Baselines3](https://stable-baselines3.readthedocs.io) (PPO or SAC).
-
-| Robot | Task | What the policy learns |
-|---|---|---|
-| 2-wheel and 4-wheel drive | Drive to goals | Reach random goals anywhere in the chosen world (factory, warehouse, office or your own .sdf world) without touching anything, steering by lidar |
-| 6-DOF arm, humanoid | Reach targets | Move the tool or right hand to random points in its workspace |
-| Semi-humanoid | Either | Drive its base to goals, or reach with its right arm |
-
-Two simulators share the same observations, actions and rewards, so a policy moves between them unchanged:
-
-- **Fast trainer:** a lightweight simulator built from the world's occupancy map (or the arm's kinematics). It runs thousands of steps per second on a laptop CPU, so a policy trains in minutes with no Gazebo.
-- **Gazebo:** the real simulation through ROS 2. It is used to fine-tune and run the policy. Episodes restart by teleporting the robot with Gazebo's `set_pose` service, or by sending the arm home.
-
-For driving, the kit plans the shortest route on the map and guides the policy along it, while the policy handles speed, steering and avoiding what the lidar sees. This is the same global-planner-plus-local-controller split that real robots use.
-
-```bash
-cd ~/ros2_ws/src/<robot>_rl
-python3 -m venv --system-site-packages .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python train.py                  # fast trainer
-python run_policy.py             # watch it, get a success rate
-python train.py --backend gazebo --resume $(cat runs/LATEST)/best_model.zip   # fine-tune with Gazebo running
-```
-
-The Step 4 panel previews the training arena (map, start and goal spots, or the arm's reachable targets) and lets you pick the algorithm, training steps, episode length and Gazebo speed. Everything else, including rewards, speeds and hyperparameters, lives in the kit's `config.yaml`.
 
 ## Run locally (optional)
 
