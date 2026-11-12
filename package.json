@@ -1,0 +1,13 @@
+{
+  "name": "robot-urdf-studio",
+  "private": true,
+  "scripts": {
+    "build": "node tools/scramble.js index.html dist/index.html"
+  },
+  "devDependencies": {
+    "@babel/core": "7.24.7",
+    "@babel/plugin-transform-template-literals": "7.24.7",
+    "html-minifier-terser": "7.2.0",
+    "javascript-obfuscator": "4.1.1"
+  }
+}
