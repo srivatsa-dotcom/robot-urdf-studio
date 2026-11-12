@@ -1616,7 +1616,7 @@ class JointTeleop(Node):
             t.linear.x, t.angular.z = self.v, self.w
             self.cmd.publish(t)
 
-    def handle(self, key):
+    def on_key(self, key):
         """Apply one key press. Returns False to quit."""
         j = self.joints[self.sel]
         prismatic = j['type'] == 'prismatic'
@@ -1703,7 +1703,7 @@ def main():
         while rclpy.ok():
             key = read_key(0.02 if node.walker else 0.1)
             rclpy.spin_once(node, timeout_sec=0.0)
-            if key and not node.handle(key):
+            if key and not node.on_key(key):
                 break
             node.tick(time.monotonic())
             node.drive()
