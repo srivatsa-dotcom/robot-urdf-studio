@@ -1,6 +1,6 @@
 # Robot URDF Studio
 
-### ▶ [Open the app](https://srivatsa-dotcom.github.io/robot-urdf-studio/)
+### ▶ [Open the app](https://robot-urdf-studio.vercel.app)
 
 No install needed. Click the link, design your robot, and download the ROS 2 package.
 
