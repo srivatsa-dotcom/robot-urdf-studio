@@ -720,7 +720,7 @@ const TYPES = {
       ['Head', [F('headR', 'Head radius', 'm', 0.10), F('neckL', 'Neck length', 'm', 0.06), F('headM', 'Head mass', 'kg', 2.5, 0.05, 100, 0.1)]],
       ['Arms', [F('upperArmL', 'Upper arm length', 'm', 0.26), F('foreArmL', 'Forearm length', 'm', 0.24), F('armR', 'Arm radius', 'm', 0.035), F('handL', 'Hand length', 'm', 0.09), F('upperArmM', 'Upper arm mass', 'kg', 1.6, 0.01, 100, 0.05), F('foreArmM', 'Forearm mass', 'kg', 1.2, 0.01, 100, 0.05), F('handM', 'Hand mass', 'kg', 0.4, 0.01, 50, 0.05)]],
       ['Legs', [F('thighL', 'Thigh length', 'm', 0.40), F('shinL', 'Shin length', 'm', 0.38), F('legR', 'Leg radius', 'm', 0.05), F('hipW', 'Hip spacing', 'm', 0.18), F('footL', 'Foot length', 'm', 0.22), F('footW', 'Foot width', 'm', 0.10), F('footH', 'Foot height', 'm', 0.05), F('thighM', 'Thigh mass', 'kg', 4, 0.01, 200, 0.1), F('shinM', 'Shin mass', 'kg', 3, 0.01, 200, 0.1), F('footM', 'Foot mass', 'kg', 1, 0.01, 100, 0.05)]],
-      ['Mounting', [B('fixBase', 'Pin pelvis to the world (no balance controller needed)', true)]],
+      ['Mounting', [B('fixBase', 'Pin pelvis to the world (it hangs in place). Untick it, with MoveIt off, to let it stand and walk with the keyboard', true)]],
     ],
   },
   semi: {
@@ -923,17 +923,17 @@ const BUILD = {
     addHead(M, 'torso_link', p.torsoH, p);
     [['left', 1], ['right', -1]].forEach(([s, sy]) => {
       M.link(`${s}_hip_yaw_link`, [], 0.1, DUMMY);
-      M.joint(`${s}_hip_yaw_joint`, 'revolute', 'pelvis_link', `${s}_hip_yaw_link`, [0, sy * p.hipW / 2, -p.pelvisH / 2 - p.legR * 1.2], [0, 0, 0], [0, 0, 1], lim(-0.6, 0.6, 60, 3));
+      M.joint(`${s}_hip_yaw_joint`, 'revolute', 'pelvis_link', `${s}_hip_yaw_link`, [0, sy * p.hipW / 2, -p.pelvisH / 2 - p.legR * 1.2], [0, 0, 0], [0, 0, 1], lim(-0.6, 0.6, 120, 3));
       M.link(`${s}_hip_roll_link`, [{ g: ['sph', p.legR * 1.2], mat: 'accent', col: false }], 0.2, DUMMY);
-      M.joint(`${s}_hip_roll_joint`, 'revolute', `${s}_hip_yaw_link`, `${s}_hip_roll_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], sy > 0 ? lim(-0.4, 0.8, 80, 3) : lim(-0.8, 0.4, 80, 3));
+      M.joint(`${s}_hip_roll_joint`, 'revolute', `${s}_hip_yaw_link`, `${s}_hip_roll_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], sy > 0 ? lim(-0.4, 0.8, 160, 3) : lim(-0.8, 0.4, 160, 3));
       M.link(`${s}_thigh_link`, [{ g: ['cyl', p.legR, p.thighL], xyz: [0, 0, -p.thighL / 2] }], p.thighM);
-      M.joint(`${s}_hip_pitch_joint`, 'revolute', `${s}_hip_roll_link`, `${s}_thigh_link`, [0, 0, 0], [0, 0, 0], [0, 1, 0], lim(-1.8, 0.6, 100, 3));
+      M.joint(`${s}_hip_pitch_joint`, 'revolute', `${s}_hip_roll_link`, `${s}_thigh_link`, [0, 0, 0], [0, 0, 0], [0, 1, 0], lim(-1.8, 0.6, 200, 3));
       M.link(`${s}_shin_link`, [{ g: ['cyl', p.legR * 0.9, p.shinL], xyz: [0, 0, -p.shinL / 2] }, { g: ['sph', p.legR * 1.05], mat: 'accent', col: false }], p.shinM);
-      M.joint(`${s}_knee_joint`, 'revolute', `${s}_thigh_link`, `${s}_shin_link`, [0, 0, -p.thighL], [0, 0, 0], [0, 1, 0], lim(0, 2.4, 100, 3));
+      M.joint(`${s}_knee_joint`, 'revolute', `${s}_thigh_link`, `${s}_shin_link`, [0, 0, -p.thighL], [0, 0, 0], [0, 1, 0], lim(0, 2.4, 200, 3));
       M.link(`${s}_ankle_link`, [{ g: ['sph', p.legR * 0.8], mat: 'accent', col: false }], 0.1, DUMMY);
-      M.joint(`${s}_ankle_pitch_joint`, 'revolute', `${s}_shin_link`, `${s}_ankle_link`, [0, 0, -p.shinL], [0, 0, 0], [0, 1, 0], lim(-0.8, 0.8, 60, 3));
+      M.joint(`${s}_ankle_pitch_joint`, 'revolute', `${s}_shin_link`, `${s}_ankle_link`, [0, 0, -p.shinL], [0, 0, 0], [0, 1, 0], lim(-0.8, 0.8, 120, 3));
       M.link(`${s}_foot_link`, [{ g: ['box', p.footL, p.footW, p.footH], xyz: [p.footL * 0.2, 0, -p.footH / 2], mat: 'dark' }], p.footM);
-      M.joint(`${s}_ankle_roll_joint`, 'revolute', `${s}_ankle_link`, `${s}_foot_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], lim(-0.4, 0.4, 40, 3));
+      M.joint(`${s}_ankle_roll_joint`, 'revolute', `${s}_ankle_link`, `${s}_foot_link`, [0, 0, 0], [0, 0, 0], [1, 0, 0], lim(-0.4, 0.4, 80, 3));
     });
     M.mounts.imu = { parent: 'pelvis_link', xyz: [0, 0, 0] };
   },
@@ -999,6 +999,8 @@ function buildModel() {
 
 /* ---------- URDF + package generation ---------- */
 const n = x => { const s = (+x.toFixed(6)).toString(); return s === '-0' ? '0' : s; };
+// inertia: never 0 (physics engines reject a zero moment of inertia); tiny values keep 3 significant digits
+const nI = x => (x >= 1e-6 ? n(x) : (+Math.max(x, 1e-9).toPrecision(3)).toString());
 const v3 = a => a.map(n).join(' ');
 const hexRgba = h => { const c = parseInt(h.slice(1), 16); return [(c >> 16) & 255, (c >> 8) & 255, c & 255].map(x => n(x / 255)).join(' ') + ' 1'; };
 
@@ -1042,7 +1044,7 @@ function toURDF(M, withGazebo) {
     if (l.inertial) {
       const I = l.inertial.I;
       o.push('    <inertial>', `      <origin xyz="${v3(l.inertial.xyz)}" rpy="${v3(l.inertial.rpy)}"/>`, `      <mass value="${n(l.inertial.mass)}"/>`,
-        `      <inertia ixx="${n(I[0])}" ixy="0" ixz="0" iyy="${n(I[1])}" iyz="0" izz="${n(I[2])}"/>`, '    </inertial>');
+        `      <inertia ixx="${nI(I[0])}" ixy="0" ixz="0" iyy="${nI(I[1])}" iyz="0" izz="${nI(I[2])}"/>`, '    </inertial>');
     }
     o.push('  </link>', '');
   }
@@ -1052,7 +1054,8 @@ function toURDF(M, withGazebo) {
       o.push(`    <axis xyz="${v3(j.axis)}"/>`);
       if (j.type === 'continuous') o.push(`    <limit effort="${n(j.lim.effort)}" velocity="${n(j.lim.vel)}"/>`);
       else o.push(`    <limit lower="${n(j.lim.lo)}" upper="${n(j.lim.hi)}" effort="${n(j.lim.effort)}" velocity="${n(j.lim.vel)}"/>`);
-      o.push(`    <dynamics damping="${j.type === 'continuous' ? '0.05' : '0.5'}" friction="0.0"/>`);
+      const damp = isWalkLeg(M, j.name) ? n(0.75 * j.lim.effort) : j.type === 'continuous' ? '0.05' : '0.5';
+      o.push(`    <dynamics damping="${damp}" friction="0.0"/>`);
     }
     o.push('  </joint>', '');
   }
@@ -1088,12 +1091,18 @@ function gazeboXml(M) {
       '    </plugin>', '  </gazebo>');
   }
   if (M.ctrl.length && !M.moveit) {
-    o.push('', '  <!-- Position control: publish std_msgs/Float64 to /' + M.name + '/<joint>/cmd_pos -->', '  <gazebo>');
+    o.push('', '  <!-- Position control: publish std_msgs/Float64 to /' + M.name + '/<joint>/cmd_pos -->');
+    if (canWalk(M)) o.push('  <!-- Leg joints: stiff P control for walking; their damping is the <dynamics> in each joint. Walking is tuned for 1 ms physics steps. -->');
+    o.push('  <gazebo>');
     M.ctrl.forEach(j => {
       const pr = M.joints.find(x => x.name === j).type === 'prismatic';
       o.push(`    <plugin filename="${g.lib('joint-position-controller')}" name="${g.cls('JointPositionController')}">`,
-        `      <joint_name>${j}</joint_name>`, `      <topic>/${M.name}/${j}/cmd_pos</topic>`,
-        `      <p_gain>${pr ? 2000 : 120}</p_gain>`, `      <i_gain>${pr ? 50 : 0.5}</i_gain>`, `      <d_gain>${pr ? 200 : 8}</d_gain>`, '    </plugin>');
+        `      <joint_name>${j}</joint_name>`, `      <topic>/${M.name}/${j}/cmd_pos</topic>`);
+      if (isWalkLeg(M, j)) {
+        const e = M.joints.find(x => x.name === j).lim.effort;
+        o.push(`      <p_gain>${n(25 * e)}</p_gain>`, '      <i_gain>0</i_gain>', '      <d_gain>0</d_gain>',
+          `      <cmd_max>${n(e)}</cmd_max>`, `      <cmd_min>${n(-e)}</cmd_min>`, '    </plugin>');
+      } else o.push(`      <p_gain>${pr ? 2000 : 120}</p_gain>`, `      <i_gain>${pr ? 50 : 0.5}</i_gain>`, `      <d_gain>${pr ? 200 : 8}</d_gain>`, '    </plugin>');
     });
     o.push('  </gazebo>');
   }
@@ -1468,6 +1477,7 @@ import math
 import select
 import sys
 import termios
+import time
 import tty
 
 import rclpy
@@ -1493,7 +1503,20 @@ BASE_HELP = """
   k     : stop
 
 """
+WALK_HELP = """
+  Walking:
+  i / , : walk forward / backward
+  j / l : turn left / right on the spot
+  u / o : walk forward and turn left / right
+  k     : stop (finishes the step, then stands)
+  h     : stop walking and straighten the legs
+
+"""
 STEPS = [0.02, 0.05, 0.1, 0.2, 0.4]   # rad per key press (prismatic joints move a tenth of this in metres)
+WALK_KEYS = {'i': (1.0, 0.0), ',': (-1.0, 0.0), 'j': (0.0, 1.0), 'l': (0.0, -1.0), 'u': (1.0, 1.0), 'o': (1.0, -1.0),
+             'k': (0.0, 0.0)}
+
+__WALKER__
 
 
 class JointTeleop(Node):
@@ -1513,6 +1536,12 @@ class JointTeleop(Node):
             self.JT, self.JTP = JointTrajectory, JointTrajectoryPoint
             self.pubs = {g: self.create_publisher(JointTrajectory, '/%s_controller/joint_trajectory' % g, 10)
                          for g in CONFIG['groups']}
+        self.walk = CONFIG.get('walk')
+        self.walker, self.walk_cmd, self.note, self.note_until = None, (0.0, 0.0), '', 0.0
+        self.q_now, self.tilt, self.seen_imu, self.last_tick = {}, (0.0, 0.0), False, None
+        if self.walk:
+            from sensor_msgs.msg import Imu
+            self.create_subscription(Imu, '/imu', self.on_imu, 10)
         self.base = bool(CONFIG.get('base'))
         self.v = self.w = 0.0
         if self.base:
@@ -1522,12 +1551,50 @@ class JointTeleop(Node):
 
     def on_state(self, msg):
         """Start from where the robot really is, so the first key press does not make it jump."""
-        if self.seen_state:
-            return
         for name, pos in zip(msg.name, msg.position):
-            if name in self.target and math.isfinite(pos):
-                self.target[name] = pos
+            if math.isfinite(pos):
+                self.q_now[name] = pos
+                if not self.seen_state and name in self.target:
+                    self.target[name] = pos
         self.seen_state = True
+
+    def on_imu(self, msg):
+        """Body lean from the IMU (roll, pitch in rad)."""
+        q = msg.orientation
+        roll = math.atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y))
+        pitch = math.asin(max(-1.0, min(1.0, 2 * (q.w * q.y - q.z * q.x))))
+        self.tilt, self.seen_imu = (roll, pitch), True
+
+    def walk_key(self, key):
+        """Start, steer or stop walking."""
+        if not self.walk:
+            self.say(CONFIG.get('walk_off') or 'This robot cannot walk.', 8.0)
+            return
+        self.walk_cmd = WALK_KEYS[key]
+        if self.walker and self.walker.retiring and key != 'k':
+            self.walker.retiring = False       # changed your mind: bend the knees again and walk
+        if self.walker is None and key != 'k':
+            self.walker = Walker(self.walk['geo'], **self.walk.get('gait', {}))
+            self.last_tick = None
+            self.say('Bending the knees first (2 s), then walking.' if self.seen_imu else 'No /imu data yet: walking without it.')
+
+    def say(self, text, secs=4.0):
+        """Show a short note on the status line for a few seconds."""
+        self.note, self.note_until = text, time.monotonic() + secs
+
+    def tick(self, now):
+        """Run the walking engine (about 50 times a second while walking) and send the leg targets."""
+        if self.walker is None:
+            return
+        dt = 0.02 if self.last_tick is None else min(0.05, max(0.0, now - self.last_tick))
+        self.last_tick = now
+        legs = self.walker.update(dt, self.walk_cmd, self.q_now or None, *self.tilt)
+        for name, v in legs.items():
+            if name in self.target:
+                self.target[name] = v
+        self.send(list(legs))
+        if self.walker.done:
+            self.walker = None
 
     def send(self, names):
         if CONFIG['mode'] == 'position':
@@ -1560,6 +1627,8 @@ class JointTeleop(Node):
             self.sel = (self.sel - 1) % len(self.joints)
         elif key == 's':
             self.sel = (self.sel + 1) % len(self.joints)
+        elif key in ('a', 'd') and self.walker and j['name'] in self.walk['legs']:
+            self.say('The legs are walking: press h to stop walking before moving a leg joint.')
         elif key in ('a', 'd'):
             v = self.target[j['name']] + (step if key == 'd' else -step)
             self.target[j['name']] = min(max(v, j['lower']), j['upper'])
@@ -1572,9 +1641,16 @@ class JointTeleop(Node):
             self.target[j['name']] = min(max(0.0, j['lower']), j['upper'])
             self.send([j['name']])
         elif key == 'h':
-            for jj in self.joints:
+            rest = [jj for jj in self.joints if not (self.walker and jj['name'] in self.walk['legs'])]
+            if self.walker:                  # the legs straighten slowly once the robot stands still
+                self.walker.straighten()
+                self.walk_cmd = (0.0, 0.0)
+                self.say('Stopping, then straightening the legs.')
+            for jj in rest:
                 self.target[jj['name']] = min(max(0.0, jj['lower']), jj['upper'])
-            self.send([jj['name'] for jj in self.joints])
+            self.send([jj['name'] for jj in rest])
+        elif not self.base and key in WALK_KEYS and (self.walk or CONFIG.get('walk_off')):
+            self.walk_key(key)
         elif self.base and key in 'i,jlk':
             self.v, self.w = {'i': (CONFIG['max_lin'], 0.0), ',': (-CONFIG['max_lin'] * 0.5, 0.0), 'j': (0.0, CONFIG['max_ang']),
                               'l': (0.0, -CONFIG['max_ang']), 'k': (0.0, 0.0)}[key]
@@ -1591,6 +1667,15 @@ class JointTeleop(Node):
             lim = '%.0f .. %.0f deg' % (math.degrees(j['lower']), math.degrees(j['upper']))
             st = '%.0f deg' % math.degrees(STEPS[self.step_i])
         base = '   base v %+.2f m/s w %+.2f rad/s' % (self.v, self.w) if self.base else ''
+        if self.walker:
+            f, t = self.walk_cmd
+            what = {(0, 0): 'standing', (1, 0): 'forward', (-1, 0): 'backward', (0, 1): 'turning left', (0, -1): 'turning right',
+                    (1, 1): 'forward + left', (1, -1): 'forward + right'}.get((round(f), round(t)), 'walking')
+            if self.walker.retiring:
+                what = 'straightening the legs'
+            base = '   walk: %s, %d steps' % (what, self.walker.steps)
+        if self.note and time.monotonic() < self.note_until:
+            base += '   | ' + self.note
         return '[%d/%d] %s  %s  (limits %s, step %s)%s' % (self.sel + 1, len(self.joints), j['name'], now, lim, st, base)
 
 
@@ -1606,7 +1691,7 @@ def main():
     settings = termios.tcgetattr(sys.stdin)
     rclpy.init()
     node = JointTeleop()
-    print(HELP.format(robot=CONFIG['robot'], base=BASE_HELP if node.base else '\n'))
+    print(HELP.format(robot=CONFIG['robot'], base=BASE_HELP if node.base else WALK_HELP if node.walk else '\n'))
     for _ in range(30):                      # up to 3 s to learn the current joint angles
         rclpy.spin_once(node, timeout_sec=0.1)
         if node.seen_state:
@@ -1616,10 +1701,11 @@ def main():
     try:
         tty.setraw(sys.stdin.fileno())
         while rclpy.ok():
-            key = read_key(0.1)
+            key = read_key(0.02 if node.walker else 0.1)
             rclpy.spin_once(node, timeout_sec=0.0)
             if key and not node.handle(key):
                 break
+            node.tick(time.monotonic())
             node.drive()
             sys.stdout.write('\r\033[K' + node.status())
             sys.stdout.flush()
@@ -1635,7 +1721,225 @@ def main():
 if __name__ == '__main__':
     main()
 `;
+// Walking engine, pasted into the teleop for a free-standing humanoid (tested in MuJoCo: forward, back, turns)
+const WALKER_PY = String.raw`# ---------------------------------------------------------------- walking engine
+SIDES = ('left', 'right')
+
+
+def smooth(t):
+    """0 -> 1 with zero speed at both ends."""
+    t = min(max(t, 0.0), 1.0)
+    return 0.5 - 0.5 * math.cos(math.pi * t)
+
+
+def leg_ik(dx, dy, dz, yaw, thigh, shin):
+    """Joint angles that put the ankle at (dx, dy, dz) from the hip, foot flat and turned by yaw."""
+    c, s = math.cos(-yaw), math.sin(-yaw)
+    x, y = c * dx - s * dy, s * dx + c * dy
+    roll = math.atan2(y, -dz)
+    zz = -math.hypot(y, dz)
+    d = min(math.hypot(x, zz), thigh + shin - 1e-6)
+    knee = math.acos(min(1.0, max(-1.0, (d * d - thigh * thigh - shin * shin) / (2 * thigh * shin))))
+    phi = math.atan2(-x, -zz)
+    pitch = phi - math.atan2(shin * math.sin(knee), thigh + shin * math.cos(knee))
+    return {'hip_yaw': yaw, 'hip_roll': roll, 'hip_pitch': pitch, 'knee': knee,
+            'ankle_pitch': -(pitch + knee), 'ankle_roll': -roll}
+
+
+def _rx(a):
+    c, s = math.cos(a), math.sin(a)
+    return ((1, 0, 0), (0, c, -s), (0, s, c))
+
+
+def _ry(a):
+    c, s = math.cos(a), math.sin(a)
+    return ((c, 0, s), (0, 1, 0), (-s, 0, c))
+
+
+def _rz(a):
+    c, s = math.cos(a), math.sin(a)
+    return ((c, -s, 0), (s, c, 0), (0, 0, 1))
+
+
+def _mm(a, b):
+    return tuple(tuple(sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)) for i in range(3))
+
+
+def _mv(a, v):
+    return [sum(a[i][k] * v[k] for k in range(3)) for i in range(3)]
+
+
+def _t(a):
+    return tuple(zip(*a))
+
+
+class Walker:
+    """Feed it the walking command and the sensors every tick; it returns targets for the twelve leg joints.
+
+    geo: thigh, shin (m), hip_y (half the hip spacing), hip_z (hip joint below the pelvis origin),
+    ankle_h (ankle joint above the sole). Coordinates: a ground frame fixed where the robot started,
+    x forward, y left.
+    """
+
+    def __init__(self, geo, step_len=0.08, back_len=0.04, turn_step=0.1, step_height=0.045,
+                 shift_time=2.2, hold_time=0.4, swing_time=1.0, crouch=0.92, unload=0.006, ready_time=2.0):
+        self.g = geo
+        self.step_len, self.back_len, self.turn_step, self.step_h = step_len, back_len, turn_step, step_height
+        self.t_shift, self.t_hold, self.t_swing, self.unload = shift_time, hold_time, swing_time, unload
+        legs = geo['thigh'] + geo['shin']
+        self.h = geo['ankle_h'] + crouch * legs + geo['hip_z']            # pelvis height while walking
+        self.h_tall = geo['ankle_h'] + 0.995 * legs + geo['hip_z']        # legs (almost) straight
+        self.ready, self.t_ready = 0.0, ready_time
+        y0 = geo['hip_y']
+        self.feet = {'left': [0.0, y0, 0.0], 'right': [0.0, -y0, 0.0]}   # x, y, yaw of each ankle
+        self.lift = {'left': 0.0, 'right': 0.0}
+        self.pelvis = [0.0, 0.0, 0.0]
+        self.phase, self.t, self.stance, self.swing = 'stand', 0.0, 'right', 'left'
+        self.cmd = (0.0, 0.0)
+        self.q_meas, self.tilt = None, (0.0, 0.0)
+        self.steps = 0
+        self.retiring, self.done = False, False
+
+    # ------------------------------------------------------------------ public
+    @property
+    def walking(self):
+        return self.phase != 'stand'
+
+    def straighten(self):
+        """Finish the current step, stand with the feet together, then slowly straighten the legs (self.done)."""
+        self.retiring = True
+
+    def update(self, dt, cmd, q_meas=None, roll=0.0, pitch=0.0):
+        """cmd = (forward -1..1, turn -1..1 (left +)). q_meas: measured joint angles by name; roll/pitch: IMU (rad)."""
+        if q_meas is not None:
+            self.q_meas = q_meas
+        self.tilt = (roll, pitch)
+        if self.retiring:
+            cmd = (0.0, 0.0)
+            if self.phase == 'stand':
+                self.ready = max(0.0, self.ready - dt / self.t_ready)
+                self.done = self.ready <= 0.0
+        elif self.ready < 1.0:                     # first bend the knees: hips straight down over the feet
+            self.ready = min(1.0, self.ready + dt / self.t_ready)
+            cmd = (0.0, 0.0)
+        self.cmd = cmd
+        moving = abs(cmd[0]) > 1e-3 or abs(cmd[1]) > 1e-3
+        self.t += dt
+        if self.phase == 'stand':
+            if moving:
+                self.stance, self.swing = 'right', 'left'
+                self._begin('shift')
+        elif self.phase == 'shift':
+            k = smooth(self.t / self.t_shift)
+            self._pelvis_to(self._over(self.stance), k)
+            other = self._other(self.stance)
+            if moving:                             # ease the weight off the other foot before it lifts
+                self.lift[other] = self.unload * smooth((self.t - 0.5 * self.t_shift) / (0.5 * self.t_shift + self.t_hold))
+            else:
+                self.lift[other] = max(0.0, self.lift[other] - dt * 0.02)
+            if self.t >= self.t_shift + self.t_hold:
+                if moving:
+                    self.swing = other
+                    self.target = self._plan_step()
+                    self.swing_from = list(self.feet[self.swing])
+                    self._begin('swing')
+                else:
+                    self.lift[other] = 0.0
+                    self._begin('settle')
+        elif self.phase == 'swing':
+            u = min(1.0, self.t / self.t_swing)
+            k = smooth(u)
+            f = self.feet[self.swing]
+            for i in range(3):
+                f[i] = self.swing_from[i] + (self.target[i] - self.swing_from[i]) * k
+            # up and down with zero speed at lift-off and at touchdown, so the foot sets down softly
+            self.lift[self.swing] = self.step_h * 0.5 * (1.0 - math.cos(2.0 * math.pi * u)) + self.unload * (1.0 - k)
+            if u >= 1.0:
+                self.lift[self.swing] = 0.0
+                self.feet[self.swing] = list(self.target)
+                self.stance, self.swing = self.swing, self.stance
+                self.steps += 1
+                self._begin('shift')
+        elif self.phase == 'settle':
+            self._pelvis_to(self._middle(), smooth(self.t / self.t_shift))
+            if self.t >= self.t_shift:
+                self.phase = 'stand'
+        return self.joints()
+
+    # ------------------------------------------------------------------ planning
+    @staticmethod
+    def _other(side):
+        return 'left' if side == 'right' else 'right'
+
+    def _begin(self, phase):
+        self.phase, self.t = phase, 0.0
+        self.from_p = list(self.pelvis)
+
+    def _pelvis_to(self, b, k):
+        a = self.from_p
+        self.pelvis = [a[i] + (b[i] - a[i]) * k for i in range(3)]
+
+    def _over(self, foot):
+        """Hips right above this foot (heading: halfway between the feet)."""
+        fx, fy, fyaw = self.feet[foot]
+        oyaw = self.feet[self._other(foot)][2]
+        return [fx, fy, (fyaw + oyaw) / 2]
+
+    def _middle(self):
+        l, r = self.feet['left'], self.feet['right']
+        return [(l[i] + r[i]) / 2 for i in range(3)]
+
+    def _plan_step(self):
+        """Where the swing foot lands, from the standing foot and the command."""
+        sx, sy, syaw = self.feet[self.stance]
+        fwd, turn = self.cmd
+        yaw = syaw + max(-1.0, min(1.0, turn)) * self.turn_step
+        side = 1.0 if self.swing == 'left' else -1.0
+        width = 2 * self.g['hip_y']
+        dx = fwd * (self.step_len if fwd > 0 else self.back_len)
+        return [sx + math.cos(yaw) * dx - math.sin(yaw) * side * width,
+                sy + math.sin(yaw) * dx + math.cos(yaw) * side * width, yaw]
+
+    # ------------------------------------------------------------------ legs
+    def ankle_in_pelvis(self, q, side):
+        """Forward kinematics: ankle position in the pelvis frame from joint angles."""
+        g = self.g
+        a = lambda n: q.get('%s_%s_joint' % (side, n), 0.0)
+        sgn = 1.0 if side == 'left' else -1.0
+        r = _mm(_mm(_rz(a('hip_yaw')), _rx(a('hip_roll'))), _ry(a('hip_pitch')))
+        knee = _mv(r, [0, 0, -g['thigh']])
+        r = _mm(r, _ry(a('knee')))
+        shin = _mv(r, [0, 0, -g['shin']])
+        return [knee[0] + shin[0], sgn * g['hip_y'] + knee[1] + shin[1], -g['hip_z'] + knee[2] + shin[2]]
+
+    def joints(self):
+        px, py, pyaw = self.pelvis
+        c, s = math.cos(-pyaw), math.sin(-pyaw)
+        h = self.h_tall + (self.h - self.h_tall) * smooth(self.ready)
+        out = {}
+        for side, sgn in (('left', 1.0), ('right', -1.0)):
+            fx, fy, fyaw = self.feet[side]
+            wx, wy = fx - px, fy - py
+            dx, dy = c * wx - s * wy, s * wx + c * wy - sgn * self.g['hip_y']
+            dz = -(h - self.g['hip_z'] - self.lift[side] - self.g['ankle_h'])
+            if self.phase == 'swing' and side == self.swing and self.q_meas:
+                # place the lifted foot relative to where the standing foot really is: the body sags and
+                # leans a little on one leg, and a foot planned from the ideal pose would land hard or on its edge
+                rt = _mm(_ry(self.tilt[1]), _rx(self.tilt[0]))
+                ps = _mv(rt, self.ankle_in_pelvis(self.q_meas, self.stance))
+                sx, sy, _ = self.feet[self.stance]
+                gx, gy = fx - sx, fy - sy
+                pp = _mv(_t(rt), [ps[0] + c * gx - s * gy, ps[1] + s * gx + c * gy, ps[2] + self.lift[side]])
+                dx, dy, dz = pp[0], pp[1] - sgn * self.g['hip_y'], pp[2] + self.g['hip_z']
+            for k, v in leg_ik(dx, dy, dz, fyaw - pyaw, self.g['thigh'], self.g['shin']).items():
+                out['%s_%s_joint' % (side, k)] = v
+        return out
+`;
 const hasTeleop = M => state.target !== 'rviz' && M.ctrl.length > 0;
+// A free-standing humanoid in the plain Gazebo package walks with the keyboard teleop
+const LEG_JOINTS = ['left', 'right'].flatMap(s => ['hip_yaw', 'hip_roll', 'hip_pitch', 'knee', 'ankle_pitch', 'ankle_roll'].map(k => `${s}_${k}_joint`));
+const canWalk = M => M.type === 'humanoid' && !M.p.fixBase && !M.moveit && state.target !== 'rviz';
+const isWalkLeg = (M, name) => canWalk(M) && LEG_JOINTS.includes(name);
 function teleopScript(M, pkg) {
   const ctrl = M.joints.filter(j => j.type === 'revolute' || j.type === 'prismatic');
   const groups = {};
@@ -1645,7 +1949,15 @@ function teleopScript(M, pkg) {
     .map(j => ({ name: j.name, type: j.type, lower: j.lim.lo, upper: j.lim.hi, ...(M.moveit ? { group: groupOf(j.name) } : {}) }));
   const cfg = { robot: M.name, mode: M.moveit ? 'trajectory' : 'position', topic: `/${M.name}/{joint}/cmd_pos`, groups, joints,
     base: !!M.wheels, max_lin: 0.4, max_ang: 1.0 };
-  return TELEOP_PY.replace('__CONFIG__', JSON.stringify(cfg, null, 1)).replace(/__ROBOT__/g, M.name).replace(/__PKG__/g, pkg);
+  if (M.type === 'humanoid') {
+    const p = M.p;
+    if (canWalk(M)) cfg.walk = { legs: LEG_JOINTS,
+      geo: { thigh: p.thighL, shin: p.shinL, hip_y: p.hipW / 2, hip_z: p.pelvisH / 2 + p.legR * 1.2, ankle_h: p.footH } };
+    else cfg.walk_off = p.fixBase ? "Walking is off: the pelvis is pinned to the world. Untick 'Pin pelvis' in the studio and download again."
+      : 'Walking works in the Gazebo package without MoveIt. Turn MoveIt off in the studio and download again.';
+  }
+  return TELEOP_PY.replace('__CONFIG__', JSON.stringify(cfg, null, 1)).replace(/__ROBOT__/g, M.name).replace(/__PKG__/g, pkg)
+    .replace('__WALKER__', cfg.walk ? WALKER_PY : 'Walker = None');
 }
 
 function packageXml(pkg, gz, teleop) {
@@ -1721,7 +2033,7 @@ function runCommands(pkg, M, forReadme) {
   else L.push(`ros2 launch ${pkg} gazebo.launch.py world:=${state.world}${state.target === 'both' ? '' : ' rviz:=true   # rviz:=false for Gazebo only'}`);
   if (gz && M.wheels && !M.ctrl.length) L.push('', `# ${step++}. Drive it (new terminal)`, 'ros2 run teleop_twist_keyboard teleop_twist_keyboard');
   if (hasTeleop(M)) L.push('', `# ${step++}. Move it with the keyboard (new terminal)${M.wheels ? ': joints and wheels' : ''}`, `ros2 run ${pkg} joint_teleop`,
-    '#    w/s pick a joint, a/d move it, q/e step size, h home' + (M.wheels ? ', i/,/j/l drive, k stop' : ''));
+    '#    w/s pick a joint, a/d move it, q/e step size, h home' + (M.wheels ? ', i/,/j/l drive, k stop' : canWalk(M) ? '\n#    walk: i forward, , back, j/l turn, u/o forward + turn, k stop' : ''));
   if (gz) L.push('', `# Other worlds: world:=${worldKeys().join(' | ')}`);
   if (state.target === 'rviz' && !forReadme) L.push('', '# Want physics? Pick Gazebo in Step 3 and download again.');
   return L.join('\n');
@@ -1735,7 +2047,7 @@ function readme(pkg, M, bbox, stats) {
     [`${pkg}/urdf/${M.name}.urdf`, `Robot model: links, joints, colors, inertia${gz ? ', Gazebo plugins and sensors' : ''}`],
     [`${pkg}/launch/display.launch.py`, 'robot_state_publisher + joint sliders + RViz'],
   ];
-  if (hasTeleop(M)) fileRows.push([`${pkg}/scripts/joint_teleop.py`, `Keyboard teleop: pick a joint with w/s, move it with a/d${M.wheels ? ', drive the base with i/,/j/l' : ''} (\`ros2 run ${pkg} joint_teleop\`)`]);
+  if (hasTeleop(M)) fileRows.push([`${pkg}/scripts/joint_teleop.py`, `Keyboard teleop: pick a joint with w/s, move it with a/d${M.wheels ? ', drive the base with i/,/j/l' : canWalk(M) ? ', walk with i/,/j/l/u/o (k stops)' : ''} (\`ros2 run ${pkg} joint_teleop\`)`]);
   if (gz && !mi) fileRows.push([`${pkg}/launch/gazebo.launch.py`, `${gzNames().sim} + spawn + ros_gz_bridge (+ RViz with \`rviz:=true\`)`]);
   if (gz) fileRows.push([`${pkg}/worlds/*.sdf`, `Gazebo worlds: ${worldKeys().join(', ')} (default: ${state.world}). Switch with \`world:=<name>\``]);
   if (gz && state.custom) fileRows.push([`${pkg}/worlds/custom.sdf`, `Your own world (${state.custom.name}), renamed to "default" inside so the launch files and bridges find it${worldAssets && worldAssets.id === state.custom.id ? '; its models and meshes are in worlds/custom_assets/' : ''}`]);
@@ -1787,8 +2099,23 @@ Pick a group in the MotionPlanning panel, drag the interactive marker (or choose
 ${bridgeArgs(M).map(a => '- `' + a.split('@')[0] + '`').join('\n')}
 ${mi ? '- `/joint_states` (from joint_state_broadcaster)' : ''}${!mi && M.ctrl.length ? `
 Each controlled joint takes a \`std_msgs/msg/Float64\` target position on \`/${M.name}/<joint>/cmd_pos\`. Gains are in the URDF \`JointPositionController\` blocks; tune them if a joint oscillates or sags.` : ''}
-${M.type === 'humanoid' && !p.fixBase ? `
-The humanoid spawns free-standing with no balance controller, so it will fall over. Turn on "Pin pelvis to the world" in the studio to hang it from a fixed point instead.` : ''}` : ''}
+${M.type === 'humanoid' && !p.fixBase ? (canWalk(M) ? `
+## Walking
+
+The humanoid spawns free-standing and walks with the keyboard. Start Gazebo, then in a new terminal run \`ros2 run ${pkg} joint_teleop\` and press:
+
+| Key | Does |
+|---|---|
+| \`i\` / \`,\` | walk forward / backward |
+| \`j\` / \`l\` | turn left / right on the spot |
+| \`u\` / \`o\` | walk forward while turning left / right |
+| \`k\` | stop (it finishes the step, then stands) |
+| \`h\` | stop and straighten the legs |
+
+It bends its knees first (2 s), then walks slowly and steadily (about 2 cm/s): it moves its weight over one foot, lifts the other, sets it down softly and moves its weight across. The teleop reads \`/joint_states\` and \`/imu\` to set each foot down flat. The arms, head and waist still move with w/s and a/d while it walks.
+
+Tested in a physics simulation (MuJoCo) with these settings; Gazebo's physics differ a little. If it wobbles: keep the world's physics step at 1 ms (\`<max_step_size>0.001</max_step_size>\`), keep the default leg sizes and masses, and walk on flat ground. The leg controllers use stiff P gains (25 × the joint's torque limit) with damping set in each leg joint's \`<dynamics>\`.` : `
+The humanoid spawns free-standing, and walking only works in the Gazebo package without MoveIt, so it will fall over. Turn off MoveIt to walk with the keyboard, or turn on "Pin pelvis to the world" to hang it from a fixed point.`) : ''}` : ''}
 ## Colors
 
 The colors picked in the studio are written into every \`<visual>\` of the URDF. If a part shows up plain white in RViz, RViz has no transform for that link yet: check that joint states are being published.
@@ -2533,7 +2860,8 @@ function checks(M, bb, stats) {
   if (M.type === 'humanoid') {
     if (p.hipW < 2 * p.legR * 1.2) warn('Hip spacing is narrower than both legs; the thighs overlap.');
     if (p.hipW / 2 + p.legR > p.pelvisW / 2 + 0.03) warn('Legs stick out past the pelvis.');
-    if (!p.fixBase) warn('Free-standing humanoid: without a balance controller it falls over in Gazebo.');
+    if (!p.fixBase && (useMoveit() || state.target === 'rviz')) warn('Free-standing humanoid: walking needs Gazebo without MoveIt; otherwise it falls over in Gazebo.');
+    else if (!p.fixBase) info('Free-standing humanoid: it stands on its own and walks slowly with the keyboard teleop (i forward, , back, j / l turn).');
   }
   if (M.type === 'semi') {
     if (p.colR * 2 > Math.min(p.torsoD, p.torsoW)) warn('Torso column is wider than the torso.');

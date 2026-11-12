@@ -9,7 +9,7 @@ A single-page web app that generates URDF models and ready-to-build ROS 2 packag
 - 2-wheel drive (differential drive + caster)
 - 4-wheel drive (skid-steer)
 - 6-DOF robotic arm (optional parallel gripper)
-- Humanoid (23 DOF biped)
+- Humanoid (23 DOF biped; free-standing, it walks with the keyboard)
 - Semi-humanoid (humanoid upper body on a wheeled base)
 
 Enter the robot's dimensions and masses, check it in the live 3D preview (with joint sliders and geometry checks), pick RViz, Gazebo, or both, and download a zip containing:
@@ -80,6 +80,7 @@ Move the robot with the keyboard (in a new terminal, while Gazebo runs):
 
 - **2-wheel / 4-wheel drive:** `ros2 run teleop_twist_keyboard teleop_twist_keyboard`
 - **6-DOF arm, humanoid, semi-humanoid:** `ros2 run <package> joint_teleop`. Keys: `w`/`s` pick a joint, `a`/`d` move it, `q`/`e` change the step size, `z` zeroes the joint, `h` sends every joint home. The semi-humanoid also drives its base with `i` `,` `j` `l` and stops with `k`. It works with the plain Gazebo package (joint position controllers) and with the MoveIt package (trajectory controllers).
+- **Humanoid walking:** untick *Pin pelvis* and leave MoveIt off, then in `joint_teleop` press `i` / `,` to walk forward / back, `j` / `l` to turn, `u` / `o` to walk and turn, `k` to stop, `h` to stop and straighten the legs. It walks slowly (about 2 cm/s) with a weight-shifting gait and uses `/joint_states` and `/imu` to set each foot down flat. Tested in MuJoCo; keep Gazebo's physics step at 1 ms.
 
 ## Colors
 
